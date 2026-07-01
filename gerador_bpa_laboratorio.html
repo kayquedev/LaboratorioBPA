@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador BPA-C · Produção Laboratorial</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --azul-sus: #0b5b8c;
+    --azul-sus-escuro: #073e61;
+    --azul-claro: #eaf3f9;
+    --verde: #2e7d5b;
+    --verde-claro: #e7f5ee;
+    --alerta: #a15c00;
+    --alerta-claro: #fdf1de;
+    --erro: #b3261e;
+    --erro-claro: #fbe9e7;
+    --cinza-100: #f6f7f9;
+    --cinza-200: #e7e9ed;
+    --cinza-400: #b8bec9;
+    --cinza-600: #6b7280;
+    --texto: #1c2530;
+    --branco: #ffffff;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    --sans: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin:0; font-family: var(--sans); background: var(--cinza-100); color: var(--texto);
+    padding: 0 0 60px 0;
+  }
+  header.top{
+    background: linear-gradient(135deg, var(--azul-sus-escuro), var(--azul-sus));
+    color: #fff; padding: 28px 24px 34px;
+  }
+  header.top .wrap{ max-width: 1000px; margin: 0 auto; }
+  header.top .eyebrow{
+    font-size: 12px; letter-spacing: .12em; text-transform: uppercase; opacity: .85;
+    display:flex; align-items:center; gap:8px; margin-bottom:6px;
+  }
+  header.top h1{ margin: 0 0 6px; font-size: 26px; font-weight: 700; }
+  header.top p{ margin:0; opacity:.9; font-size: 14.5px; max-width: 640px; line-height:1.5;}
+
+  main{ max-width: 1000px; margin: -18px auto 0; padding: 0 20px; display:flex; flex-direction:column; gap:18px; }
+
+  .card{
+    background: var(--branco); border: 1px solid var(--cinza-200); border-radius: 14px;
+    padding: 22px 24px; box-shadow: 0 1px 2px rgba(16,24,40,.04);
+  }
+  .card h2{
+    margin: 0 0 4px; font-size: 16px; display:flex; align-items:center; gap: 10px;
+  }
+  .step-num{
+    width: 24px; height:24px; border-radius:50%; background: var(--azul-sus); color:#fff;
+    display:inline-flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:700; flex:none;
+  }
+  .card .sub{ margin: 0 0 18px; color: var(--cinza-600); font-size: 13.5px; }
+  .card.disabled{ opacity: .5; pointer-events: none; }
+
+  .drop{
+    border: 1.5px dashed var(--cinza-400); border-radius: 10px; padding: 26px; text-align:center;
+    background: var(--cinza-100); cursor:pointer; transition: border-color .15s, background .15s;
+  }
+  .drop:hover, .drop.drag{ border-color: var(--azul-sus); background: var(--azul-claro); }
+  .drop input{ display:none; }
+  .drop .icon{ font-size: 26px; margin-bottom:6px; }
+  .drop .fname{ font-weight:600; color: var(--azul-sus-escuro); margin-top:6px; font-size: 13.5px; }
+
+  .grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 18px; }
+  @media (max-width: 720px){ .grid{ grid-template-columns: 1fr 1fr; } }
+  .field label{ display:block; font-size: 12.5px; font-weight:600; color: var(--cinza-600); margin-bottom: 5px; }
+  .field input, .field select{
+    width: 100%; padding: 9px 10px; border: 1px solid var(--cinza-200); border-radius: 8px;
+    font-size: 14px; font-family: var(--sans); background: #fff; color: var(--texto);
+  }
+  .field input:focus, .field select:focus{ outline: 2px solid var(--azul-sus); outline-offset: 1px; }
+  .field .hint{ font-size: 11px; color: var(--cinza-600); margin-top:4px; }
+  .field.invalid input{ border-color: var(--erro); background: var(--erro-claro); }
+
+  details.adv{ margin-top: 16px; }
+  details.adv summary{
+    cursor:pointer; font-size: 13px; font-weight: 600; color: var(--azul-sus); list-style:none;
+  }
+  details.adv summary::-webkit-details-marker{ display:none; }
+  details.adv summary:before{ content: "▸ "; }
+  details.adv[open] summary:before{ content: "▾ "; }
+  details.adv .grid{ margin-top: 14px; }
+
+  .btn{
+    appearance:none; border:none; border-radius: 9px; padding: 11px 20px; font-size: 14px; font-weight:600;
+    cursor:pointer; display:inline-flex; align-items:center; gap:8px; transition: filter .12s, transform .05s;
+  }
+  .btn:active{ transform: translateY(1px); }
+  .btn-primary{ background: var(--azul-sus); color:#fff; }
+  .btn-primary:hover{ filter: brightness(1.08); }
+  .btn-primary:disabled{ background: var(--cinza-400); cursor:not-allowed; }
+  .btn-secondary{ background: var(--azul-claro); color: var(--azul-sus-escuro); }
+  .btn-secondary:hover{ filter: brightness(0.97); }
+  .btn-ghost{ background: transparent; color: var(--erro); padding: 4px 8px; font-size: 12.5px; }
+  .actions{ margin-top: 20px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+  .msg{ border-radius: 9px; padding: 10px 14px; font-size: 13.5px; margin-top: 14px; display:none; }
+  .msg.show{ display:block; }
+  .msg.warn{ background: var(--alerta-claro); color: var(--alerta); }
+  .msg.error{ background: var(--erro-claro); color: var(--erro); }
+  .msg.ok{ background: var(--verde-claro); color: var(--verde); }
+
+  .summary-row{ display:flex; gap: 22px; flex-wrap:wrap; margin: 4px 0 16px; }
+  .stat{ min-width: 110px; }
+  .stat .n{ font-size: 22px; font-weight: 700; color: var(--azul-sus-escuro); line-height:1.1; }
+  .stat .l{ font-size: 11.5px; color: var(--cinza-600); text-transform: uppercase; letter-spacing:.04em; margin-top:2px; }
+
+  table.preview{ width:100%; border-collapse: collapse; font-size: 13px; }
+  table.preview th{
+    text-align:left; font-size: 11px; text-transform: uppercase; letter-spacing:.03em; color: var(--cinza-600);
+    border-bottom: 2px solid var(--cinza-200); padding: 8px 8px; position: sticky; top:0; background:#fff;
+  }
+  table.preview td{ padding: 7px 8px; border-bottom: 1px solid var(--cinza-100); vertical-align:middle; }
+  table.preview tr:hover td{ background: var(--cinza-100); }
+  table.preview td.num{ font-variant-numeric: tabular-nums; }
+  table.preview input.qty{
+    width: 78px; padding: 5px 6px; border:1px solid var(--cinza-200); border-radius:6px; font-size:13px;
+    text-align:right; font-variant-numeric: tabular-nums;
+  }
+  table.preview td.desc{ color: var(--cinza-600); max-width: 260px; }
+  .tbl-wrap{ max-height: 420px; overflow:auto; border: 1px solid var(--cinza-200); border-radius: 10px; }
+  .rm-btn{
+    border:none; background:transparent; color: var(--cinza-600); cursor:pointer; font-size:15px; line-height:1;
+    padding: 4px 6px; border-radius:6px;
+  }
+  .rm-btn:hover{ color: var(--erro); background: var(--erro-claro); }
+  .badge{
+    display:inline-block; font-size: 10.5px; font-weight:700; padding: 2px 7px; border-radius: 5px;
+    background: var(--azul-claro); color: var(--azul-sus-escuro);
+  }
+
+  pre.rawfile{
+    background: var(--azul-sus-escuro); color: #d7ecfa; padding: 16px; border-radius: 10px; overflow-x:auto;
+    font-family: var(--mono); font-size: 11.5px; line-height: 1.7; max-height: 260px;
+  }
+  pre.rawfile .l{ color: #7fb8dd; margin-right: 10px; user-select:none; }
+  .ruler{ color:#6c94ab; user-select:none; }
+
+  footer.note{
+    max-width: 1000px; margin: 22px auto 0; padding: 0 24px; font-size: 12px; color: var(--cinza-600); line-height:1.6;
+  }
+
+  .credit{
+    max-width: 1000px; margin: 14px auto 0; padding: 14px 24px 0; text-align:center;
+    font-size: 11.5px; color: var(--cinza-600); border-top: 1px solid var(--cinza-200);
+  }
+  .credit-name{ font-weight: 600; color: var(--texto); }
+  .credit-sep{ margin: 0 8px; color: var(--cinza-400); }
+  .credit a{ color: var(--cinza-600); text-decoration: none; }
+  .credit a:hover{ color: var(--azul-sus); text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="eyebrow">SUS · SIA · BPA Magnético</div>
+    <h1>Gerador de BPA-C — Produção Laboratorial</h1>
+    <p>Converte a planilha de exames enviada pelo laboratório (código SIGTAP + quantidade) em um arquivo .txt no layout oficial do BPA Consolidado, pronto para importação no SIA.</p>
+  </div>
+</header>
+
+<main>
+
+  <!-- STEP 1: UPLOAD -->
+  <section class="card" id="card-upload">
+    <h2><span class="step-num">1</span> Planilha do laboratório</h2>
+    <p class="sub">Envie o Excel (.xlsx) recebido do laboratório. O sistema procura automaticamente as colunas <b>SIGTAP</b> e <b>QUANTIDADE</b> — as demais colunas (valores, descrição etc.) são ignoradas no arquivo final.</p>
+
+    <label class="drop" id="drop">
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+      <div class="icon">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M6 2.5h8l4.5 4.5V21a.5.5 0 0 1-.5.5H6a.5.5 0 0 1-.5-.5V3a.5.5 0 0 1 .5-.5Z" stroke="#0b5b8c" stroke-width="1.4" stroke-linejoin="round"/>
+          <path d="M14 2.5V7a.5.5 0 0 0 .5.5H19" stroke="#0b5b8c" stroke-width="1.4" stroke-linejoin="round"/>
+          <path d="M8.2 12h7.6M8.2 15h7.6M8.2 18h4.8" stroke="#0b5b8c" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div><b>Clique para selecionar</b> ou arraste o arquivo .xlsx aqui</div>
+      <div class="fname" id="fname"></div>
+    </label>
+
+    <div class="msg" id="uploadMsg"></div>
+  </section>
+
+  <!-- STEP 2: CAMPOS -->
+  <section class="card disabled" id="card-fields">
+    <h2><span class="step-num">2</span> Dados do boletim</h2>
+    <p class="sub">Preencha os dados obrigatórios do BPA-C. A <b>Folha</b> é numerada automaticamente (até 20 procedimentos por folha).</p>
+
+    <div class="grid">
+      <div class="field" id="f-cnes">
+        <label for="cnes">CNES do estabelecimento</label>
+        <input id="cnes" maxlength="7" inputmode="numeric" placeholder="0000000">
+        <div class="hint">7 dígitos</div>
+      </div>
+      <div class="field" id="f-cbo">
+        <label for="cbo">CBO do responsável</label>
+        <input id="cbo" maxlength="6" inputmode="numeric" placeholder="000000">
+        <div class="hint">6 dígitos (Ocupações CBO)</div>
+      </div>
+      <div class="field" id="f-comp">
+        <label for="competencia">Competência</label>
+        <input id="competencia" type="month">
+        <div class="hint">Mês/ano de realização</div>
+      </div>
+      <div class="field" id="f-folha">
+        <label for="folhaIni">Folha inicial</label>
+        <input id="folhaIni" type="number" min="1" max="999" value="1">
+        <div class="hint">Evite reaproveitar folha já usada nesta competência</div>
+      </div>
+    </div>
+
+    <details class="adv">
+      <summary>Campos avançados do cabeçalho (opcional)</summary>
+      <div class="grid">
+        <div class="field">
+          <label for="orgOrigem">Nome do órgão de origem</label>
+          <input id="orgOrigem" maxlength="30" placeholder="Secretaria Municipal de Saúde">
+        </div>
+        <div class="field">
+          <label for="siglaOrigem">Sigla do órgão</label>
+          <input id="siglaOrigem" maxlength="6" placeholder="SMS">
+        </div>
+        <div class="field">
+          <label for="cgcCpf">CNPJ do órgão</label>
+          <input id="cgcCpf" maxlength="14" inputmode="numeric" placeholder="00000000000000">
+        </div>
+        <div class="field">
+          <label for="orgDestino">Nome do órgão de destino</label>
+          <input id="orgDestino" maxlength="40" placeholder="SES-MG">
+        </div>
+        <div class="field">
+          <label for="indDestino">Indicador de destino</label>
+          <select id="indDestino">
+            <option value="M" selected>M — Municipal</option>
+            <option value="E">E — Estadual</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="versaoSis">Versão do sistema</label>
+          <input id="versaoSis" maxlength="7" placeholder="V01.00">
+        </div>
+      </div>
+      <div class="msg warn show" style="margin-top:14px;">
+        O campo de controle interno do cabeçalho (posições 26–29) não tem cálculo público documentado; o gerador usa um valor padrão dentro do domínio aceito. Se o SIA recusar a importação por esse campo, ajuste com sua equipe de TI/SES-MG antes de reenviar.
+      </div>
+    </details>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="btnProcess">Processar planilha →</button>
+    </div>
+    <div class="msg" id="fieldsMsg"></div>
+  </section>
+
+  <!-- STEP 3: PREVIEW -->
+  <section class="card disabled" id="card-preview">
+    <h2><span class="step-num">3</span> Conferência dos procedimentos</h2>
+    <p class="sub">Revise, edite quantidades ou remova linhas antes de gerar o arquivo final.</p>
+
+    <div class="summary-row">
+      <div class="stat"><div class="n" id="statCount">0</div><div class="l">Procedimentos</div></div>
+      <div class="stat"><div class="n" id="statQty">0</div><div class="l">Soma quantidades</div></div>
+      <div class="stat"><div class="n" id="statFolhas">0</div><div class="l">Folhas necessárias</div></div>
+      <div class="stat"><div class="n" id="statSkipped">0</div><div class="l">Linhas ignoradas</div></div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table class="preview">
+        <thead>
+          <tr>
+            <th>Folha</th><th>Seq.</th><th>Código SIGTAP</th><th>Descrição</th><th>CBO</th><th>Quantidade</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="previewBody"></tbody>
+      </table>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="btnGenerate">Gerar arquivo BPA-C →</button>
+    </div>
+    <div class="msg" id="previewMsg"></div>
+  </section>
+
+  <!-- STEP 4: RESULT -->
+  <section class="card disabled" id="card-result">
+    <h2><span class="step-num">4</span> Arquivo BPA-C</h2>
+    <p class="sub">Confira as primeiras linhas do arquivo gerado (layout fixo, 48 colunas por linha de produção) e baixe o .txt.</p>
+
+    <pre class="rawfile" id="rawPreview"></pre>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="btnDownload">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M4.5 17.5V19a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-1.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        Baixar arquivo .txt
+      </button>
+      <span class="badge" id="fileNameBadge"></span>
+    </div>
+    <div class="msg" id="resultMsg"></div>
+  </section>
+
+</main>
+
+<footer class="note">
+  Layout baseado no registro BPA-Consolidado oficial do SIA/DATASUS (cabeçalho tipo 01 e linhas de produção tipo 02).
+  Idade do paciente é preenchida como "000" — adequado para a maioria dos exames laboratoriais; se algum procedimento exigir idade obrigatória, ajuste manualmente antes de importar.
+  Sempre valide o arquivo gerado no importador oficial do SIA/BPA Magnético antes do envio definitivo à SES-MG.
+</footer>
+
+<div class="credit">
+  Desenvolvido por: <span class="credit-name">Kayque Oliveira</span>
+  <span class="credit-sep">·</span>
+  <a href="https://instagram.com/kayque_esus" target="_blank" rel="noopener">Instagram: @kayque_esus</a>
+  <span class="credit-sep">·</span>
+  <a href="https://youtube.com/@kayque_esus" target="_blank" rel="noopener">Youtube: @kayque_esus</a>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- state ----------
+  let rows = [];          // {sigtap, descricao, quantidade}
+  let skippedCount = 0;
+  let workbookHeaderInfo = "";
+
+  // ---------- helpers ----------
+  function onlyDigits(s){ return String(s == null ? "" : s).replace(/\D/g,""); }
+  function stripAccents(s){ return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,""); }
+  function padLeft(v, len, ch){ ch = ch || "0"; v = String(v); return v.length >= len ? v.slice(-len) : ch.repeat(len - v.length) + v; }
+  function padRight(v, len, ch){ ch = ch || " "; v = String(v); return v.length >= len ? v.slice(0, len) : v + ch.repeat(len - v.length); }
+  function setMsg(el, type, text){
+    el.className = "msg show " + type;
+    el.textContent = text;
+  }
+  function clearMsg(el){ el.className = "msg"; el.textContent = ""; }
+  function enableCard(id){ document.getElementById(id).classList.remove("disabled"); }
+
+  // ---------- STEP 1: upload ----------
+  const drop = document.getElementById("drop");
+  const fileInput = document.getElementById("fileInput");
+  const fname = document.getElementById("fname");
+  const uploadMsg = document.getElementById("uploadMsg");
+
+  ["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("drag"); }));
+  ["dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("drag"); }));
+  drop.addEventListener("drop", e => {
+    if (e.dataTransfer.files.length){ fileInput.files = e.dataTransfer.files; handleFile(e.dataTransfer.files[0]); }
+  });
+  fileInput.addEventListener("change", () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+
+  let parsedRaw = null; // {sigtapCol, quantCol, descCol, dataRows}
+
+  function handleFile(file){
+    fname.textContent = file.name;
+    clearMsg(uploadMsg);
+    const reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, { type: "array" });
+        const sheetName = wb.SheetNames[0];
+        const ws = wb.Sheets[sheetName];
+        const arr = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "" });
+
+        // locate header row containing "SIGTAP"
+        let headerRowIdx = -1, sigtapCol = -1, quantCol = -1, descCol = -1;
+        for (let i = 0; i < arr.length; i++){
+          const row = arr[i];
+          for (let j = 0; j < row.length; j++){
+            const cell = String(row[j]).trim().toUpperCase();
+            if (cell === "SIGTAP"){ headerRowIdx = i; sigtapCol = j; }
+          }
+          if (headerRowIdx === i){
+            for (let j = 0; j < row.length; j++){
+              const cell = String(row[j]).trim().toUpperCase();
+              if (cell.indexOf("QUANT") === 0) quantCol = j;
+              if (cell.indexOf("DESCR") === 0) descCol = j;
+            }
+            break;
+          }
+        }
+
+        if (headerRowIdx === -1 || quantCol === -1){
+          setMsg(uploadMsg, "error", "Não encontrei as colunas \"SIGTAP\" e \"QUANTIDADE\" na planilha. Verifique se o cabeçalho da tabela está presente.");
+          return;
+        }
+
+        const dataRows = arr.slice(headerRowIdx + 1);
+        parsedRaw = { sigtapCol, quantCol, descCol, dataRows };
+        workbookHeaderInfo = sheetName;
+
+        setMsg(uploadMsg, "ok", "Planilha carregada: \"" + sheetName + "\". Colunas identificadas — SIGTAP (col. " + (sigtapCol+1) + "), QUANTIDADE (col. " + (quantCol+1) + ")" + (descCol>-1 ? ", Descrição (col. " + (descCol+1) + ")" : "") + ".");
+        enableCard("card-fields");
+      } catch(err){
+        setMsg(uploadMsg, "error", "Não foi possível ler o arquivo. Confirme que é um .xlsx válido. (" + err.message + ")");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // ---------- STEP 2: campos + processar ----------
+  const cnesInput = document.getElementById("cnes");
+  const cboInput = document.getElementById("cbo");
+  const compInput = document.getElementById("competencia");
+  const folhaIniInput = document.getElementById("folhaIni");
+  const fieldsMsg = document.getElementById("fieldsMsg");
+
+  cnesInput.addEventListener("input", () => cnesInput.value = onlyDigits(cnesInput.value).slice(0,7));
+  cboInput.addEventListener("input", () => cboInput.value = onlyDigits(cboInput.value).slice(0,6));
+
+  document.getElementById("btnProcess").addEventListener("click", () => {
+    clearMsg(fieldsMsg);
+    let ok = true;
+    const markInvalid = (fieldId, invalid) => {
+      const el = document.getElementById(fieldId);
+      el.classList.toggle("invalid", invalid);
+    };
+
+    const cnes = cnesInput.value;
+    const cbo = cboInput.value;
+    const comp = compInput.value;
+    const folhaIni = parseInt(folhaIniInput.value || "1", 10);
+
+    markInvalid("f-cnes", cnes.length !== 7); if (cnes.length !== 7) ok = false;
+    markInvalid("f-cbo", cbo.length !== 6); if (cbo.length !== 6) ok = false;
+    markInvalid("f-comp", !comp); if (!comp) ok = false;
+    markInvalid("f-folha", !(folhaIni >= 1 && folhaIni <= 999)); if (!(folhaIni >= 1 && folhaIni <= 999)) ok = false;
+
+    if (!parsedRaw){
+      setMsg(fieldsMsg, "error", "Envie a planilha antes de processar.");
+      return;
+    }
+    if (!ok){
+      setMsg(fieldsMsg, "error", "Confira os campos destacados: CNES (7 dígitos), CBO (6 dígitos), competência e folha inicial.");
+      return;
+    }
+
+    // build rows from parsedRaw
+    rows = [];
+    skippedCount = 0;
+    parsedRaw.dataRows.forEach(row => {
+      const rawSig = row[parsedRaw.sigtapCol];
+      const rawQty = row[parsedRaw.quantCol];
+      const digits = onlyDigits(rawSig);
+      const qty = Math.round(Number(rawQty));
+
+      if (!digits || digits.length > 10 || !qty || qty <= 0 || isNaN(qty)){
+        if (String(rawSig).trim() !== "" || String(rawQty).trim() !== "") skippedCount++;
+        return;
+      }
+      rows.push({
+        sigtap: padLeft(digits, 10),
+        descricao: parsedRaw.descCol > -1 ? String(row[parsedRaw.descCol] || "").trim() : "",
+        quantidade: Math.min(qty, 999999)
+      });
+    });
+
+    rows.sort((a,b) => a.sigtap.localeCompare(b.sigtap));
+
+    if (rows.length === 0){
+      setMsg(fieldsMsg, "error", "Nenhuma linha válida encontrada (código SIGTAP + quantidade). Confira a planilha.");
+      return;
+    }
+
+    setMsg(fieldsMsg, "ok", rows.length + " procedimentos identificados" + (skippedCount ? " — " + skippedCount + " linha(s) ignorada(s) por falta de código ou quantidade." : "."));
+    assignFolhas();
+    renderPreview();
+    enableCard("card-preview");
+    document.getElementById("card-preview").scrollIntoView({behavior:"smooth", block:"start"});
+  });
+
+  function assignFolhas(){
+    const folhaIni = parseInt(folhaIniInput.value || "1", 10);
+    rows.forEach((r, idx) => {
+      r.folha = folhaIni + Math.floor(idx / 20);
+      r.seq = (idx % 20) + 1;
+    });
+  }
+
+  // ---------- STEP 3: preview / edição ----------
+  const previewBody = document.getElementById("previewBody");
+  const previewMsg = document.getElementById("previewMsg");
+
+  function renderPreview(){
+    assignFolhas();
+    previewBody.innerHTML = "";
+    const cbo = cboInput.value;
+    let totalQty = 0;
+
+    rows.forEach((r, idx) => {
+      totalQty += r.quantidade;
+      const tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td class="num">' + padLeft(r.folha,3) + '</td>' +
+        '<td class="num">' + padLeft(r.seq,2) + '</td>' +
+        '<td class="num">' + r.sigtap + '</td>' +
+        '<td class="desc">' + (r.descricao || "—") + '</td>' +
+        '<td class="num">' + cbo + '</td>' +
+        '<td><input class="qty" type="number" min="1" max="999999" data-idx="' + idx + '" value="' + r.quantidade + '"></td>' +
+        '<td><button class="rm-btn" data-idx="' + idx + '" title="Remover linha">✕</button></td>';
+      previewBody.appendChild(tr);
+    });
+
+    document.getElementById("statCount").textContent = rows.length;
+    document.getElementById("statQty").textContent = totalQty.toLocaleString("pt-BR");
+    document.getElementById("statFolhas").textContent = Math.ceil(rows.length / 20);
+    document.getElementById("statSkipped").textContent = skippedCount;
+
+    previewBody.querySelectorAll("input.qty").forEach(inp => {
+      inp.addEventListener("change", () => {
+        const i = parseInt(inp.dataset.idx, 10);
+        let v = Math.round(Number(inp.value));
+        if (!v || v <= 0) v = 1;
+        v = Math.min(v, 999999);
+        rows[i].quantidade = v;
+        inp.value = v;
+        renderPreview();
+      });
+    });
+    previewBody.querySelectorAll(".rm-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const i = parseInt(btn.dataset.idx, 10);
+        rows.splice(i, 1);
+        renderPreview();
+      });
+    });
+  }
+
+  // ---------- STEP 4: gerar arquivo ----------
+  document.getElementById("btnGenerate").addEventListener("click", () => {
+    clearMsg(previewMsg);
+    if (rows.length === 0){
+      setMsg(previewMsg, "error", "Não há procedimentos para gerar o arquivo.");
+      return;
+    }
+
+    const cnes = cnesInput.value;
+    const cbo = cboInput.value;
+    const competencia = compInput.value.replace("-", ""); // AAAAMM
+
+    const orgOrigem = stripAccents(document.getElementById("orgOrigem").value || "").toUpperCase();
+    const siglaOrigem = stripAccents(document.getElementById("siglaOrigem").value || "").toUpperCase();
+    const cgcCpf = onlyDigits(document.getElementById("cgcCpf").value || "");
+    const orgDestino = stripAccents(document.getElementById("orgDestino").value || "").toUpperCase();
+    const indDestino = document.getElementById("indDestino").value || "M";
+    const versaoSis = stripAccents(document.getElementById("versaoSis").value || "").toUpperCase();
+
+    // --- linhas de produção (tipo 02) ---
+    const detailLines = rows.map(r => {
+      return "02"
+        + padLeft(cnes, 7)
+        + padLeft(competencia, 6)
+        + padLeft(cbo, 6)
+        + padLeft(r.folha, 3)
+        + padLeft(r.seq, 2)
+        + padLeft(r.sigtap, 10)
+        + "000"                              // idade — não exigida para a maioria dos exames laboratoriais
+        + padLeft(r.quantidade, 6)
+        + "BPA";
+    });
+
+    const numLinhas = detailLines.length;
+    const numFolhas = Math.max.apply(null, rows.map(r => r.folha)) - parseInt(folhaIniInput.value || "1", 10) + 1;
+    const CTRL = "1111"; // valor padrão dentro do domínio [1111..2221]
+
+    const headerLine =
+      "01" + "#BPA#"
+      + padLeft(competencia, 6)
+      + padLeft(numLinhas, 6)
+      + padLeft(numFolhas, 6)
+      + CTRL
+      + padRight(orgOrigem, 30)
+      + padRight(siglaOrigem, 6)
+      + padLeft(cgcCpf, 14)
+      + padRight(orgDestino, 40)
+      + indDestino
+      + padRight(versaoSis, 7)
+      + "   ";
+
+    const fileLines = [headerLine].concat(detailLines);
+    const fileContent = fileLines.join("\r\n") + "\r\n";
+    const fileName = "BPAC_" + cnes + "_" + competencia + ".txt";
+
+    // raw preview
+    const rawEl = document.getElementById("rawPreview");
+    const rulerTop = "         1         2         3         4";
+    const rulerBot = "1234567890123456789012345678901234567890";
+    let previewLines = fileLines.slice(0, 6);
+    let html = '<span class="ruler">' + rulerTop + '\n' + rulerBot + '</span>\n';
+    previewLines.forEach((l, i) => {
+      html += '<span class="l">' + padLeft(i, 2) + '</span>' + escapeHtml(l) + "\n";
+    });
+    if (fileLines.length > 6) html += '<span class="ruler">… mais ' + (fileLines.length - 6) + ' linha(s) …</span>';
+    rawEl.innerHTML = html;
+
+    document.getElementById("fileNameBadge").textContent = fileName;
+    enableCard("card-result");
+    document.getElementById("card-result").scrollIntoView({behavior:"smooth", block:"start"});
+
+    document.getElementById("btnDownload").onclick = () => {
+      const blob = new Blob([fileContent], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = fileName;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setMsg(document.getElementById("resultMsg"), "ok", "Arquivo baixado: " + fileName + " — " + numLinhas + " linhas de produção em " + numFolhas + " folha(s).");
+    };
+  });
+
+  function escapeHtml(s){
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+})();
+</script>
+
+</body>
+</html>

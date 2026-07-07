@@ -6,6 +6,11 @@
   const USERS_KEY = "bpaUsers";
   const SESSION_KEY = "bpaSession";
 
+  // Usuários fixos: sempre disponíveis, mesmo se o localStorage for limpo.
+  const FIXED_USERS = [
+    { name: "DANIELA", password: "saudesgp" }
+  ];
+
   const loginScreen = document.getElementById("loginScreen");
   const appShell = document.getElementById("appShell");
   const loginForm = document.getElementById("loginForm");
@@ -27,6 +32,7 @@
     catch(e){ return []; }
   }
   function saveUsers(list){ localStorage.setItem(USERS_KEY, JSON.stringify(list)); }
+  function getAllUsers(){ return FIXED_USERS.concat(getUsers()); }
 
   function getSession(){
     try{ return JSON.parse(sessionStorage.getItem(SESSION_KEY)); }
@@ -75,7 +81,7 @@
       return;
     }
 
-    const users = getUsers();
+    const users = getAllUsers();
     const found = users.find(u => u.name.toLowerCase() === user.toLowerCase() && u.password === pass);
     if (found){
       const session = { name: found.name, role: "user" };
@@ -112,13 +118,24 @@
   const usersBody = document.getElementById("usersBody");
 
   function renderUsers(){
-    const users = getUsers();
+    const fixed = FIXED_USERS;
+    const stored = getUsers();
     usersBody.innerHTML = "";
-    if (users.length === 0){
+
+    if (fixed.length === 0 && stored.length === 0){
       usersBody.innerHTML = '<tr><td colspan="2" style="color:var(--cinza-600);">Nenhum usuário cadastrado ainda.</td></tr>';
       return;
     }
-    users.forEach((u, idx) => {
+
+    fixed.forEach(u => {
+      const tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td>' + escapeHtml(u.name) + ' <span class="badge">fixo</span></td>' +
+        '<td></td>';
+      usersBody.appendChild(tr);
+    });
+
+    stored.forEach((u, idx) => {
       const tr = document.createElement("tr");
       tr.innerHTML =
         '<td>' + escapeHtml(u.name) + '</td>' +
@@ -149,12 +166,12 @@
       setMsg(userMsg, "error", "Esse nome é reservado para o administrador.");
       return;
     }
-    const users = getUsers();
-    if (users.some(u => u.name.toLowerCase() === name.toLowerCase())){
+    if (getAllUsers().some(u => u.name.toLowerCase() === name.toLowerCase())){
       setMsg(userMsg, "error", "Já existe um usuário cadastrado com esse nome.");
       return;
     }
 
+    const users = getUsers();
     users.push({ name, password: pass });
     saveUsers(users);
     newUserName.value = "";

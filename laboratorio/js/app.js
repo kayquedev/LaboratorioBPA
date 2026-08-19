@@ -45,26 +45,29 @@
         const ws = wb.Sheets[sheetName];
         const arr = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "" });
 
-        // locate header row containing "SIGTAP"
+        // locate header row containing o código do procedimento ("SIGTAP" ou "Item")
         let headerRowIdx = -1, sigtapCol = -1, quantCol = -1, descCol = -1;
         for (let i = 0; i < arr.length; i++){
           const row = arr[i];
           for (let j = 0; j < row.length; j++){
             const cell = String(row[j]).trim().toUpperCase();
-            if (cell === "SIGTAP"){ headerRowIdx = i; sigtapCol = j; }
+            if (cell === "SIGTAP" || cell === "ITEM"){ headerRowIdx = i; sigtapCol = j; }
           }
           if (headerRowIdx === i){
+            let quantFallback = -1;
             for (let j = 0; j < row.length; j++){
               const cell = String(row[j]).trim().toUpperCase();
-              if (cell.indexOf("QUANT") === 0) quantCol = j;
+              if (cell === "QUANTIDADE" || cell === "QUANT. CONTRATADA") quantCol = j;
+              else if (quantFallback === -1 && cell.indexOf("QUANT") === 0) quantFallback = j;
               if (cell.indexOf("DESCR") === 0) descCol = j;
             }
+            if (quantCol === -1) quantCol = quantFallback;
             break;
           }
         }
 
         if (headerRowIdx === -1 || quantCol === -1){
-          setMsg(uploadMsg, "error", "Não encontrei as colunas \"SIGTAP\" e \"QUANTIDADE\" na planilha. Verifique se o cabeçalho da tabela está presente.");
+          setMsg(uploadMsg, "error", "Não encontrei as colunas do código do procedimento (\"SIGTAP\" ou \"Item\") e da quantidade (\"QUANTIDADE\" ou \"Quant. Contratada\") na planilha. Verifique se o cabeçalho da tabela está presente.");
           return;
         }
 

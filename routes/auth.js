@@ -31,11 +31,12 @@ router.post("/logout", (req, res) => {
 
 router.get("/me", requireAuth, async (req, res) => {
   const { rows } = await pool.query(
-    "SELECT slug, name, status, sort_order FROM modules ORDER BY sort_order"
+    "SELECT slug, name, description, status, sort_order FROM modules ORDER BY sort_order"
   );
   const modules = rows.map((m) => ({
     slug: m.slug,
     name: m.name,
+    description: m.description,
     status: m.status,
     granted: req.user.isAdmin || req.user.grantedSlugs.includes(m.slug),
   }));

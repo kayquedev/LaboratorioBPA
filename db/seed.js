@@ -9,6 +9,7 @@ const MODULES = [
   { slug: "laboratorio", name: "Laboratório", description: "Gere o arquivo BPA-I para exportar para o BPA/SIA, através da importação da planilha do Excel do laboratório.", status: "live", sort_order: 1 },
   { slug: "oftalmo", name: "Oftalmo", description: "Gere o arquivo BPA para exportar para o SIA, através da importação da planilha dos dados dos pacientes.", status: "soon", sort_order: 2 },
   { slug: "esus_pec", name: "ESUS PEC", description: "Gerador de BPA a partir da produção registrada no ESUS PEC.", status: "soon", sort_order: 3 },
+  { slug: "qualidade_bpa", name: "Qualidade BPA", description: "Analisa um arquivo BPA já gerado (BPA-C/BPA-I), com painéis, filtros e verificações de qualidade dos dados por procedimento SIGTAP.", status: "live", sort_order: 4 },
 ];
 
 async function main() {

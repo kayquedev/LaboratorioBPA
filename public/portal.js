@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const ICONS = { laboratorio: "🧪", oftalmo: "👁", esus_pec: "🏥" };
+  const ICONS = { laboratorio: "🧪", oftalmo: "👁", esus_pec: "🏥", qualidade_bpa: "📊" };
 
   const loginView = document.getElementById("loginView");
   const modulesView = document.getElementById("modulesView");

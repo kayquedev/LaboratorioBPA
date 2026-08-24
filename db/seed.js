@@ -6,8 +6,8 @@ const bcrypt = require("bcryptjs");
 const pool = require("./pool");
 
 const MODULES = [
-  { slug: "laboratorio", name: "Laboratório", description: "Gerador de BPA-C para produção laboratorial.", status: "live", sort_order: 1 },
-  { slug: "oftalmo", name: "Oftalmo", description: "Gerador de BPA para produção oftalmológica.", status: "soon", sort_order: 2 },
+  { slug: "laboratorio", name: "Laboratório", description: "Gere o arquivo BPA-I para exportar para o BPA/SIA, através da importação da planilha do Excel do laboratório.", status: "live", sort_order: 1 },
+  { slug: "oftalmo", name: "Oftalmo", description: "Gere o arquivo BPA para exportar para o SIA, através da importação da planilha dos dados dos pacientes.", status: "soon", sort_order: 2 },
   { slug: "esus_pec", name: "ESUS PEC", description: "Gerador de BPA a partir da produção registrada no ESUS PEC.", status: "soon", sort_order: 3 },
 ];
 
@@ -39,12 +39,13 @@ async function main() {
     let adminId;
     if (existing.rows.length) {
       adminId = existing.rows[0].id;
-      console.log(`Admin com CPF ${cpf} já existe (id ${adminId}) — não sobrescrevi a senha.`);
+      await pool.query("UPDATE users SET is_admin = true, is_super = true WHERE id = $1", [adminId]);
+      console.log(`Admin com CPF ${cpf} já existe (id ${adminId}) — marcado como super-admin, senha não alterada.`);
     } else {
       const hash = await bcrypt.hash(password, 10);
       const inserted = await pool.query(
-        `INSERT INTO users (name, email, cpf, password_hash, is_admin)
-         VALUES ($1, $2, $3, $4, true) RETURNING id`,
+        `INSERT INTO users (name, email, cpf, password_hash, is_admin, is_super)
+         VALUES ($1, $2, $3, $4, true, true) RETURNING id`,
         [name, email, cpf, hash]
       );
       adminId = inserted.rows[0].id;

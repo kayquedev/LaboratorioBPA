@@ -8,7 +8,7 @@ router.use(requireAdmin);
 
 async function fetchUsers() {
   const { rows } = await pool.query(
-    `SELECT u.id, u.name, u.email, u.cpf, u.is_admin, u.created_at,
+    `SELECT u.id, u.name, u.email, u.cpf, u.is_admin, u.is_super, u.created_at,
             COALESCE(json_agg(m.slug) FILTER (WHERE m.id IS NOT NULL), '[]') AS modules
      FROM users u
      LEFT JOIN user_modules um ON um.user_id = u.id
@@ -22,6 +22,7 @@ async function fetchUsers() {
     email: r.email,
     cpf: r.cpf,
     isAdmin: r.is_admin,
+    isSuper: r.is_super,
     createdAt: r.created_at,
     modules: r.modules,
   }));
@@ -123,8 +124,12 @@ router.put("/users/:id", async (req, res) => {
 router.delete("/users/:id", async (req, res) => {
   const id = parseInt(req.params.id, 10);
 
-  const target = await pool.query("SELECT is_admin FROM users WHERE id = $1", [id]);
+  const target = await pool.query("SELECT is_admin, is_super FROM users WHERE id = $1", [id]);
   if (!target.rows.length) return res.status(404).json({ error: "Usuário não encontrado." });
+
+  if (target.rows[0].is_super) {
+    return res.status(400).json({ error: "Não é possível remover o usuário super-administrador." });
+  }
 
   if (target.rows[0].is_admin) {
     const admins = await pool.query("SELECT COUNT(*)::int AS n FROM users WHERE is_admin = true");

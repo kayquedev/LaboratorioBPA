@@ -92,13 +92,16 @@
             return '<span class="badge">' + escapeHtml(mod ? mod.name : slug) + "</span>";
           }).join("")
         : "—";
+      const badge = u.isSuper ? ' <span class="badge">super</span>' : (u.isAdmin ? ' <span class="badge">admin</span>' : "");
+      const delBtn = u.isSuper ? "" : '<button data-action="del" class="danger">Excluir</button>';
       tr.innerHTML =
-        "<td>" + escapeHtml(u.name) + (u.isAdmin ? ' <span class="badge">admin</span>' : "") + "</td>" +
+        "<td>" + escapeHtml(u.name) + badge + "</td>" +
         "<td>" + escapeHtml(u.cpf) + "</td>" +
         "<td>" + modBadges + "</td>" +
-        '<td class="row-actions"><button data-action="edit">Editar</button><button data-action="del" class="danger">Excluir</button></td>';
+        '<td class="row-actions"><button data-action="edit">Editar</button>' + delBtn + "</td>";
       tr.querySelector('[data-action="edit"]').addEventListener("click", () => enterEditMode(u));
-      tr.querySelector('[data-action="del"]').addEventListener("click", () => deleteUser(u));
+      const del = tr.querySelector('[data-action="del"]');
+      if (del) del.addEventListener("click", () => deleteUser(u));
       usersBody.appendChild(tr);
     });
   }

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · Kode</title>
+<style>
+  :root{
+    --azul-sus: #0b5b8c; --azul-sus-escuro: #073e61; --azul-claro: #eaf3f9;
+    --verde: #2e7d5b; --verde-claro: #e7f5ee; --erro: #b3261e; --erro-claro: #fbe9e7;
+    --cinza-100: #f6f7f9; --cinza-200: #e7e9ed; --cinza-400: #b8bec9; --cinza-600: #6b7280;
+    --texto: #1c2530; --branco: #ffffff; --sans: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  .hidden{ display:none !important; }
+  body{ margin:0; font-family: var(--sans); background: var(--cinza-100); color: var(--texto); padding: 0 0 60px; }
+  header.top{ background: linear-gradient(135deg, var(--azul-sus-escuro), var(--azul-sus)); color:#fff; padding:24px; }
+  header.top .wrap{ max-width:1000px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  header.top h1{ margin:0; font-size:20px; }
+  header.top a{ color:#fff; text-decoration:none; font-size:13px; font-weight:600; border:1px solid rgba(255,255,255,.4); border-radius:8px; padding:7px 12px; background: rgba(255,255,255,.08); }
+  header.top a:hover{ background: rgba(255,255,255,.18); }
+
+  main{ max-width:1000px; margin:-10px auto 0; padding:0 20px; display:flex; flex-direction:column; gap:18px; }
+  .card{ background: var(--branco); border:1px solid var(--cinza-200); border-radius:14px; padding:22px 24px; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
+  .card h2{ margin:0 0 4px; font-size:16px; }
+  .card .sub{ margin:0 0 18px; color: var(--cinza-600); font-size:13.5px; }
+
+  .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+  @media (max-width:640px){ .grid{ grid-template-columns:1fr; } }
+  .field label{ display:block; font-size:12.5px; font-weight:600; color: var(--cinza-600); margin-bottom:5px; }
+  .field input{ width:100%; padding:9px 10px; border:1px solid var(--cinza-200); border-radius:8px; font-size:14px; font-family: var(--sans); }
+  .field input:focus{ outline:2px solid var(--azul-sus); outline-offset:1px; }
+  .field.span2{ grid-column: 1 / -1; }
+
+  .modules-check{ display:flex; gap:16px; flex-wrap:wrap; margin-top:4px; }
+  .modules-check label{ display:flex; align-items:center; gap:6px; font-size:13.5px; font-weight:500; color: var(--texto); }
+
+  .checkline{ display:flex; align-items:center; gap:8px; font-size:13.5px; margin-top:14px; }
+
+  .actions{ margin-top:18px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .btn{ appearance:none; border:none; border-radius:9px; padding:10px 18px; font-size:14px; font-weight:600; cursor:pointer; background: var(--azul-sus); color:#fff; }
+  .btn:hover{ filter: brightness(1.08); }
+  .btn-ghost{ background: transparent; color: var(--cinza-600); border:1px solid var(--cinza-200); }
+  .btn-ghost:hover{ background: var(--cinza-100); }
+
+  .msg{ border-radius:9px; padding:10px 14px; font-size:13.5px; margin-top:14px; display:none; }
+  .msg.show{ display:block; }
+  .msg.error{ background: var(--erro-claro); color: var(--erro); }
+  .msg.ok{ background: var(--verde-claro); color: var(--verde); }
+
+  table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  th{ text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.03em; color: var(--cinza-600); border-bottom:2px solid var(--cinza-200); padding:8px; }
+  td{ padding:8px; border-bottom:1px solid var(--cinza-100); vertical-align:middle; }
+  .badge{ display:inline-block; font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:5px; background: var(--azul-claro); color: var(--azul-sus-escuro); margin-right:4px; }
+  .row-actions button{ border:none; background:transparent; color: var(--azul-sus); cursor:pointer; font-size:12.5px; font-weight:600; margin-right:10px; }
+  .row-actions button.danger{ color: var(--erro); }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <h1>Painel administrativo</h1>
+    <a href="/">← Voltar ao portal</a>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <h2 id="formTitle"><span id="formIcon">＋</span> Cadastrar usuário</h2>
+    <p class="sub">Nome, e-mail, CPF, senha e os módulos que esse usuário pode acessar.</p>
+
+    <form id="userForm">
+      <input type="hidden" id="userId">
+      <div class="grid">
+        <div class="field">
+          <label for="fName">Nome</label>
+          <input id="fName" placeholder="Ex.: João Silva">
+        </div>
+        <div class="field">
+          <label for="fEmail">E-mail</label>
+          <input id="fEmail" type="email" placeholder="opcional">
+        </div>
+        <div class="field">
+          <label for="fCpf">CPF</label>
+          <input id="fCpf" inputmode="numeric" maxlength="14" placeholder="Somente números">
+        </div>
+        <div class="field">
+          <label for="fSenha">Senha</label>
+          <input id="fSenha" type="password" placeholder="Ao editar, deixe em branco p/ manter">
+        </div>
+        <div class="field span2">
+          <label>Módulos disponíveis</label>
+          <div class="modules-check" id="modulesCheck"></div>
+        </div>
+      </div>
+
+      <div class="checkline">
+        <input type="checkbox" id="fIsAdmin">
+        <label for="fIsAdmin">Administrador (acesso a este painel)</label>
+      </div>
+
+      <div class="msg" id="formMsg"></div>
+
+      <div class="actions">
+        <button class="btn" type="submit" id="btnSubmit">Cadastrar usuário</button>
+        <button class="btn btn-ghost hidden" type="button" id="btnCancel">Cancelar edição</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Usuários cadastrados</h2>
+    <table>
+      <thead><tr><th>Nome</th><th>CPF</th><th>Módulos</th><th></th></tr></thead>
+      <tbody id="usersBody"></tbody>
+    </table>
+  </section>
+</main>
+
+<script src="/admin/admin.js"></script>
+</body>
+</html>

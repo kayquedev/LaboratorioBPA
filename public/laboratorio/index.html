@@ -9,45 +9,12 @@
 </head>
 <body>
 
-<!-- ===================== LOGIN ===================== -->
-<div id="loginScreen" class="login-screen">
-  <div class="login-card">
-    <div class="login-eyebrow">SUS · SIA · BPA Magnético</div>
-    <h1>Gerador de BPA-C</h1>
-    <p class="login-sub">Acesso restrito. Informe usuário e senha para continuar.</p>
-    <form id="loginForm">
-      <div class="field">
-        <label for="loginUser">Usuário</label>
-        <input id="loginUser" autocomplete="username" placeholder="Digite seu usuário">
-      </div>
-      <div class="field">
-        <label for="loginPass">Senha</label>
-        <input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••">
-      </div>
-      <div class="msg" id="loginMsg"></div>
-      <button class="btn btn-primary" type="submit" style="width:100%; justify-content:center;">Entrar</button>
-    </form>
-  </div>
-
-  <div class="credit login-credit">
-    Desenvolvido por: <span class="credit-name">Kayque Oliveira</span>
-    <span class="credit-sep">·</span>
-    <a href="https://instagram.com/kayque_esus" target="_blank" rel="noopener">Instagram: @kayque_esus</a>
-    <span class="credit-sep">·</span>
-    <a href="https://youtube.com/@kayque_esus" target="_blank" rel="noopener">Youtube: @kayque_esus</a>
-  </div>
-</div>
-
 <!-- ===================== APP SHELL ===================== -->
 <div id="appShell" class="hidden">
 
   <nav class="topbar">
     <div class="topbar-wrap">
       <div class="topbar-brand">Gerador BPA-C</div>
-      <div class="topbar-tabs" id="topbarTabs">
-        <button class="tab-btn active" data-tab="gerador">Gerador BPA</button>
-        <button class="tab-btn" data-tab="usuarios" id="tabUsuariosBtn" style="display:none;">Usuários</button>
-      </div>
       <div class="topbar-user">
         <span id="topbarUsername"></span>
         <button class="btn btn-ghost" id="btnLogout">Sair</button>
@@ -55,38 +22,6 @@
     </div>
   </nav>
 
-  <!-- TAB: usuários (somente admin) -->
-  <section id="tabUsuarios" class="tab-panel" style="display:none;">
-    <main style="max-width:1000px;margin:20px auto;padding:0 20px;">
-      <div class="card">
-        <h2><span class="step-num">A</span> Cadastro de usuários</h2>
-        <p class="sub">Cadastre os usuários que poderão acessar o gerador de BPA. O login "admin" é fixo e reservado ao administrador.</p>
-        <div class="grid" style="grid-template-columns: 1fr 1fr;">
-          <div class="field">
-            <label for="newUserName">Nome do usuário</label>
-            <input id="newUserName" placeholder="Ex.: João Silva">
-          </div>
-          <div class="field">
-            <label for="newUserPass">Senha</label>
-            <input id="newUserPass" type="password" placeholder="Senha de acesso">
-          </div>
-        </div>
-        <div class="actions">
-          <button class="btn btn-primary" id="btnAddUser">Cadastrar usuário</button>
-        </div>
-        <div class="msg" id="userMsg"></div>
-
-        <div class="tbl-wrap" style="margin-top:18px;">
-          <table class="preview">
-            <thead><tr><th>Usuário</th><th></th></tr></thead>
-            <tbody id="usersBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </main>
-  </section>
-
-  <!-- TAB: gerador -->
   <section id="tabGerador" class="tab-panel">
 
     <header class="top">
@@ -259,7 +194,7 @@
 
 </div>
 
-<script src="js/auth.js"></script>
+<script src="js/session.js"></script>
 <script src="js/app.js"></script>
 
 </body>

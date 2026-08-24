@@ -1,0 +1,15 @@
+[Unit]
+Description=Portal SGP (Kode - Qualidade de Dados)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=kayquedev
+WorkingDirectory=/home/kayquedev/sgp
+Environment=ENV_FILE=/home/kayquedev/sgp-secrets/backend.env
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

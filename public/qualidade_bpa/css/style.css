@@ -185,3 +185,10 @@ table.preview td.num{ font-variant-numeric: tabular-nums; }
 .tbl-wrap{ max-height: 560px; overflow:auto; border: 1px solid var(--light-border); border-radius: 10px; background:#fff; }
 
 .badge{ display:inline-block; }
+
+.ok-txt{ color: var(--light-text-dim); }
+.problema-list{ display:flex; flex-direction:column; gap:5px; min-width: 260px; max-width: 360px; }
+.probitem{ font-size: 11.5px; line-height:1.5; padding: 6px 9px; border-radius: 7px; }
+.probitem.probitem-erro{ background: #fdeceb; color: #9c2b30; }
+.probitem.probitem-aviso{ background: #fdf1de; color: #8a5300; }
+.probitem .resolver{ display:block; font-weight:700; margin-top:2px; }

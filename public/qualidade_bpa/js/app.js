@@ -347,9 +347,16 @@
   function situacaoHtml(r) {
     if (!r.problemas.length) return '<span class="badge b-ok">OK</span>';
     const pior = r.problemas.some((p) => p.sev === "erro") ? "erro" : "aviso";
-    const dica = r.problemas.map((p) => p.texto + ": " + p.explicacao + " Como resolver: " + p.resolver).join("\n");
-    return '<span class="badge sev-' + pior + '" title="' + escapeHtml(dica) + '">' +
+    return '<span class="badge sev-' + pior + '">' +
       (pior === "erro" ? "Erro" : "Aviso") + " (" + r.problemas.length + ")</span>";
+  }
+
+  function problemasDetalheHtml(r) {
+    if (!r.problemas.length) return '<span class="ok-txt">—</span>';
+    return '<div class="problema-list">' + r.problemas.map((p) =>
+      '<div class="probitem probitem-' + p.sev + '"><b>' + escapeHtml(p.texto) + ":</b> " + escapeHtml(p.explicacao) +
+      '<span class="resolver">Como resolver: ' + escapeHtml(p.resolver) + "</span></div>"
+    ).join("") + "</div>";
   }
 
   function renderDrilldown() {
@@ -368,7 +375,8 @@
       "<td>" + (r.tipo === "03" ? fmtData(r.dataAtendimento) : "—") + "</td>" +
       '<td class="num">' + r.quantidade + "</td>" +
       "<td>" + (r.tipo === "03" ? escapeHtml(r.nomePaciente) : "—") + "</td>" +
-      "<td>" + situacaoHtml(r) + "</td></tr>"
+      "<td>" + situacaoHtml(r) + "</td>" +
+      "<td>" + problemasDetalheHtml(r) + "</td></tr>"
     ).join("");
 
     clearMsg(filterMsg);
@@ -379,13 +387,14 @@
 
   function exportCsv() {
     const regs = filteredRegistros();
-    const header = ["tipo", "folha", "seq", "cbo", "cbo_nome", "sigtap", "sigtap_nome", "data_atendimento", "quantidade", "paciente", "situacao"];
+    const header = ["tipo", "folha", "seq", "cbo", "cbo_nome", "sigtap", "sigtap_nome", "data_atendimento", "quantidade", "paciente", "situacao", "o_que_e_como_resolver"];
     const linhas = regs.map((r) => [
       r.tipo, r.folha, r.seq, r.cbo, cboNome(r.cbo), r.sigtap, sigtapNome(r.sigtap),
       r.tipo === "03" ? r.dataAtendimento : "",
       r.quantidade,
       r.tipo === "03" ? r.nomePaciente : "",
       r.problemas.length ? r.problemas.map((p) => p.texto).join(" | ") : "OK",
+      r.problemas.length ? r.problemas.map((p) => p.texto + ": " + p.explicacao + " Como resolver: " + p.resolver).join(" | ") : "",
     ]);
     const csv = [header].concat(linhas).map((row) =>
       row.map((v) => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"').join(";")

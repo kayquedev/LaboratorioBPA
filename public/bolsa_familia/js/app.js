@@ -199,6 +199,14 @@
   btnVoltar.addEventListener("click", showUpload);
 
   // -------- exportação --------
+  // o PDF usa só um subconjunto de colunas (mais legível pra impressão) -
+  // o Excel continua com todas as colunas originais + Microárea.
+  const CAMPOS_PDF = [
+    "nis", "cns", "nome", "microarea", "dataNascimento", "dataAcompanhamento",
+    "peso", "estatura", "vacinacaoEmDia", "codigoFamiliar", "endereco", "eas",
+  ];
+  const COLUNAS_PDF = CAMPOS_PDF.map((campo) => bf.COLUNAS_SAIDA.find((c) => c.campo === campo));
+
   function nomeArquivo(ext) {
     const d = new Date();
     const pad = (n) => String(n).padStart(2, "0");
@@ -231,8 +239,8 @@
 
     doc.autoTable({
       startY: 25,
-      head: [bf.COLUNAS_SAIDA.map((c) => c.titulo)],
-      body: lista.map((b) => bf.COLUNAS_SAIDA.map((c) => b[c.campo] || "")),
+      head: [COLUNAS_PDF.map((c) => c.titulo)],
+      body: lista.map((b) => COLUNAS_PDF.map((c) => b[c.campo] || "")),
       styles: { fontSize: 6.5, cellPadding: 1.5 },
       headStyles: { fillColor: [13, 26, 48] },
       didDrawPage: () => {

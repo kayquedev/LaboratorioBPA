@@ -442,14 +442,16 @@
         desc: "Soma do valor SIGTAP (ambulatorial + profissional) × quantidade, para os registros com procedimento localizado na tabela carregada.",
       },
       {
-        id: "fatReceber", badge: "", corValor: "var(--teal)", pct: pctReceber,
+        id: "fatReceber", badge: '<span class="badge b-ok pct-badge">' + pctReceber + '% do total</span>',
+        corValor: "var(--teal)", pct: pctReceber, barColor: "var(--teal)",
         valor: fmtMoeda(receber), titulo: "Faturamento estimado a receber",
-        desc: pctReceber + "% do total estimado — registros sem erro bloqueante, tendência de serem aceitos e pagos pelo SIA.",
+        desc: "Registros sem erro bloqueante — tendência de serem aceitos e pagos pelo SIA.",
       },
       {
-        id: "fatPendente", badge: "", corValor: "var(--red)",
+        id: "fatPendente", badge: '<span class="badge sev-erro pct-badge">' + pctPendente + '% do total</span>',
+        corValor: "var(--red)", pct: pctPendente, barColor: "var(--red)",
         valor: fmtMoeda(pendente), titulo: "Pendente / risco de glosa",
-        desc: pctPendente + "% do total estimado — registros com pelo menos um erro (SIGTAP/CBO inválido, instrumento incompatível, sexo/idade incompatível etc.), risco de rejeição ou glosa.",
+        desc: "Registros com pelo menos um erro (SIGTAP/CBO inválido, instrumento incompatível, sexo/idade incompatível etc.), risco de rejeição ou glosa.",
       },
     ];
     if (naoLocalizados) {
@@ -465,7 +467,7 @@
   function cardHtml(opts) {
     const badge = opts.badge !== undefined ? opts.badge : '<span class="badge b-ok">Dado real</span>';
     const bar = opts.pct != null
-      ? '<div class="bar-track"><div class="bar-fill" style="width:' + opts.pct + '%;background:' + progressColor(opts.pct) + '"></div></div>'
+      ? '<div class="bar-track"><div class="bar-fill" style="width:' + opts.pct + '%;background:' + (opts.barColor || progressColor(opts.pct)) + '"></div></div>'
       : "";
     const inner =
       '<div class="ind-card-top">' + badge + "</div>" +

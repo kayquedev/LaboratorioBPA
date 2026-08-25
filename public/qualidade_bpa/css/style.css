@@ -112,6 +112,7 @@ a.ind-card:hover{ transform: translateY(-2px); border-color: var(--blue-link); }
 .badge.b-soon{ background: rgba(255,255,255,.08); color: var(--text-dim); }
 .badge.sev-erro{ background: var(--red-bg); color: var(--red); }
 .badge.sev-aviso{ background: var(--amber-bg); color: var(--amber); }
+.badge.pct-badge{ font-size: 13px; padding: 5px 12px; }
 .ind-card .valor{ font-size: 26px; font-weight: 700; }
 .ind-card .valor .un{ font-size: 15px; font-weight:600; color: var(--text-dim); }
 .ind-card .titulo{ font-size: 13.5px; font-weight:600; color: var(--text); }

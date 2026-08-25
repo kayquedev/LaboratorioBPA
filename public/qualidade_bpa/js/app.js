@@ -657,12 +657,12 @@
   }
 
   // Payload enxuto: "linhas" leva só o texto bruto de TODOS os registros
-  // (precisa de todos pra renumerar certo), e "pendencias" só os campos
-  // decodificados + códigos de problema (sem o texto do catálogo) dos
-  // registros que realmente precisam de revisão manual — os só-folha/seq-
-  // duplicada nem entram, já que aquilo é resolvido automaticamente do outro
-  // lado. Isso evita repetir ~15 campos e o texto inteiro de cada problema
-  // por registro, que em arquivos grandes estourava a cota do sessionStorage.
+  // (precisa de todos pra renumerar certo, e o Correção BPA decodifica os
+  // campos de exibição sozinho a partir dela, com o mesmo parser.js — por
+  // isso não precisa levar campo nenhum aqui). "pendencias" só marca, por
+  // índice, quais registros têm pendência e com quais códigos (sem o texto
+  // do catálogo) — os só-folha/seq-duplicada nem entram, já que aquilo é
+  // resolvido automaticamente do outro lado.
   function payloadParaCorrecao() {
     let autoResolvidos = 0;
     const fontes = parsed.fontes.map((fonte) => {
@@ -674,9 +674,7 @@
         const soFolhaSeq = r.problemas.every((p) => p.cod === "FOLHA_SEQ_DUPLICADA");
         if (soFolhaSeq) { autoResolvidos++; return; }
         pendencias.push({
-          idx, sigtap: r.sigtap, cbo: r.cbo, quantidade: r.quantidade, competencia: r.competencia,
-          dataAtendimento: r.dataAtendimento, dataNascimento: r.dataNascimento,
-          cep: r.cep, sexo: r.sexo, nomePaciente: r.nomePaciente,
+          idx,
           // folha/seq duplicada nunca aparece aqui mesmo quando o registro tem
           // outro problema junto — aquela parte já foi resolvida automaticamente
           cods: r.problemas.map((p) => p.cod).filter((cod) => cod !== "FOLHA_SEQ_DUPLICADA"),

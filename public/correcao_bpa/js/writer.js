@@ -130,27 +130,6 @@
       resolver: "Confirme se o código existe na competência vigente do SIGTAP; esse aviso, sozinho, não indica que a linha está errada." },
   };
 
-  // reconstroi os registros de uma fonte a partir do payload enxuto
-  // (linhas: so texto bruto; pendencias: campos decodificados + codigos de
-  // problema, so pros registros que precisam de revisao manual)
-  function hidratarFonte(fonte) {
-    const pendMap = {};
-    (fonte.pendencias || []).forEach((p) => { pendMap[p.idx] = p; });
-    const registros = (fonte.linhas || []).map((linha, idx) => {
-      const tipo = linha.slice(0, 2);
-      const registro = { linha, tipo, idx };
-      const pend = pendMap[idx];
-      if (pend) {
-        registro.sigtap = pend.sigtap; registro.cbo = pend.cbo; registro.quantidade = pend.quantidade;
-        registro.competencia = pend.competencia; registro.dataAtendimento = pend.dataAtendimento;
-        registro.dataNascimento = pend.dataNascimento; registro.cep = pend.cep; registro.sexo = pend.sexo;
-        registro.nomePaciente = pend.nomePaciente; registro.cods = pend.cods;
-      }
-      return registro;
-    });
-    return { nome: fonte.nome, label: fonte.label, header: fonte.header, registros };
-  }
-
   // 20 registros por folha, ordem original preservada (mesma convencao
   // observada num arquivo real: folha muda a cada 20 sequencias)
   function renumerar(registros) {
@@ -208,7 +187,7 @@
 
   const api = {
     patchField, renumerar, linhaFinal, montarArquivo, montarArquivoUnico, mesmaCompetencia,
-    hidratarFonte, CAMPOS_POR_PROBLEMA, CAMPO_LABEL, PROBLEMA_CATALOG,
+    CAMPOS_POR_PROBLEMA, CAMPO_LABEL, PROBLEMA_CATALOG,
   };
 
   if (typeof module !== "undefined" && module.exports) {

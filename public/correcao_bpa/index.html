@@ -12,6 +12,7 @@
 
   <nav class="topbar">
     <div class="topbar-wrap">
+      <button class="back-btn hidden" id="btnVoltarResumo" title="Resumo">← Resumo</button>
       <a class="back-btn" href="/">← Início</a>
       <div class="topbar-brand">Correção BPA</div>
       <div class="topbar-user">
@@ -31,8 +32,8 @@
     </div>
   </section>
 
-  <!-- ===================== CORRECAO ===================== -->
-  <section id="viewCorrecao" class="view-dark hidden">
+  <!-- ===================== RESUMO (escuro) ===================== -->
+  <section id="viewResumo" class="view-dark hidden">
     <div class="wrap-wide">
 
       <div class="eyebrow">SUS · SIA · BPA Magnético</div>
@@ -43,24 +44,10 @@
       <div class="group-label">Arquivos carregados para correção</div>
       <div class="fontes-list" id="fontesResumo"></div>
 
-      <div id="blocoRevisao" class="hidden">
-        <div class="group-label" style="display:flex;justify-content:space-between;align-items:center;">
-          <span>Revisão manual</span>
-          <span id="contadorRevisados" style="text-transform:none;font-weight:600;color:var(--text-dim);"></span>
-        </div>
-        <p class="lead" style="font-size:12.5px;margin-bottom:14px;">Cada linha abaixo tem pelo menos uma pendência que não dá pra corrigir sozinha. Edite o(s) campo(s) relevante(s), marque "Revisado", ou simplesmente deixe como está e pule — o registro sai igual no arquivo final.</p>
-        <div class="tbl-wrap" style="margin-bottom:26px;">
-          <table class="preview">
-            <thead>
-              <tr>
-                <th>Tipo</th><th>Origem</th><th>Posição</th><th>Paciente</th>
-                <th>Problemas</th><th>Correção</th><th>Ações</th>
-              </tr>
-            </thead>
-            <tbody id="tabelaRevisaoBody"></tbody>
-          </table>
-        </div>
-      </div>
+      <div class="group-label">Faturamento (R$)</div>
+      <div class="cards-grid" id="cardsFaturamento"></div>
+
+      <button class="btn hidden" id="btnVerPendencias" style="background:var(--teal);color:#04241c;margin-bottom:30px;">Ver pendências para revisar →</button>
 
       <div class="group-label">Gerar arquivo corrigido</div>
       <div class="downloads-box" id="downloadsBox"></div>
@@ -68,9 +55,80 @@
     </div>
   </section>
 
+  <!-- ===================== REVISAO MANUAL (claro) ===================== -->
+  <section id="viewRevisao" class="view-light hidden">
+    <div class="drill-layout">
+
+      <aside class="sidebar">
+        <div class="sidebar-block">
+          <div class="sidebar-title">Resultado</div>
+          <div class="sidebar-stat" id="sidebarCount">—</div>
+          <div class="sidebar-stat-label">pendência(s)</div>
+        </div>
+
+        <div class="sidebar-block">
+          <div class="sidebar-title">Filtros</div>
+          <div class="field">
+            <label for="fTipo">Tipo</label>
+            <select id="fTipo">
+              <option value="">Todos</option>
+              <option value="02">02 · BPA-C</option>
+              <option value="03">03 · BPA-I</option>
+            </select>
+          </div>
+          <div class="field hidden" id="campoOrigem">
+            <label for="fOrigem">Origem (arquivo)</label>
+            <select id="fOrigem"><option value="">Todas</option></select>
+          </div>
+          <div class="field">
+            <label for="fUnidade">Unidade (CNES)</label>
+            <select id="fUnidade"><option value="">Todas</option></select>
+          </div>
+          <div class="field">
+            <label for="fProblema">Tipo de erro/aviso</label>
+            <select id="fProblema"><option value="">Todos</option></select>
+          </div>
+          <div class="field">
+            <label for="fSoNaoRevisados">
+              <input type="checkbox" id="fSoNaoRevisados"> Só não revisados
+            </label>
+          </div>
+        </div>
+
+        <div class="sidebar-block" id="legendaBlock">
+          <div class="sidebar-title">Legenda</div>
+          <div class="legenda-item"><span class="badge sev-erro">Erro</span> impede envio ao SIA</div>
+          <div class="legenda-item"><span class="badge sev-aviso">Aviso</span> revisar antes de enviar</div>
+        </div>
+      </aside>
+
+      <main class="drill-main">
+        <div class="search-row">
+          <input id="fBusca" placeholder="Buscar por paciente, SIGTAP ou CBO...">
+        </div>
+        <p class="lead" style="font-size:12.5px;margin:0 0 12px;color:var(--light-text-dim);">Edite o(s) campo(s) relevante(s), marque "Revisado", ou deixe como está e pule — o registro sai igual no arquivo final.</p>
+        <div class="msg" id="filterMsg"></div>
+        <div class="tbl-wrap">
+          <table class="preview">
+            <thead>
+              <tr>
+                <th>Tipo</th><th>Unidade</th><th>Origem</th><th>Data</th><th>SIGTAP</th><th>CBO</th><th>Paciente</th>
+                <th>Problemas</th><th>Correção</th><th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaRevisaoBody"></tbody>
+          </table>
+        </div>
+      </main>
+
+    </div>
+  </section>
+
 </div>
 
 <script src="js/session.js"></script>
+<script src="js/parser.js"></script>
+<script src="js/lookup.js"></script>
 <script src="js/writer.js"></script>
 <script src="js/app.js"></script>
 

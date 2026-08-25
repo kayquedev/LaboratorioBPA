@@ -35,7 +35,15 @@
   const viewVazio = document.getElementById("viewVazio");
   const viewResumo = document.getElementById("viewResumo");
   const viewRevisao = document.getElementById("viewRevisao");
+  const viewFinal = document.getElementById("viewFinal");
   const btnVoltarResumo = document.getElementById("btnVoltarResumo");
+
+  function sigtapEfetivo(registro) {
+    return (registro.correcoes && registro.correcoes.sigtap) || registro.sigtap;
+  }
+  function pacienteChave(r) {
+    return r.cnsCpfPaciente ? "cns:" + r.cnsCpfPaciente : "nb:" + r.nomePaciente + "|" + r.dataNascimento;
+  }
 
   let payload = null;
   try {
@@ -117,18 +125,22 @@
   }
 
   // -------- faturamento (recalcula a cada correcao/revisao) --------
+  // "pendente" so conta registros com pendencia AINDA nao revisada/corrigida/
+  // excluida; "receber" e tudo o resto (sempre limpos, auto-resolvidos, e
+  // pendencias ja tratadas) - mesma logica do Qualidade BPA. Usa o SIGTAP
+  // ja corrigido (se houver) pra refletir o valor real que vai sair no
+  // arquivo final.
   function calcularFaturamento() {
-    let total = 0, pendente = 0, resolvido = 0, naoLocalizados = 0;
+    let total = 0, pendente = 0;
     fontes.forEach((fonte) => fonte.registros.forEach((r) => {
-      const info = lookup.sigtapInfo(r.sigtap);
-      if (!info) { naoLocalizados++; return; }
+      if (r.excluido) return;
+      const info = lookup.sigtapInfo(sigtapEfetivo(r));
+      if (!info) return;
       const valor = info.valor * (r.quantidade || 0);
       total += valor;
-      if (r.cods && r.cods.length) {
-        if (r.excluido || r.revisado) resolvido += valor; else pendente += valor;
-      }
+      if (r.cods && r.cods.length && !r.revisado) pendente += valor;
     }));
-    return { total, pendente, resolvido, naoLocalizados };
+    return { total, pendente, receber: total - pendente };
   }
 
   function cardHtml(opts) {
@@ -142,30 +154,98 @@
       '<div class="desc">' + opts.desc + "</div>" + bar + "</div>";
   }
 
+  // painel simplificado no resumo: so % sem problema + valor em risco
   function renderFaturamento() {
+    const totalRegistros = fontes.reduce((s, f) => s + f.registros.length, 0);
+    const semProblemas = totalRegistros - todasPendencias.length;
+    const pct = totalRegistros ? Math.round((semProblemas / totalRegistros) * 100) : 100;
     const f = calcularFaturamento();
-    const baseRevisao = f.pendente + f.resolvido;
-    const pctResolvido = baseRevisao ? Math.round((f.resolvido / baseRevisao) * 100) : 100;
 
     const cards = [
       {
-        valor: fmtMoeda(f.total), titulo: "Faturamento total estimado",
-        desc: "Soma do valor SIGTAP × quantidade de todos os registros do arquivo (auto-resolvidos, pendentes e limpos).",
-        badge: '<span class="badge b-soon">Estimado</span>',
+        valor: pct + '<span class="un">%</span>', titulo: "Registros sem problemas",
+        desc: semProblemas + " de " + totalRegistros + " registro(s) sem pendência (já considerando o que foi resolvido automaticamente).",
+        pct, badge: "",
       },
       {
-        valor: fmtMoeda(f.pendente), titulo: "Em risco (pendência ainda não revisada)",
-        desc: "Registros com pendência que ainda não foram corrigidos, revisados ou excluídos — risco de rejeição/glosa.",
-        corValor: "var(--red)", badge: '<span class="badge sev-erro pct-badge">' + (100 - pctResolvido) + "% pendente</span>",
-      },
-      {
-        valor: fmtMoeda(f.resolvido), titulo: "Já revisado/corrigido",
-        desc: "Registros com pendência que você já corrigiu, marcou como revisado ou excluiu.",
-        corValor: "var(--teal)", pct: pctResolvido, barColor: "var(--teal)",
-        badge: '<span class="badge b-ok pct-badge">' + pctResolvido + "%</span>",
+        valor: fmtMoeda(f.pendente), titulo: "Valor faturamento em risco",
+        desc: "Soma do valor SIGTAP das pendências ainda não revisadas — o que ainda pode causar rejeição/glosa se for enviado assim.",
+        corValor: "var(--red)", badge: "",
       },
     ];
     document.getElementById("cardsFaturamento").innerHTML = cards.map(cardHtml).join("");
+  }
+
+  // painel rico, mostrado no "painel final" antes de gerar o arquivo -
+  // mesmos 3 nomes/nomenclatura do Qualidade BPA, pra ficar familiar
+  function renderFaturamentoFinal() {
+    const f = calcularFaturamento();
+    const pctReceber = f.total ? Math.round((f.receber / f.total) * 100) : 100;
+    const pctPendente = 100 - pctReceber;
+    const cards = [
+      {
+        valor: fmtMoeda(f.total), titulo: "Faturamento total estimado",
+        desc: "Soma do valor SIGTAP × quantidade de todos os registros que vão sair no arquivo (exclusões já descontadas).",
+        badge: '<span class="badge b-soon">Estimado</span>',
+      },
+      {
+        valor: fmtMoeda(f.receber), titulo: "Faturamento estimado a receber",
+        desc: "Registros sem pendência, já corrigidos ou já marcados como revisados.",
+        corValor: "var(--teal)", pct: pctReceber, barColor: "var(--teal)",
+        badge: '<span class="badge b-ok pct-badge">' + pctReceber + "% do total</span>",
+      },
+      {
+        valor: fmtMoeda(f.pendente), titulo: "Pendente / risco de glosa",
+        desc: "Pendências que ainda não foram revisadas — se o arquivo for enviado assim, essas linhas correm risco de rejeição.",
+        corValor: "var(--red)", badge: '<span class="badge sev-erro pct-badge">' + pctPendente + "% do total</span>",
+      },
+    ];
+    document.getElementById("cardsFaturamentoFinal").innerHTML = cards.map(cardHtml).join("");
+  }
+
+  // -------- resumo/estatisticas do painel final (ja descontando exclusoes) --------
+  function renderSummaryFinal() {
+    let registros = 0, t02 = 0, t03 = 0;
+    const pacientes = new Set();
+    const competencias = new Set();
+    fontes.forEach((fonte) => {
+      if (fonte.header) competencias.add(fonte.header.competencia);
+      fonte.registros.forEach((r) => {
+        if (r.excluido) return;
+        registros++;
+        if (r.tipo === "02") t02++;
+        else if (r.tipo === "03") { t03++; pacientes.add(pacienteChave(r)); }
+      });
+    });
+    const competencia = competencias.size === 1 ? [...competencias][0] : competencias.size > 1 ? "vários" : "—";
+    const stats = [
+      ["Registros", registros],
+      ["BPA-C × BPA-I", t02 + " <small>/</small> " + t03],
+      ["Pacientes distintos", pacientes.size],
+      ["Competência", competencia],
+    ];
+    document.getElementById("summaryRowFinal").innerHTML = stats.map(
+      ([l, n]) => '<div class="stat-box"><div class="l">' + l + '</div><div class="n">' + n + "</div></div>"
+    ).join("");
+  }
+
+  // -------- setores com producao esperada (mesmos indicadores do Qualidade BPA) --------
+  const SETOR_INDICADORES = {
+    "Laboratório": ["0202020380"],
+    "Pronto Atendimento": ["0301060096"],
+    "Especialidades": ["0301010072", "0301010048"],
+    "Fisioterapia": ["0302050027"],
+    "TFD (transporte)": ["0803010125", "0803010109"],
+  };
+  function renderSetoresFinal() {
+    const codigosPresentes = new Set();
+    fontes.forEach((fonte) => fonte.registros.forEach((r) => { if (!r.excluido) codigosPresentes.add(sigtapEfetivo(r)); }));
+    const html = Object.entries(SETOR_INDICADORES).map(([nome, codigos]) => {
+      const importado = codigos.some((c) => codigosPresentes.has(c));
+      return '<span class="badge ' + (importado ? "b-ok" : "sev-erro") + '" style="margin-right:8px;">' +
+        (importado ? "✓" : "✗") + " " + escapeHtml(nome) + "</span>";
+    }).join(" ");
+    document.getElementById("setoresResumoFinal").innerHTML = html;
   }
 
   // -------- filtros / tabela de revisao (view clara) --------
@@ -245,12 +325,16 @@
         '<span class="resolver">Como resolver: ' + escapeHtml(info.resolver) + "</span></div>";
     }).join("");
 
+    const infoSigtap = lookup.sigtapInfo(sigtapEfetivo(registro));
+    const valorHtml = infoSigtap ? fmtMoeda(infoSigtap.valor * (registro.quantidade || 0)) : "—";
+
     return '<tr data-linha-fonte="' + fonteIdx + '" data-linha-reg="' + regIdx + '">' +
       "<td>" + registro.tipo + "</td>" +
       "<td>" + escapeHtml(registro.cnes) + "</td>" +
       "<td>" + escapeHtml(origemLabel) + "</td>" +
       "<td>" + (registro.tipo === "03" ? fmtData(registro.dataAtendimento) : "—") + "</td>" +
       '<td class="num">' + sigtapCelHtml(registro.sigtap) + "</td>" +
+      '<td class="num">' + valorHtml + "</td>" +
       '<td class="num">' + cboCelHtml(registro.cbo) + "</td>" +
       "<td>" + (registro.tipo === "03" ? escapeHtml(registro.nomePaciente || "") : "—") + "</td>" +
       '<td><div class="problema-list">' + problemasHtml + "</div></td>" +
@@ -288,7 +372,7 @@
         const registro = fontes[+chk.dataset.fonte].registros[+chk.dataset.reg];
         registro.revisado = chk.checked;
         chk.closest("tr").classList.toggle("linha-revisada", chk.checked);
-        renderFaturamento();
+        atualizarFaturamentos();
       });
     });
     document.querySelectorAll("#tabelaRevisaoBody input[data-excluir]").forEach((chk) => {
@@ -296,9 +380,13 @@
         const registro = fontes[+chk.dataset.fonte].registros[+chk.dataset.reg];
         registro.excluido = chk.checked;
         chk.closest("tr").classList.toggle("linha-excluida", chk.checked);
-        renderFaturamento();
+        atualizarFaturamentos();
       });
     });
+  }
+  function atualizarFaturamentos() {
+    renderFaturamento();
+    renderFaturamentoFinal();
   }
 
   // -------- geracao/download --------
@@ -343,20 +431,34 @@
     }
   }
 
-  // -------- navegacao entre as 2 views --------
+  // -------- navegacao entre as 3 views --------
   function showResumo() {
     viewResumo.classList.remove("hidden");
     viewRevisao.classList.add("hidden");
+    viewFinal.classList.add("hidden");
     btnVoltarResumo.classList.add("hidden");
+    renderFaturamento();
   }
   function showRevisao() {
     viewResumo.classList.add("hidden");
     viewRevisao.classList.remove("hidden");
+    viewFinal.classList.add("hidden");
     btnVoltarResumo.classList.remove("hidden");
     popularFiltrosRevisao();
     renderTabela();
   }
+  function showFinal() {
+    viewResumo.classList.add("hidden");
+    viewRevisao.classList.add("hidden");
+    viewFinal.classList.remove("hidden");
+    btnVoltarResumo.classList.remove("hidden");
+    renderSummaryFinal();
+    renderFaturamentoFinal();
+    renderSetoresFinal();
+  }
   document.getElementById("btnVerPendencias").addEventListener("click", showRevisao);
+  document.getElementById("btnIrParaFinal").addEventListener("click", showFinal);
+  document.getElementById("btnIrParaFinalRevisao").addEventListener("click", showFinal);
   btnVoltarResumo.addEventListener("click", showResumo);
 
   lookup.ready.finally(() => {

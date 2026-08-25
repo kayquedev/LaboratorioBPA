@@ -47,7 +47,28 @@
       <div class="group-label">Faturamento (R$)</div>
       <div class="cards-grid" id="cardsFaturamento"></div>
 
-      <button class="btn hidden" id="btnVerPendencias" style="background:var(--teal);color:#04241c;margin-bottom:30px;">Ver pendências para revisar →</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:30px;">
+        <button class="btn hidden" id="btnVerPendencias" style="background:var(--teal);color:#04241c;">Ver pendências para revisar →</button>
+        <button class="btn btn-ghost-dark" id="btnIrParaFinal">Gerar arquivo corrigido →</button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================== PAINEL FINAL (escuro) ===================== -->
+  <section id="viewFinal" class="view-dark hidden">
+    <div class="wrap-wide">
+
+      <div class="eyebrow">SUS · SIA · BPA Magnético</div>
+      <h1 style="margin:0 0 16px;font-size:22px;">Resumo antes de gerar</h1>
+
+      <div class="stat-row" id="summaryRowFinal"></div>
+
+      <div class="group-label">Faturamento (R$)</div>
+      <div class="cards-grid" id="cardsFaturamentoFinal"></div>
+
+      <div class="group-label">Setores com produção esperada</div>
+      <p class="lead" id="setoresResumoFinal" style="font-size:13px;margin:0 0 30px;"></p>
 
       <div class="group-label">Gerar arquivo corrigido</div>
       <div class="downloads-box" id="downloadsBox"></div>
@@ -100,6 +121,8 @@
           <div class="legenda-item"><span class="badge sev-erro">Erro</span> impede envio ao SIA</div>
           <div class="legenda-item"><span class="badge sev-aviso">Aviso</span> revisar antes de enviar</div>
         </div>
+
+        <button class="btn" id="btnIrParaFinalRevisao" style="width:100%;justify-content:center;background:var(--teal);color:#04241c;">Gerar arquivo corrigido →</button>
       </aside>
 
       <main class="drill-main">
@@ -112,7 +135,7 @@
           <table class="preview">
             <thead>
               <tr>
-                <th>Tipo</th><th>Unidade</th><th>Origem</th><th>Data</th><th>SIGTAP</th><th>CBO</th><th>Paciente</th>
+                <th>Tipo</th><th>Unidade</th><th>Origem</th><th>Data</th><th>SIGTAP</th><th>Valor (R$)</th><th>CBO</th><th>Paciente</th>
                 <th>Problemas</th><th>Correção</th><th>Ações</th>
               </tr>
             </thead>

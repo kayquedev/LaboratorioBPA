@@ -105,45 +105,76 @@
   const fname = document.getElementById("fname");
   const uploadMsg = document.getElementById("uploadMsg");
   const addFileInput = document.getElementById("addFileInput");
+  const addFileInputInicial = document.getElementById("addFileInputInicial");
 
   ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("drag"); }));
   ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("drag"); }));
   drop.addEventListener("drop", (e) => {
-    if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; handleFile(e.dataTransfer.files[0], "novo"); }
+    if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; handleFiles(fileInput.files, "novo"); }
   });
-  fileInput.addEventListener("change", () => { if (fileInput.files.length) handleFile(fileInput.files[0], "novo"); });
+  fileInput.addEventListener("change", () => { if (fileInput.files.length) handleFiles(fileInput.files, "novo"); });
   addFileInput.addEventListener("change", () => {
-    if (addFileInput.files.length) handleFile(addFileInput.files[0], "adicionar");
+    if (addFileInput.files.length) handleFiles(addFileInput.files, "adicionar");
     addFileInput.value = "";
   });
+  addFileInputInicial.addEventListener("change", () => {
+    if (addFileInputInicial.files.length) handleFiles(addFileInputInicial.files, "novo");
+    addFileInputInicial.value = "";
+  });
+  document.getElementById("btnAddFileInicial").addEventListener("click", () => addFileInputInicial.click());
 
-  function handleFile(file, modo) {
-    if (modo === "novo") { fname.textContent = file.name; clearMsg(uploadMsg); }
-    const reader = new FileReader();
-    reader.onload = (e) => {
+  function readFileAsync(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = () => reject(new Error("falha ao ler o arquivo"));
+      reader.readAsText(file, "utf-8");
+    });
+  }
+
+  // processa um arquivo e junta ao "parsed" atual; devolve o modo a usar no
+  // proximo arquivo do mesmo lote (depois do 1º, sempre "adicionar")
+  async function processarUmArquivo(file, modo) {
+    const texto = await readFileAsync(file);
+    const result = parser.parseFile(texto);
+    if (!result.header && result.registros.length === 0) {
+      throw new Error("Não encontrei um cabeçalho (tipo 01) nem linhas de produção (tipo 02/03) em \"" + file.name + "\".");
+    }
+    result.registros.forEach((r) => { r.origem = file.name; });
+    const fonte = { nome: file.name, label: file.name, header: result.header, registros: result.registros };
+    if (modo === "adicionar" && parsed) {
+      parsed.fontes.push(fonte);
+      parsed.registros = parsed.registros.concat(result.registros);
+    } else {
+      parsed = { fontes: [fonte], registros: result.registros.slice() };
+    }
+    return "adicionar";
+  }
+
+  async function handleFiles(fileList, modoInicial) {
+    const files = Array.from(fileList);
+    if (!files.length) return;
+    if (modoInicial === "novo") { fname.textContent = files[0].name; clearMsg(uploadMsg); }
+
+    let modo = modoInicial;
+    const erros = [];
+    for (const file of files) {
       try {
-        const result = parser.parseFile(e.target.result);
-        if (!result.header && result.registros.length === 0) {
-          const msg = "Não encontrei um cabeçalho (tipo 01) nem linhas de produção (tipo 02/03) em \"" + file.name + "\".";
-          if (modo === "adicionar") { window.alert(msg); } else { setMsg(uploadMsg, "error", msg); }
-          return;
-        }
-        result.registros.forEach((r) => { r.origem = file.name; });
-        const fonte = { nome: file.name, header: result.header, registros: result.registros };
-        if (modo === "adicionar" && parsed) {
-          parsed.fontes.push(fonte);
-          parsed.registros = parsed.registros.concat(result.registros);
-        } else {
-          parsed = { fontes: [fonte], registros: result.registros.slice() };
-        }
-        avaliarTodos();
-        window.QualidadeBpaLookup.ready.finally(showDashboard);
+        modo = await processarUmArquivo(file, modo);
       } catch (err) {
-        const msg = "Não foi possível ler \"" + file.name + "\". (" + err.message + ")";
-        if (modo === "adicionar") { window.alert(msg); } else { setMsg(uploadMsg, "error", msg); }
+        erros.push(err.message);
       }
-    };
-    reader.readAsText(file, "utf-8");
+    }
+
+    if (!parsed) {
+      if (erros.length) setMsg(uploadMsg, "error", erros.join(" "));
+      return;
+    }
+    avaliarTodos();
+    window.QualidadeBpaLookup.ready.finally(() => {
+      showDashboard();
+      if (erros.length) window.alert(erros.join("\n"));
+    });
   }
 
   // numeração de folha/seq e a competência do cabeçalho são escopadas a cada
@@ -230,7 +261,7 @@
     let algumaDivergencia = false;
 
     parsed.fontes.forEach((fonte) => {
-      const rotulo = "<b>" + escapeHtml(fonte.nome) + "</b>";
+      const rotulo = "<b>" + escapeHtml(fonte.label) + "</b>";
       if (!fonte.header) {
         algumaDivergencia = true;
         linhas.push(rotulo + ": sem cabeçalho (tipo 01) — não dá pra conferir numLinhas/numFolhas declarados.");
@@ -251,10 +282,42 @@
       el.innerHTML = "<b>Divergência no cabeçalho.</b><br>" + linhas.join("<br>");
     } else {
       el.className = "alert-banner show ok";
-      const nomes = parsed.fontes.map((f) => escapeHtml(f.nome)).join(", ");
+      const nomes = parsed.fontes.map((f) => escapeHtml(f.label)).join(", ");
       const plural = parsed.fontes.length > 1 ? "s conferem" : " confere";
       el.innerHTML = "<b>Cabeçalho" + plural + ".</b> " + nomes + " — contagem de linhas e folhas batem com o declarado. Processado 100% no navegador, nada é enviado ao servidor.";
     }
+  }
+
+  function renderFontesList() {
+    const el = document.getElementById("fontesList");
+    el.innerHTML = parsed.fontes.map((fonte, i) =>
+      '<div class="fonte-row">' +
+        '<div class="fonte-info">' +
+          '<span class="fonte-nome">' + escapeHtml(fonte.label) + "</span>" +
+          (fonte.label !== fonte.nome ? '<span class="fonte-original">arquivo: ' + escapeHtml(fonte.nome) + "</span>" : "") +
+          '<span class="fonte-count">' + fonte.registros.length + " registro(s)</span>" +
+        "</div>" +
+        '<button class="btn btn-ghost-dark" data-rename-fonte="' + i + '">✎ Renomear</button>' +
+      "</div>"
+    ).join("");
+    el.querySelectorAll("[data-rename-fonte]").forEach((btn) => {
+      btn.addEventListener("click", () => renomearFonte(parsed.fontes[+btn.dataset.renameFonte]));
+    });
+  }
+
+  function renomearFonte(fonte) {
+    const novo = window.prompt('Novo nome para "' + fonte.nome + '" (ex: Pronto Atendimento, Laboratório...):', fonte.label);
+    if (novo == null) return;
+    const nomeFinal = novo.trim() || fonte.nome;
+    fonte.registros.forEach((r) => { r.origem = nomeFinal; });
+    fonte.label = nomeFinal;
+
+    renderFontesList();
+    populateOrigemFilter();
+    renderSummary();
+    renderFaturamento();
+    renderPaineis();
+    if (!viewDrilldown.classList.contains("hidden")) renderDrilldown();
   }
 
   function renderSummary() {
@@ -286,6 +349,8 @@
       if (temErro) pendente += r.valorEstimado; else receber += r.valorEstimado;
     });
     const total = receber + pendente;
+    const pctReceber = total ? Math.round((receber / total) * 100) : 0;
+    const pctPendente = total ? 100 - pctReceber : 0;
 
     const cards = [
       {
@@ -294,14 +359,14 @@
         desc: "Soma do valor SIGTAP (ambulatorial + profissional) × quantidade, para os registros com procedimento localizado na tabela carregada.",
       },
       {
-        id: "fatReceber", corValor: "var(--teal)",
-        valor: fmtMoeda(receber), titulo: "A receber",
-        desc: "Registros sem erro bloqueante — tendência de serem aceitos e pagos pelo SIA.",
+        id: "fatReceber", badge: "", corValor: "var(--teal)", pct: pctReceber,
+        valor: fmtMoeda(receber), titulo: "Faturamento estimado a receber",
+        desc: pctReceber + "% do total estimado — registros sem erro bloqueante, tendência de serem aceitos e pagos pelo SIA.",
       },
       {
-        id: "fatPendente", corValor: "var(--red)",
+        id: "fatPendente", badge: "", corValor: "var(--red)",
         valor: fmtMoeda(pendente), titulo: "Pendente / risco de glosa",
-        desc: "Registros com pelo menos um erro (SIGTAP/CBO inválido, instrumento incompatível, sexo/idade incompatível etc.) — risco de rejeição ou glosa.",
+        desc: pctPendente + "% do total estimado — registros com pelo menos um erro (SIGTAP/CBO inválido, instrumento incompatível, sexo/idade incompatível etc.), risco de rejeição ou glosa.",
       },
     ];
     if (naoLocalizados) {
@@ -315,7 +380,7 @@
   }
 
   function cardHtml(opts) {
-    const badge = opts.badge || '<span class="badge b-ok">Dado real</span>';
+    const badge = opts.badge !== undefined ? opts.badge : '<span class="badge b-ok">Dado real</span>';
     const bar = opts.pct != null
       ? '<div class="bar-track"><div class="bar-fill" style="width:' + opts.pct + '%;background:' + progressColor(opts.pct) + '"></div></div>'
       : "";
@@ -340,7 +405,7 @@
 
     const cardsQ = [];
     cardsQ.push({
-      id: "qualidade", onClick: true, pct,
+      id: "qualidade", onClick: true, pct, badge: "",
       valor: pct + '<span class="un">%</span>',
       titulo: "Registros sem problemas",
       desc: semProblema + " de " + total + " registro(s) sem nenhum problema encontrado.",
@@ -366,9 +431,9 @@
     document.getElementById("cardsQualidade").innerHTML = cardsQ.map(cardHtml).join("");
 
     const cardsE = [
-      { id: "todos", onClick: true, valor: total, titulo: "Todos os registros", desc: "BPA-C e BPA-I juntos.", link: "Ver registros", preset: {}, title: "Todos os registros" },
-      { id: "t02", onClick: true, valor: regs.filter((r) => r.tipo === "02").length, titulo: "BPA-C (consolidado)", desc: "Linhas tipo 02.", link: "Ver registros", preset: { tipo: "02" }, title: "BPA-C (consolidado)" },
-      { id: "t03", onClick: true, valor: regs.filter((r) => r.tipo === "03").length, titulo: "BPA-I (individualizado)", desc: "Linhas tipo 03, por paciente.", link: "Ver registros", preset: { tipo: "03" }, title: "BPA-I (individualizado)" },
+      { id: "todos", onClick: true, valor: total, titulo: "Todos", desc: "BPA-C e BPA-I juntos.", link: "Ver registros", preset: {}, title: "Todos" },
+      { id: "t02", onClick: true, valor: regs.filter((r) => r.tipo === "02").length, titulo: "Consolidado", desc: "Linhas tipo 02 · BPA-C.", link: "Ver registros", preset: { tipo: "02" }, title: "Consolidado (BPA-C)" },
+      { id: "t03", onClick: true, valor: regs.filter((r) => r.tipo === "03").length, titulo: "Individual", desc: "Linhas tipo 03 · BPA-I, por paciente.", link: "Ver registros", preset: { tipo: "03" }, title: "Individual (BPA-I)" },
     ];
     document.getElementById("cardsExplorar").innerHTML = cardsE.map(cardHtml).join("");
 
@@ -456,6 +521,7 @@
   const fSigtap = document.getElementById("fSigtap");
   const fBusca = document.getElementById("fBusca");
   const fSoProblemas = document.getElementById("fSoProblemas");
+  const fSoNaoLocalizado = document.getElementById("fSoNaoLocalizado");
   const filterMsg = document.getElementById("filterMsg");
   const campoOrigem = document.getElementById("campoOrigem");
 
@@ -468,24 +534,42 @@
     campoOrigem.classList.remove("hidden");
     const atual = fOrigem.value;
     fOrigem.innerHTML = '<option value="">Todas</option>' +
-      parsed.fontes.map((f) => '<option value="' + escapeHtml(f.nome) + '">' + escapeHtml(f.nome) + "</option>").join("");
-    fOrigem.value = parsed.fontes.some((f) => f.nome === atual) ? atual : "";
+      parsed.fontes.map((f) => '<option value="' + escapeHtml(f.label) + '">' + escapeHtml(f.label) + "</option>").join("");
+    fOrigem.value = parsed.fontes.some((f) => f.label === atual) ? atual : "";
+  }
+
+  function populateCboSigtapFilters() {
+    const cbos = [...new Set(parsed.registros.map((r) => r.cbo))].sort();
+    const sigtaps = [...new Set(parsed.registros.map((r) => r.sigtap))].sort();
+    const atualCbo = fCbo.value, atualSigtap = fSigtap.value;
+
+    fCbo.innerHTML = '<option value="">Todos</option>' + cbos.map((c) =>
+      '<option value="' + escapeHtml(c) + '">' + escapeHtml(c + (cboNome(c) ? " · " + cboNome(c) : "")) + "</option>"
+    ).join("");
+    fSigtap.innerHTML = '<option value="">Todos</option>' + sigtaps.map((c) =>
+      '<option value="' + escapeHtml(c) + '">' + escapeHtml(c + (sigtapNome(c) ? " · " + sigtapNome(c) : "")) + "</option>"
+    ).join("");
+
+    fCbo.value = cbos.indexOf(atualCbo) !== -1 ? atualCbo : "";
+    fSigtap.value = sigtaps.indexOf(atualSigtap) !== -1 ? atualSigtap : "";
   }
 
   function filteredRegistros() {
     const tipo = fTipo.value;
     const origem = fOrigem.value;
-    const cbo = fCbo.value.trim();
-    const sigtap = fSigtap.value.trim();
+    const cbo = fCbo.value;
+    const sigtap = fSigtap.value;
     const busca = fBusca.value.trim().toLowerCase();
     const soProblemas = fSoProblemas.checked;
+    const soNaoLocalizado = fSoNaoLocalizado.checked;
 
     return parsed.registros.filter((r) => {
       if (tipo && r.tipo !== tipo) return false;
       if (origem && r.origem !== origem) return false;
-      if (cbo && r.cbo.indexOf(cbo) === -1) return false;
-      if (sigtap && r.sigtap.indexOf(sigtap) === -1) return false;
+      if (cbo && r.cbo !== cbo) return false;
+      if (sigtap && r.sigtap !== sigtap) return false;
       if (soProblemas && r.problemas.length === 0) return false;
+      if (soNaoLocalizado && r.sigtapEncontrado) return false;
       if (busca) {
         const alvo = ((r.nomePaciente || "") + " " + r.sigtap + " " + sigtapNome(r.sigtap) + " " + r.cbo + " " + cboNome(r.cbo)).toLowerCase();
         if (alvo.indexOf(busca) === -1) return false;
@@ -535,7 +619,7 @@
     if (regs.length === 0) setMsg(filterMsg, "warn", "Nenhum registro corresponde aos filtros aplicados.");
     else if (regs.length > MAX) setMsg(filterMsg, "warn", regs.length + " registros encontrados — mostrando os primeiros " + MAX + ".");
   }
-  [fTipo, fOrigem, fCbo, fSigtap, fBusca, fSoProblemas].forEach((el) => el.addEventListener("input", renderDrilldown));
+  [fTipo, fOrigem, fCbo, fSigtap, fBusca, fSoProblemas, fSoNaoLocalizado].forEach((el) => el.addEventListener("input", renderDrilldown));
 
   function exportCsv() {
     const regs = filteredRegistros();
@@ -583,7 +667,9 @@
 
   function showDashboard() {
     populateOrigemFilter();
+    populateCboSigtapFilters();
     renderAlert();
+    renderFontesList();
     renderSummary();
     renderFaturamento();
     renderCards();
@@ -603,6 +689,7 @@
     fSigtap.value = preset.sigtap || "";
     fBusca.value = "";
     fSoProblemas.checked = !!preset.soProblemas;
+    fSoNaoLocalizado.checked = !!preset.soNaoLocalizado;
 
     viewUpload.classList.add("hidden");
     viewDashboard.classList.add("hidden");

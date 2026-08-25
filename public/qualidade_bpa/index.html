@@ -15,7 +15,7 @@
       <button class="back-btn hidden" id="btnBack" title="Início">← Início</button>
       <div class="topbar-brand" id="topbarTitle">Qualidade BPA</div>
       <div class="topbar-actions hidden" id="topbarActions">
-        <input type="file" id="addFileInput" accept=".txt" class="hidden">
+        <input type="file" id="addFileInput" accept=".txt" multiple class="hidden">
         <button class="btn btn-ghost-dark" id="btnAddFile">+ Adicionar arquivo</button>
         <button class="btn btn-ghost-dark" id="btnExport">⬇ Exportar CSV</button>
         <button class="btn btn-ghost-dark" id="btnReimport">↻ Novo arquivo</button>
@@ -35,11 +35,14 @@
       <p class="lead">Suba um arquivo BPA já gerado (linhas tipo 02 / BPA-C e/ou 03 / BPA-I) pra ver estatísticas de produção por SIGTAP e conferir possíveis problemas de qualidade — tudo processado aqui no navegador, o arquivo não é enviado ao servidor. Depois de carregar o primeiro, dá pra adicionar mais arquivos (ex: um do laboratório terceirizado) e analisar tudo junto.</p>
 
       <label class="drop" id="drop">
-        <input type="file" id="fileInput" accept=".txt">
+        <input type="file" id="fileInput" accept=".txt" multiple>
         <div class="icon">📄</div>
-        <div><b>Clique para selecionar</b> ou arraste o arquivo .txt aqui</div>
+        <div><b>Clique para selecionar</b> ou arraste o(s) arquivo(s) .txt aqui</div>
         <div class="fname" id="fname"></div>
       </label>
+
+      <input type="file" id="addFileInputInicial" accept=".txt" multiple class="hidden">
+      <button class="btn btn-ghost-dark add-file-inicial" id="btnAddFileInicial">+ Adicionar mais arquivos BPA</button>
 
       <div class="msg" id="uploadMsg"></div>
     </div>
@@ -50,6 +53,9 @@
     <div class="wrap-wide">
 
       <div class="alert-banner" id="headerAlert"></div>
+
+      <div class="group-label">Arquivos importados</div>
+      <div class="fontes-list" id="fontesList"></div>
 
       <div class="stat-row" id="summaryRow"></div>
 
@@ -100,15 +106,24 @@
           </div>
           <div class="field">
             <label for="fCbo">CBO</label>
-            <input id="fCbo" placeholder="Todos">
+            <select id="fCbo">
+              <option value="">Todos</option>
+            </select>
           </div>
           <div class="field">
             <label for="fSigtap">SIGTAP</label>
-            <input id="fSigtap" placeholder="Todos">
+            <select id="fSigtap">
+              <option value="">Todos</option>
+            </select>
           </div>
           <div class="field">
             <label for="fSoProblemas">
               <input type="checkbox" id="fSoProblemas"> Só com problema
+            </label>
+          </div>
+          <div class="field">
+            <label for="fSoNaoLocalizado">
+              <input type="checkbox" id="fSoNaoLocalizado"> Só SIGTAP não localizado
             </label>
           </div>
         </div>

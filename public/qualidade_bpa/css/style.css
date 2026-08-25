@@ -68,6 +68,8 @@ a{ color: inherit; }
 .drop .icon{ font-size: 28px; margin-bottom:8px; }
 .drop .fname{ font-weight:600; color: var(--teal); margin-top:8px; font-size: 13.5px; }
 
+.add-file-inicial{ display:block; margin: 14px auto 0; }
+
 .msg{ border-radius: 9px; padding: 10px 14px; font-size: 13.5px; margin-top: 14px; display:none; }
 .msg.show{ display:block; }
 .msg.warn{ background: var(--amber-bg); color: var(--amber); }
@@ -141,6 +143,17 @@ a.ind-card:hover{ transform: translateY(-2px); border-color: var(--blue-link); }
 .gloss-item .gloss-resolver{ color: var(--teal); margin-top:2px; }
 
 .sub-nome{ display:block; color: var(--light-text-dim); font-size: 11px; margin-top:1px; }
+
+.fontes-list{ display:flex; flex-direction:column; gap:8px; margin-bottom: 26px; }
+.fonte-row{
+  background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px;
+  padding: 10px 14px; display:flex; align-items:center; justify-content:space-between; gap:12px;
+}
+.fonte-info{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; min-width:0; }
+.fonte-nome{ font-weight:600; font-size: 13.5px; color: var(--text); }
+.fonte-original{ font-size: 11.5px; color: var(--text-dim-2); }
+.fonte-count{ font-size: 12px; color: var(--text-dim); }
+.fonte-row .btn{ flex:none; }
 
 /* ---------- view: drilldown (fundo claro) ---------- */
 .view-light{ background: var(--light-bg); color: var(--light-text); min-height: calc(100vh - 54px); }

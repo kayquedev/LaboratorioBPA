@@ -20,6 +20,7 @@
   function parseHeader(line) {
     return {
       tipo: "01",
+      linha: line,
       competencia: cut(line, 7, 6),
       numLinhas: toInt(cut(line, 13, 6)),
       numFolhas: toInt(cut(line, 19, 6)),

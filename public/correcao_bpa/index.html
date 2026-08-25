@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Correção BPA</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="appShell" class="hidden">
+
+  <nav class="topbar">
+    <div class="topbar-wrap">
+      <a class="back-btn" href="/">← Início</a>
+      <div class="topbar-brand">Correção BPA</div>
+      <div class="topbar-user">
+        <span id="topbarUsername"></span>
+        <button class="btn btn-ghost-dark" id="btnLogout">Sair</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===================== SEM DADOS ===================== -->
+  <section id="viewVazio" class="view-dark hidden">
+    <div class="wrap-narrow">
+      <div class="eyebrow">SUS · SIA · BPA Magnético</div>
+      <h1>Correção BPA</h1>
+      <p class="lead">Nenhum arquivo carregado pra correção ainda. Abra o módulo <b>Qualidade BPA</b>, suba o(s) arquivo(s), e clique em "Corrigir pendências" no fim do dashboard.</p>
+      <a class="btn btn-ghost-dark" href="/qualidade_bpa/">Ir para o Qualidade BPA</a>
+    </div>
+  </section>
+
+  <!-- ===================== CORRECAO ===================== -->
+  <section id="viewCorrecao" class="view-dark hidden">
+    <div class="wrap-wide">
+
+      <div class="eyebrow">SUS · SIA · BPA Magnético</div>
+      <h1 style="margin:0 0 16px;font-size:22px;">Corrigir pendências</h1>
+
+      <div class="alert-banner" id="resumoBox"></div>
+
+      <div class="group-label">Arquivos carregados para correção</div>
+      <div class="fontes-list" id="fontesResumo"></div>
+
+      <div id="blocoRevisao" class="hidden">
+        <div class="group-label" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>Revisão manual</span>
+          <span id="contadorRevisados" style="text-transform:none;font-weight:600;color:var(--text-dim);"></span>
+        </div>
+        <p class="lead" style="font-size:12.5px;margin-bottom:14px;">Cada linha abaixo tem pelo menos uma pendência que não dá pra corrigir sozinha. Edite o(s) campo(s) relevante(s), marque "Revisado", ou simplesmente deixe como está e pule — o registro sai igual no arquivo final.</p>
+        <div class="tbl-wrap" style="margin-bottom:26px;">
+          <table class="preview">
+            <thead>
+              <tr>
+                <th>Tipo</th><th>Origem</th><th>Folha/Seq</th><th>Paciente</th>
+                <th>Problemas</th><th>Correção</th><th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaRevisaoBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="group-label">Gerar arquivo corrigido</div>
+      <div class="downloads-box" id="downloadsBox"></div>
+
+    </div>
+  </section>
+
+</div>
+
+<script src="js/session.js"></script>
+<script src="js/writer.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>

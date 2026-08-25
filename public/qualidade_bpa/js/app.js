@@ -640,6 +640,52 @@
     });
   }
 
+  // ---------- handoff pro modulo Correcao BPA ----------
+  const CORRECAO_STORAGE_KEY = "qualidade_bpa_correcao_payload";
+
+  function renderCorrecaoCta() {
+    const regs = parsed.registros;
+    const comProblema = regs.filter((r) => r.problemas.length > 0);
+    const soAuto = comProblema.filter((r) => r.problemas.every((p) => p.cod === "FOLHA_SEQ_DUPLICADA")).length;
+    const precisaManual = comProblema.length - soAuto;
+
+    const texto = comProblema.length === 0
+      ? "Nenhuma pendência encontrada neste arquivo — pode conferir mesmo assim."
+      : soAuto + " pendência(s) podem ser resolvidas automaticamente (renumeração de folha/sequência). " +
+        precisaManual + " precisa(m) de revisão manual, registro por registro.";
+    document.getElementById("correcaoResumoTexto").textContent = texto;
+  }
+
+  function payloadParaCorrecao() {
+    return {
+      geradoEm: Date.now(),
+      fontes: parsed.fontes.map((fonte) => ({
+        nome: fonte.nome,
+        label: fonte.label,
+        header: fonte.header ? {
+          competencia: fonte.header.competencia, numLinhas: fonte.header.numLinhas,
+          numFolhas: fonte.header.numFolhas, linha: fonte.header.linha,
+        } : null,
+        registros: fonte.registros.map((r) => ({
+          tipo: r.tipo, linha: r.linha, origem: r.origem, folha: r.folha, seq: r.seq,
+          sigtap: r.sigtap, cbo: r.cbo, quantidade: r.quantidade, competencia: r.competencia,
+          dataAtendimento: r.dataAtendimento, dataNascimento: r.dataNascimento,
+          cep: r.cep, sexo: r.sexo, nomePaciente: r.nomePaciente, problemas: r.problemas,
+        })),
+      })),
+    };
+  }
+
+  document.getElementById("btnIrCorrigir").addEventListener("click", () => {
+    try {
+      window.sessionStorage.setItem(CORRECAO_STORAGE_KEY, JSON.stringify(payloadParaCorrecao()));
+    } catch (err) {
+      window.alert("Não foi possível levar os dados pra correção — o conjunto carregado é grande demais pro navegador guardar temporariamente. Tente corrigir uma fonte de cada vez (remova as outras antes de clicar aqui, ou baixe cada arquivo separadamente).");
+      return;
+    }
+    window.location.href = "/correcao_bpa/";
+  });
+
   // ---------- drilldown ----------
   const fTipo = document.getElementById("fTipo");
   const fOrigem = document.getElementById("fOrigem");
@@ -831,6 +877,7 @@
     renderFaturamento();
     renderCards();
     renderPaineis();
+    renderCorrecaoCta();
     viewUpload.classList.add("hidden");
     viewDashboard.classList.remove("hidden");
     viewDrilldown.classList.add("hidden");

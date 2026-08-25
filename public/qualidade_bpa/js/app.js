@@ -99,6 +99,89 @@
       resolver: "Confirme se o código existe na competência vigente do SIGTAP; esse aviso, sozinho, não indica que a linha está errada." },
   };
 
+  // ---------- estabelecimentos (CNES -> nome, cadastrado manualmente e
+  // salvo no navegador — a tabela SIGTAP não traz nome de estabelecimento) ----------
+  const ESTAB_STORAGE_KEY = "qualidade_bpa_estabelecimentos";
+  function carregarEstabelecimentos() {
+    try { return JSON.parse(window.localStorage.getItem(ESTAB_STORAGE_KEY) || "{}"); } catch (e) { return {}; }
+  }
+  function salvarEstabelecimentosStorage() {
+    try { window.localStorage.setItem(ESTAB_STORAGE_KEY, JSON.stringify(estabelecimentos)); } catch (e) { /* localStorage indisponível */ }
+  }
+  let estabelecimentos = carregarEstabelecimentos();
+  function nomeEstabelecimento(cnes) { return estabelecimentos[cnes] || ""; }
+
+  const estabCnesInput = document.getElementById("estabCnesInput");
+  const estabNomeInput = document.getElementById("estabNomeInput");
+  const estabFormList = document.getElementById("estabFormList");
+
+  function renderEstabFormList() {
+    const codigos = Object.keys(estabelecimentos).sort();
+    if (!codigos.length) {
+      estabFormList.innerHTML = '<div class="vazio-estab">Nenhum estabelecimento cadastrado ainda.</div>';
+      return;
+    }
+    estabFormList.innerHTML = codigos.map((cnes) =>
+      '<div class="fonte-row"><div class="fonte-info">' +
+        '<span class="fonte-nome">' + escapeHtml(cnes) + "</span>" +
+        '<span class="fonte-original">' + escapeHtml(estabelecimentos[cnes]) + "</span>" +
+      "</div>" +
+      '<button class="btn btn-ghost-dark" data-remover-estab="' + escapeHtml(cnes) + '">✕ Remover</button></div>'
+    ).join("");
+    estabFormList.querySelectorAll("[data-remover-estab]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        delete estabelecimentos[btn.dataset.removerEstab];
+        salvarEstabelecimentosStorage();
+        renderEstabFormList();
+        if (parsed) renderEstabelecimentos();
+      });
+    });
+  }
+
+  document.getElementById("btnSalvarEstab").addEventListener("click", () => {
+    const cnes = estabCnesInput.value.trim();
+    const nome = estabNomeInput.value.trim();
+    if (!/^\d{7}$/.test(cnes)) { window.alert("Informe um CNES com 7 dígitos."); return; }
+    if (!nome) { window.alert("Informe o nome do estabelecimento."); return; }
+    estabelecimentos[cnes] = nome;
+    salvarEstabelecimentosStorage();
+    estabCnesInput.value = "";
+    estabNomeInput.value = "";
+    renderEstabFormList();
+    if (parsed) renderEstabelecimentos();
+  });
+
+  function cadastrarNomeEstabelecimento(cnes) {
+    const novo = window.prompt("Nome do estabelecimento CNES " + cnes + ":", nomeEstabelecimento(cnes));
+    if (novo == null) return;
+    const nomeFinal = novo.trim();
+    if (nomeFinal) estabelecimentos[cnes] = nomeFinal; else delete estabelecimentos[cnes];
+    salvarEstabelecimentosStorage();
+    renderEstabFormList();
+    renderEstabelecimentos();
+  }
+
+  function renderEstabelecimentos() {
+    const el = document.getElementById("estabList");
+    const porCnes = {};
+    parsed.registros.forEach((r) => { porCnes[r.cnes] = (porCnes[r.cnes] || 0) + 1; });
+    const cnesList = Object.keys(porCnes).sort();
+    el.innerHTML = cnesList.map((cnes) => {
+      const nome = nomeEstabelecimento(cnes);
+      return '<div class="fonte-row"><div class="fonte-info">' +
+        '<span class="fonte-nome">' + escapeHtml(cnes) + "</span>" +
+        (nome ? '<span class="fonte-original">' + escapeHtml(nome) + "</span>" : '<span class="fonte-original estab-sem-nome">nome não cadastrado</span>') +
+        '<span class="fonte-count">' + porCnes[cnes] + " registro(s)</span>" +
+        "</div>" +
+        '<button class="btn btn-ghost-dark" data-cadastrar-cnes="' + escapeHtml(cnes) + '">' + (nome ? "✎ Editar nome" : "+ Cadastrar nome") + "</button></div>";
+    }).join("");
+    el.querySelectorAll("[data-cadastrar-cnes]").forEach((btn) => {
+      btn.addEventListener("click", () => cadastrarNomeEstabelecimento(btn.dataset.cadastrarCnes));
+    });
+  }
+
+  renderEstabFormList();
+
   // ---------- STEP 1: upload ----------
   const drop = document.getElementById("drop");
   const fileInput = document.getElementById("fileInput");
@@ -505,13 +588,17 @@
     label.classList.remove("hidden");
     box.innerHTML = codigos.map((cod) => {
       const info = PROBLEMA_CATALOG[cod];
-      return '<div class="gloss-item"><span class="badge sev-' + info.sev + '">' + (info.sev === "erro" ? "Erro" : "Aviso") + '</span>' +
+      return '<a class="gloss-item" href="javascript:void(0)" data-gloss-cod="' + cod + '"><span class="badge sev-' + info.sev + '">' + (info.sev === "erro" ? "Erro" : "Aviso") + '</span>' +
         '<div class="gloss-body">' +
-        '<div class="gloss-titulo">' + escapeHtml(info.texto) + ' <span class="gloss-count">— ' + counts[cod] + " ocorrência(s)</span></div>" +
+        '<div class="gloss-titulo">' + escapeHtml(info.texto) + ' <span class="gloss-count">— ' + counts[cod] + " ocorrência(s) · ver registros</span></div>" +
         '<div class="gloss-explicacao">' + escapeHtml(info.explicacao) + "</div>" +
         '<div class="gloss-resolver"><b>Como resolver:</b> ' + escapeHtml(info.resolver) + "</div>" +
-        "</div></div>";
+        "</div></a>";
     }).join("");
+    box.querySelectorAll("[data-gloss-cod]").forEach((el) => {
+      const cod = el.dataset.glossCod;
+      el.addEventListener("click", () => showDrilldown(PROBLEMA_CATALOG[cod].texto, { problema: cod }));
+    });
   }
 
   // ---------- drilldown ----------
@@ -520,6 +607,7 @@
   const fCbo = document.getElementById("fCbo");
   const fSigtap = document.getElementById("fSigtap");
   const fBusca = document.getElementById("fBusca");
+  const fProblema = document.getElementById("fProblema");
   const fSoProblemas = document.getElementById("fSoProblemas");
   const fSoNaoLocalizado = document.getElementById("fSoNaoLocalizado");
   const filterMsg = document.getElementById("filterMsg");
@@ -554,11 +642,24 @@
     fSigtap.value = sigtaps.indexOf(atualSigtap) !== -1 ? atualSigtap : "";
   }
 
+  function populateProblemaFilter() {
+    const counts = {};
+    parsed.registros.forEach((r) => r.problemas.forEach((p) => { counts[p.cod] = (counts[p.cod] || 0) + 1; }));
+    const codigos = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+    const atual = fProblema.value;
+    fProblema.innerHTML = '<option value="">Todos</option>' + codigos.map((cod) => {
+      const info = PROBLEMA_CATALOG[cod];
+      return '<option value="' + cod + '">' + (info.sev === "erro" ? "Erro" : "Aviso") + " · " + escapeHtml(info.texto) + " (" + counts[cod] + ")</option>";
+    }).join("");
+    fProblema.value = codigos.indexOf(atual) !== -1 ? atual : "";
+  }
+
   function filteredRegistros() {
     const tipo = fTipo.value;
     const origem = fOrigem.value;
     const cbo = fCbo.value;
     const sigtap = fSigtap.value;
+    const problema = fProblema.value;
     const busca = fBusca.value.trim().toLowerCase();
     const soProblemas = fSoProblemas.checked;
     const soNaoLocalizado = fSoNaoLocalizado.checked;
@@ -568,6 +669,7 @@
       if (origem && r.origem !== origem) return false;
       if (cbo && r.cbo !== cbo) return false;
       if (sigtap && r.sigtap !== sigtap) return false;
+      if (problema && !r.problemas.some((p) => p.cod === problema)) return false;
       if (soProblemas && r.problemas.length === 0) return false;
       if (soNaoLocalizado && r.sigtapEncontrado) return false;
       if (busca) {
@@ -619,7 +721,7 @@
     if (regs.length === 0) setMsg(filterMsg, "warn", "Nenhum registro corresponde aos filtros aplicados.");
     else if (regs.length > MAX) setMsg(filterMsg, "warn", regs.length + " registros encontrados — mostrando os primeiros " + MAX + ".");
   }
-  [fTipo, fOrigem, fCbo, fSigtap, fBusca, fSoProblemas, fSoNaoLocalizado].forEach((el) => el.addEventListener("input", renderDrilldown));
+  [fTipo, fOrigem, fCbo, fSigtap, fProblema, fBusca, fSoProblemas, fSoNaoLocalizado].forEach((el) => el.addEventListener("input", renderDrilldown));
 
   function exportCsv() {
     const regs = filteredRegistros();
@@ -668,8 +770,10 @@
   function showDashboard() {
     populateOrigemFilter();
     populateCboSigtapFilters();
+    populateProblemaFilter();
     renderAlert();
     renderFontesList();
+    renderEstabelecimentos();
     renderSummary();
     renderFaturamento();
     renderCards();
@@ -687,6 +791,7 @@
     fOrigem.value = preset.origem || "";
     fCbo.value = preset.cbo || "";
     fSigtap.value = preset.sigtap || "";
+    fProblema.value = preset.problema || "";
     fBusca.value = "";
     fSoProblemas.checked = !!preset.soProblemas;
     fSoNaoLocalizado.checked = !!preset.soNaoLocalizado;
@@ -712,5 +817,6 @@
   document.getElementById("btnReimport").addEventListener("click", showUpload);
   document.getElementById("btnExport").addEventListener("click", exportCsv);
   document.getElementById("btnAddFile").addEventListener("click", () => addFileInput.click());
+  document.getElementById("btnAddFileList").addEventListener("click", () => addFileInput.click());
 
 })();

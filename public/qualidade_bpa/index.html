@@ -45,6 +45,17 @@
       <button class="btn btn-ghost-dark add-file-inicial" id="btnAddFileInicial">+ Adicionar mais arquivos BPA</button>
 
       <div class="msg" id="uploadMsg"></div>
+
+      <div class="estab-form-block">
+        <div class="sidebar-title">Estabelecimentos (CNES) cadastrados</div>
+        <p class="lead" style="margin:0 0 14px;font-size:12.5px;">A tabela SIGTAP não traz o nome dos estabelecimentos — cadastre aqui o nome de cada CNES que aparece nos seus arquivos. Fica salvo neste navegador e é reaproveitado sempre que você importar um arquivo novo.</p>
+        <div class="estab-form-row">
+          <input id="estabCnesInput" placeholder="CNES (7 dígitos)" maxlength="7">
+          <input id="estabNomeInput" placeholder="Nome do estabelecimento">
+          <button class="btn btn-ghost-dark" id="btnSalvarEstab">Salvar</button>
+        </div>
+        <div class="fontes-list" id="estabFormList"></div>
+      </div>
     </div>
   </section>
 
@@ -56,6 +67,10 @@
 
       <div class="group-label">Arquivos importados</div>
       <div class="fontes-list" id="fontesList"></div>
+      <button class="btn btn-ghost-dark" id="btnAddFileList" style="margin-bottom:26px;">+ Adicionar arquivo</button>
+
+      <div class="group-label">Estabelecimentos em produção (CNES)</div>
+      <div class="fontes-list" id="estabList"></div>
 
       <div class="stat-row" id="summaryRow"></div>
 
@@ -113,6 +128,12 @@
           <div class="field">
             <label for="fSigtap">SIGTAP</label>
             <select id="fSigtap">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="fProblema">Tipo de erro/aviso</label>
+            <select id="fProblema">
               <option value="">Todos</option>
             </select>
           </div>

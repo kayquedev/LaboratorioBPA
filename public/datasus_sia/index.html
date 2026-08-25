@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DATASUS · SIA/SUS</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="appShell" class="hidden">
+
+  <nav class="topbar">
+    <div class="topbar-wrap">
+      <button class="back-btn hidden" id="btnVoltarDashboard" title="Resumo">← Resumo</button>
+      <a class="back-btn" href="/">← Início</a>
+      <div class="topbar-brand">DATASUS · SIA/SUS</div>
+      <div class="topbar-user">
+        <span id="topbarUsername"></span>
+        <button class="btn btn-ghost-dark" id="btnLogout">Sair</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===================== UPLOAD (escuro) ===================== -->
+  <section id="viewUpload" class="view-dark hidden">
+    <div class="wrap-narrow">
+      <div class="eyebrow">SUS · SIA · RSPROCED</div>
+      <h1>DATASUS · SIA/SUS</h1>
+      <p class="lead">Suba o relatório <b>RSPROCED</b> ("Sintético de Procedimentos por Unidade/CMP") — o relatório que o SIA/DATASUS gera depois de processar o BPA/FPO transmitido, mostrando o valor <b>produzido</b> (submetido) x <b>aprovado</b> (efetivamente pago) por procedimento e unidade. A diferença é a <b>glosa</b>. Pode subir mais de um arquivo (competências diferentes) de uma vez. Nada é enviado a nenhum servidor — a análise acontece no seu navegador.</p>
+
+      <div class="drop" id="dropArquivos">
+        <input type="file" id="inputArquivos" accept=".txt" multiple>
+        <div class="icon">📄</div>
+        <div>Clique ou arraste o(s) arquivo(s) RSPROCED (.txt) aqui</div>
+      </div>
+
+      <div class="msg" id="msgUpload"></div>
+    </div>
+  </section>
+
+  <!-- ===================== DASHBOARD (escuro) ===================== -->
+  <section id="viewDashboard" class="view-dark hidden">
+    <div class="wrap-wide">
+
+      <div class="eyebrow">SUS · SIA · RSPROCED</div>
+      <h1 style="margin:0 0 16px;font-size:22px;">Produzido × Aprovado</h1>
+
+      <div class="alert-banner" id="alertConferencia"></div>
+
+      <div class="group-label">Arquivos importados</div>
+      <div class="fontes-list" id="fontesResumo"></div>
+      <button class="add-file-inicial btn btn-ghost-dark" id="dropArquivosDashboard" style="margin-bottom:26px;">
+        <input type="file" id="inputArquivosDashboard" accept=".txt" multiple class="hidden">
+        + Adicionar arquivos
+      </button>
+
+      <div class="group-label">Faturamento (R$)</div>
+      <div class="cards-grid" id="cardsResumo" style="margin-bottom:30px;"></div>
+
+      <div class="group-label">Maiores glosas e unidades</div>
+      <div class="paineis-grid" style="margin-bottom:30px;">
+        <div class="painel" style="grid-column: span 2;">
+          <h3>Maiores glosas por procedimento</h3>
+          <div id="painelGlosas"></div>
+        </div>
+        <div class="painel">
+          <h3>Glosa por unidade</h3>
+          <div id="painelUnidades"></div>
+        </div>
+      </div>
+
+      <button class="btn" id="btnVerTabela" style="background:var(--teal);color:#04241c;margin-bottom:30px;">Ver todos os procedimentos →</button>
+
+    </div>
+  </section>
+
+  <!-- ===================== TABELA (claro) ===================== -->
+  <section id="viewTabela" class="view-light hidden">
+    <div class="drill-layout">
+
+      <aside class="sidebar">
+        <div class="sidebar-block">
+          <div class="sidebar-title">Resultado</div>
+          <div class="sidebar-stat" id="sidebarCount">—</div>
+          <div class="sidebar-stat-label">procedimento(s)</div>
+        </div>
+
+        <div class="sidebar-block">
+          <div class="sidebar-title">Filtros</div>
+          <div class="field">
+            <label for="fUnidade">Unidade</label>
+            <select id="fUnidade"><option value="">Todas</option></select>
+          </div>
+          <div class="field hidden" id="campoCompetencia">
+            <label for="fCompetencia">Competência</label>
+            <select id="fCompetencia"><option value="">Todas</option></select>
+          </div>
+          <div class="field">
+            <label for="fBusca">Buscar (descrição ou SIGTAP)</label>
+            <input id="fBusca" placeholder="Ex.: hemograma, 0202...">
+          </div>
+          <div class="field">
+            <label for="fSoGlosa">
+              <input type="checkbox" id="fSoGlosa"> Só com glosa
+            </label>
+          </div>
+        </div>
+
+        <div class="sidebar-block" id="legendaBlock">
+          <div class="sidebar-title">Legenda</div>
+          <div class="legenda-item">Glosa = valor <b>produzido</b> menos valor <b>aprovado</b> — o que foi faturado e rejeitado pelo SIA/SUS naquela competência.</div>
+        </div>
+      </aside>
+
+      <main class="drill-main">
+        <div class="msg" id="filterMsg"></div>
+        <div class="tbl-wrap">
+          <table class="preview">
+            <thead>
+              <tr>
+                <th>Competência</th><th>Unidade</th><th>SIGTAP</th><th>Descrição</th>
+                <th>Produzido</th><th>Aprovado</th><th>Glosa</th><th>% Glosa</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaBody"></tbody>
+          </table>
+        </div>
+      </main>
+
+    </div>
+  </section>
+
+</div>
+
+<script src="js/session.js"></script>
+<script src="js/lookup.js"></script>
+<script src="js/parser.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>

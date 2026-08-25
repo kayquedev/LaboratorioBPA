@@ -32,19 +32,16 @@
   viewVazio.classList.add("hidden");
   viewCorrecao.classList.remove("hidden");
 
-  const fontes = payload.fontes;
+  const autoResolvidos = payload.autoResolvidos || 0;
+  const fontes = payload.fontes.map((fonte) => writer.hidratarFonte(fonte));
 
   // -------- resumo geral --------
   function renderResumo() {
-    let totalComProblema = 0, soAuto = 0, precisaManual = 0;
+    let precisaManual = 0;
     fontes.forEach((fonte) => {
-      fonte.registros.forEach((r) => {
-        if (!r.problemas || !r.problemas.length) return;
-        totalComProblema++;
-        const soFolhaSeq = r.problemas.every((p) => p.cod === "FOLHA_SEQ_DUPLICADA");
-        if (soFolhaSeq) soAuto++; else precisaManual++;
-      });
+      fonte.registros.forEach((r) => { if (r.cods && r.cods.length) precisaManual++; });
     });
+    const totalComProblema = autoResolvidos + precisaManual;
 
     const el = document.getElementById("resumoBox");
     if (!totalComProblema) {
@@ -54,7 +51,7 @@
     } else {
       el.className = "alert-banner show";
       el.innerHTML = "<b>" + totalComProblema + " registro(s) com pendência</b> em " + fontes.length + " arquivo(s). " +
-        "<b>" + soAuto + "</b> resolvido(s) automaticamente (renumeração de folha/sequência). " +
+        "<b>" + autoResolvidos + "</b> resolvido(s) automaticamente (renumeração de folha/sequência). " +
         "<b>" + precisaManual + "</b> precisa(m) de revisão manual abaixo — corrija ou deixe como está (pular).";
     }
   }
@@ -72,10 +69,10 @@
   }
 
   // -------- tabela de revisao manual --------
-  function camposEditaveis(problemas) {
+  function camposEditaveis(cods) {
     const set = new Set();
-    problemas.forEach((p) => {
-      const campos = writer.CAMPOS_POR_PROBLEMA[p.cod];
+    cods.forEach((cod) => {
+      const campos = writer.CAMPOS_POR_PROBLEMA[cod];
       if (campos) campos.forEach((c) => set.add(c));
     });
     return [...set];
@@ -87,23 +84,24 @@
     return registro[campo];
   }
 
-  function linhaRevisaoHtml(fonteIdx, regIdx, registro) {
-    const campos = camposEditaveis(registro.problemas);
+  function linhaRevisaoHtml(fonteIdx, regIdx, registro, origemLabel) {
+    const campos = camposEditaveis(registro.cods);
     const inputs = campos.map((campo) =>
       '<label class="campo-corrigir">' + writer.CAMPO_LABEL[campo] + ":" +
       '<input data-fonte="' + fonteIdx + '" data-reg="' + regIdx + '" data-campo="' + campo + '" value="' +
       escapeHtml(valorAtual(registro, campo)) + '"></label>'
     ).join("");
 
-    const problemasHtml = registro.problemas.map((p) =>
-      '<div class="probitem probitem-' + p.sev + '"><b>' + escapeHtml(p.texto) + ":</b> " + escapeHtml(p.explicacao) +
-      '<span class="resolver">Como resolver: ' + escapeHtml(p.resolver) + "</span></div>"
-    ).join("");
+    const problemasHtml = registro.cods.map((cod) => {
+      const info = writer.PROBLEMA_CATALOG[cod];
+      return '<div class="probitem probitem-' + info.sev + '"><b>' + escapeHtml(info.texto) + ":</b> " + escapeHtml(info.explicacao) +
+        '<span class="resolver">Como resolver: ' + escapeHtml(info.resolver) + "</span></div>";
+    }).join("");
 
     return '<tr data-linha-fonte="' + fonteIdx + '" data-linha-reg="' + regIdx + '">' +
       "<td>" + registro.tipo + "</td>" +
-      "<td>" + escapeHtml(registro.origem || "") + "</td>" +
-      '<td class="num">' + registro.folha + "/" + registro.seq + "</td>" +
+      "<td>" + escapeHtml(origemLabel) + "</td>" +
+      '<td class="num">' + (registro.idx + 1) + "</td>" +
       "<td>" + (registro.tipo === "03" ? escapeHtml(registro.nomePaciente || "") : "—") + "</td>" +
       '<td><div class="problema-list">' + problemasHtml + "</div></td>" +
       "<td>" + (inputs || '<span class="ok-txt">sem campo — só revisar</span>') + "</td>" +
@@ -115,11 +113,10 @@
   function renderTabela() {
     const linhas = [];
     fontes.forEach((fonte, fonteIdx) => {
+      const origemLabel = fonte.label || fonte.nome;
       fonte.registros.forEach((registro, regIdx) => {
-        if (!registro.problemas || !registro.problemas.length) return;
-        const soFolhaSeq = registro.problemas.every((p) => p.cod === "FOLHA_SEQ_DUPLICADA");
-        if (soFolhaSeq) return; // resolvido automaticamente, nao entra na revisao manual
-        linhas.push(linhaRevisaoHtml(fonteIdx, regIdx, registro));
+        if (!registro.cods || !registro.cods.length) return;
+        linhas.push(linhaRevisaoHtml(fonteIdx, regIdx, registro, origemLabel));
       });
     });
 

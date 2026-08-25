@@ -656,24 +656,41 @@
     document.getElementById("correcaoResumoTexto").textContent = texto;
   }
 
+  // Payload enxuto: "linhas" leva só o texto bruto de TODOS os registros
+  // (precisa de todos pra renumerar certo), e "pendencias" só os campos
+  // decodificados + códigos de problema (sem o texto do catálogo) dos
+  // registros que realmente precisam de revisão manual — os só-folha/seq-
+  // duplicada nem entram, já que aquilo é resolvido automaticamente do outro
+  // lado. Isso evita repetir ~15 campos e o texto inteiro de cada problema
+  // por registro, que em arquivos grandes estourava a cota do sessionStorage.
   function payloadParaCorrecao() {
-    return {
-      geradoEm: Date.now(),
-      fontes: parsed.fontes.map((fonte) => ({
+    let autoResolvidos = 0;
+    const fontes = parsed.fontes.map((fonte) => {
+      const linhas = [];
+      const pendencias = [];
+      fonte.registros.forEach((r, idx) => {
+        linhas.push(r.linha);
+        if (!r.problemas.length) return;
+        const soFolhaSeq = r.problemas.every((p) => p.cod === "FOLHA_SEQ_DUPLICADA");
+        if (soFolhaSeq) { autoResolvidos++; return; }
+        pendencias.push({
+          idx, sigtap: r.sigtap, cbo: r.cbo, quantidade: r.quantidade, competencia: r.competencia,
+          dataAtendimento: r.dataAtendimento, dataNascimento: r.dataNascimento,
+          cep: r.cep, sexo: r.sexo, nomePaciente: r.nomePaciente,
+          cods: r.problemas.map((p) => p.cod),
+        });
+      });
+      return {
         nome: fonte.nome,
         label: fonte.label,
         header: fonte.header ? {
           competencia: fonte.header.competencia, numLinhas: fonte.header.numLinhas,
           numFolhas: fonte.header.numFolhas, linha: fonte.header.linha,
         } : null,
-        registros: fonte.registros.map((r) => ({
-          tipo: r.tipo, linha: r.linha, origem: r.origem, folha: r.folha, seq: r.seq,
-          sigtap: r.sigtap, cbo: r.cbo, quantidade: r.quantidade, competencia: r.competencia,
-          dataAtendimento: r.dataAtendimento, dataNascimento: r.dataNascimento,
-          cep: r.cep, sexo: r.sexo, nomePaciente: r.nomePaciente, problemas: r.problemas,
-        })),
-      })),
-    };
+        linhas, pendencias,
+      };
+    });
+    return { geradoEm: Date.now(), autoResolvidos, fontes };
   }
 
   document.getElementById("btnIrCorrigir").addEventListener("click", () => {

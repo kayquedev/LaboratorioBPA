@@ -1,7 +1,10 @@
 (function () {
   "use strict";
 
-  const ICONS = { laboratorio: "🧪", oftalmo: "👁", esus_pec: "🏥", qualidade_bpa: "📊", correcao_bpa: "🛠", bolsa_familia: "👪" };
+  const ICONS = { laboratorio: "🧪", oftalmo: "👁", esus_pec: "🏥", qualidade_bpa: "📊", correcao_bpa: "🛠", bolsa_familia: "👪", siaps_indicadores: "📈" };
+  // módulos que não são páginas internas nossas, e sim links pra fora - mesmo
+  // cartão/mesma regra de acesso (status live + grant), só o destino muda.
+  const EXTERNAL_URLS = { siaps_indicadores: "https://siaps.kayque.site/" };
 
   const loginView = document.getElementById("loginView");
   const modulesView = document.getElementById("modulesView");
@@ -33,8 +36,12 @@
     modulesView.innerHTML = "";
     modules.forEach((m) => {
       const clickable = m.status === "live" && m.granted;
+      const externo = EXTERNAL_URLS[m.slug];
       const el = document.createElement(clickable ? "a" : "div");
-      if (clickable) el.href = "/" + m.slug + "/";
+      if (clickable) {
+        el.href = externo || ("/" + m.slug + "/");
+        if (externo) { el.target = "_blank"; el.rel = "noopener"; }
+      }
 
       let statusClass = "live", statusText = "Disponível";
       if (m.status !== "live") { statusClass = "soon"; statusText = "Em breve"; }

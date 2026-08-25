@@ -60,28 +60,8 @@
   }
   .eyebrow-pill .dot{ width:6px; height:6px; border-radius:50%; background: var(--teal); flex:none; }
   .hero h1{ margin: 20px 0 14px; font-size: 34px; line-height:1.25; }
-  .hero h1 .grad{
-    display:block; background: linear-gradient(90deg, var(--blue-link), var(--teal));
-    -webkit-background-clip:text; background-clip:text; color:transparent;
-  }
+  .hero h1 .grad{ display:block; color: var(--teal); }
   .hero p{ margin:0; color: var(--text-dim); font-size:14.5px; line-height:1.6; }
-
-  /* ---------- ferramenta externa (SIAPS) ---------- */
-  .externo-section{ max-width: 1000px; margin: 0 auto; padding: 0 20px; }
-  .externo-card{
-    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
-    background: var(--card-bg); border:1px solid var(--card-border); border-radius:14px; padding:18px 22px;
-    margin: 28px auto; text-decoration:none; transition: border-color .12s, transform .12s;
-  }
-  .externo-card:hover{ border-color: var(--blue-link); transform: translateY(-1px); }
-  .externo-info{ display:flex; align-items:center; gap:14px; }
-  .externo-icon{
-    width:40px; height:40px; border-radius:10px; background: rgba(91,157,245,.14); color: var(--blue-link);
-    display:flex; align-items:center; justify-content:center; font-size:19px; flex:none;
-  }
-  .externo-title{ font-weight:700; font-size:14.5px; color: var(--text); }
-  .externo-sub{ font-size:12px; color: var(--text-dim); margin-top:2px; }
-  .externo-arrow{ font-size:13px; font-weight:700; color: var(--blue-link); flex:none; }
 
   main{ max-width: 1000px; margin: 0 auto; padding: 0 20px 40px; flex:1; width:100%; }
 
@@ -152,7 +132,7 @@
 <nav class="topbar">
   <div class="topbar-wrap">
     <div class="brand">
-      <div class="brand-icon">+</div>
+      <div class="brand-icon">🔎</div>
       <div>
         <div class="brand-title">Kode · Qualidade de Dados</div>
         <div class="brand-sub">Portal de módulos de produção — SUS</div>
@@ -170,19 +150,6 @@
   <div class="eyebrow-pill"><span class="dot"></span> Portal de módulos</div>
   <h1>Qualidade de dados<span class="grad">e faturamento para o SUS</span></h1>
   <p>Selecione o módulo de produção que deseja gerar. Cada módulo converte dados para exportação de faturamento e/ou realiza análise de qualidade.</p>
-</div>
-
-<div class="externo-section">
-  <a class="externo-card" href="https://siaps.kayque.site/" target="_blank" rel="noopener">
-    <div class="externo-info">
-      <div class="externo-icon">📈</div>
-      <div>
-        <div class="externo-title">SIAPS · Monitor de Indicadores</div>
-        <div class="externo-sub">Painel de indicadores do Previne Brasil por equipe — outra ferramenta do autor</div>
-      </div>
-    </div>
-    <div class="externo-arrow">Abrir ↗</div>
-  </a>
 </div>
 
 <main>

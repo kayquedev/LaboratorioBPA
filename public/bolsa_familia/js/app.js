@@ -130,7 +130,8 @@
     const pct = total ? Math.round((localizados / total) * 100) : 0;
     const cards = [
       { valor: String(total), titulo: "Total de beneficiários", desc: "Extraídos do Mapa de Acompanhamento do Bolsa Família." },
-      { valor: String(localizados), titulo: "Microárea localizada", cor: "var(--teal)", desc: pct + "% do total — encontrados no e-SUS PEC por nome + data de nascimento." },
+      { valor: String(localizados), titulo: "Microárea localizada", cor: "var(--teal)", desc: "Encontrados no e-SUS PEC por nome + data de nascimento." },
+      { valor: pct + "%", titulo: "Vinculados à ESF", cor: "var(--blue-link)", desc: "Percentual de beneficiários encontrados como vinculados a uma equipe de saúde (ESF) no e-SUS PEC." },
       { valor: String(fa), titulo: "FA — fora de área", cor: "var(--red)", desc: "Sem correspondência no e-SUS PEC (ou sem microárea informada lá)." },
     ];
     document.getElementById("cardsResumo").innerHTML = cards.map(cardHtml).join("");

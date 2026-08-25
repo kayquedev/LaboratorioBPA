@@ -25,6 +25,17 @@
   function pacienteChave(r) {
     return r.cnsCpfPaciente ? "cns:" + r.cnsCpfPaciente : "nb:" + r.nomePaciente + "|" + r.dataNascimento;
   }
+  function idadeEmMeses(nasc, atend) {
+    if (!isValidDate(nasc) || !/^\d{8}$/.test(atend || "")) return null;
+    const ny = +nasc.slice(0, 4), nm = +nasc.slice(4, 6), nd = +nasc.slice(6, 8);
+    const ay = +atend.slice(0, 4), am = +atend.slice(4, 6), ad = +atend.slice(6, 8);
+    let meses = (ay - ny) * 12 + (am - nm);
+    if (ad < nd) meses -= 1;
+    return meses < 0 ? null : meses;
+  }
+  function fmtMoeda(v) {
+    return (v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  }
   function cboNome(codigo) { return window.QualidadeBpaLookup.nomeCbo(codigo); }
   function sigtapNome(codigo) { return window.QualidadeBpaLookup.nomeSigtap(codigo); }
   function cboCelHtml(codigo) {
@@ -74,6 +85,18 @@
     POSSIVEL_DUPLICIDADE: { sev: "aviso", texto: "Possível duplicidade",
       explicacao: "Outra linha tem o mesmo paciente, mesmo procedimento e mesma data — pode ser faturamento em duplicidade.",
       resolver: "Confira se não é um lançamento duplicado; se for um caso legítimo (dois atendimentos no mesmo dia), pode ignorar." },
+    REGISTRO_INCOMPATIVEL: { sev: "erro", texto: "Instrumento de registro incompatível",
+      explicacao: "Esse código SIGTAP não está habilitado, na tabela oficial, para o instrumento em que foi lançado (BPA-C ou BPA-I) — o SIA tende a rejeitar ou glosar essa linha.",
+      resolver: "Confira na tabela SIGTAP em qual(is) instrumento(s) esse procedimento pode ser faturado, e lance na guia certa (BPA-C ou BPA-I)." },
+    SIGTAP_SEXO_INCOMPATIVEL: { sev: "erro", texto: "Sexo incompatível com o procedimento",
+      explicacao: "O procedimento SIGTAP é restrito a um sexo específico, e o sexo do paciente nesta linha não bate.",
+      resolver: "Confira o sexo cadastrado do paciente e o código SIGTAP lançado — um dos dois está errado." },
+    SIGTAP_IDADE_INCOMPATIVEL: { sev: "erro", texto: "Idade fora da faixa do procedimento",
+      explicacao: "A idade do paciente na data do atendimento está fora da faixa etária permitida pela tabela SIGTAP para esse procedimento.",
+      resolver: "Confira a data de nascimento e a data do atendimento do paciente, ou se o código SIGTAP lançado é o correto para a idade dele." },
+    SIGTAP_NAO_ENCONTRADO: { sev: "aviso", texto: "SIGTAP não encontrado na tabela carregada",
+      explicacao: "O código tem formato válido, mas não foi encontrado na tabela SIGTAP usada por este módulo (pode ser de uma competência diferente da carregada aqui).",
+      resolver: "Confirme se o código existe na competência vigente do SIGTAP; esse aviso, sozinho, não indica que a linha está errada." },
   };
 
   // ---------- STEP 1: upload ----------
@@ -125,13 +148,25 @@
       dupCount[k] = (dupCount[k] || 0) + 1;
     });
 
+    const lookup = window.QualidadeBpaLookup;
+
     regs.forEach((r) => {
       const codigos = [];
-      if (!/^\d{10}$/.test(r.sigtap) || /^0+$/.test(r.sigtap)) codigos.push("SIGTAP_INVALIDO");
+      const sigtapValido = /^\d{10}$/.test(r.sigtap) && !/^0+$/.test(r.sigtap);
+      if (!sigtapValido) codigos.push("SIGTAP_INVALIDO");
       if ((r.quantidade || 0) <= 0) codigos.push("QUANTIDADE_INVALIDA");
       if (!/^\d{6}$/.test(r.cbo)) codigos.push("CBO_INVALIDO");
       if (header && r.competencia !== header.competencia) codigos.push("COMPETENCIA_DIVERGENTE");
       if (folhaSeqCount[r.folha + "/" + r.seq] > 1) codigos.push("FOLHA_SEQ_DUPLICADA");
+
+      const info = sigtapValido && lookup ? lookup.sigtapInfo(r.sigtap) : null;
+      if (sigtapValido && !info) codigos.push("SIGTAP_NAO_ENCONTRADO");
+      if (info) {
+        const registroEsperado = r.tipo === "02" ? "01" : r.tipo === "03" ? "02" : null;
+        if (registroEsperado && info.registros.length && info.registros.indexOf(registroEsperado) === -1) {
+          codigos.push("REGISTRO_INCOMPATIVEL");
+        }
+      }
 
       if (r.tipo === "03") {
         if (/^\d{8}$/.test(r.dataAtendimento) && r.dataAtendimento.slice(0, 6) !== r.competencia) codigos.push("DATA_FORA_COMPETENCIA");
@@ -141,9 +176,24 @@
         if (r.cep && !/^\d{8}$/.test(r.cep)) codigos.push("CEP_INVALIDO");
         const k = pacienteChave(r) + "|" + r.sigtap + "|" + r.dataAtendimento;
         if (dupCount[k] > 1) codigos.push("POSSIVEL_DUPLICIDADE");
+
+        if (info) {
+          if (r.sexo && (info.sexo === "M" || info.sexo === "F") && r.sexo !== info.sexo) {
+            codigos.push("SIGTAP_SEXO_INCOMPATIVEL");
+          }
+          const naoRestrito = info.idadeMin === 9999 && info.idadeMax === 9999;
+          if (!naoRestrito && (info.idadeMin || info.idadeMax)) {
+            const meses = idadeEmMeses(r.dataNascimento, r.dataAtendimento);
+            if (meses != null && (meses < info.idadeMin || meses > info.idadeMax)) {
+              codigos.push("SIGTAP_IDADE_INCOMPATIVEL");
+            }
+          }
+        }
       }
 
       r.problemas = codigos.map((cod) => Object.assign({ cod }, PROBLEMA_CATALOG[cod]));
+      r.sigtapEncontrado = !!info;
+      r.valorEstimado = info ? info.valor * (r.quantidade || 0) : 0;
     });
   }
 
@@ -187,6 +237,43 @@
     document.getElementById("summaryRow").innerHTML = stats.map(
       ([l, n]) => '<div class="stat-box"><div class="l">' + l + '</div><div class="n">' + n + "</div></div>"
     ).join("");
+  }
+
+  function renderFaturamento() {
+    const regs = parsed.registros;
+    let receber = 0, pendente = 0, naoLocalizados = 0;
+    regs.forEach((r) => {
+      if (!r.sigtapEncontrado) { naoLocalizados++; return; }
+      const temErro = r.problemas.some((p) => p.sev === "erro");
+      if (temErro) pendente += r.valorEstimado; else receber += r.valorEstimado;
+    });
+    const total = receber + pendente;
+
+    const cards = [
+      {
+        id: "fatTotal", badge: '<span class="badge b-soon">Estimado</span>',
+        valor: fmtMoeda(total), titulo: "Faturamento total estimado",
+        desc: "Soma do valor SIGTAP (ambulatorial + profissional) × quantidade, para os registros com procedimento localizado na tabela carregada.",
+      },
+      {
+        id: "fatReceber", corValor: "var(--teal)",
+        valor: fmtMoeda(receber), titulo: "A receber",
+        desc: "Registros sem erro bloqueante — tendência de serem aceitos e pagos pelo SIA.",
+      },
+      {
+        id: "fatPendente", corValor: "var(--red)",
+        valor: fmtMoeda(pendente), titulo: "Pendente / risco de glosa",
+        desc: "Registros com pelo menos um erro (SIGTAP/CBO inválido, instrumento incompatível, sexo/idade incompatível etc.) — risco de rejeição ou glosa.",
+      },
+    ];
+    if (naoLocalizados) {
+      cards.push({
+        id: "fatNaoLocalizado", badge: '<span class="badge b-soon">Fora do cálculo</span>',
+        valor: naoLocalizados, titulo: "SIGTAP não localizado",
+        desc: "Registro(s) com código SIGTAP que não foi encontrado na tabela carregada — não entram na soma acima.",
+      });
+    }
+    document.getElementById("cardsFaturamento").innerHTML = cards.map(cardHtml).join("");
   }
 
   function cardHtml(opts) {
@@ -374,6 +461,7 @@
       '<td class="num">' + sigtapCelHtml(r.sigtap) + "</td>" +
       "<td>" + (r.tipo === "03" ? fmtData(r.dataAtendimento) : "—") + "</td>" +
       '<td class="num">' + r.quantidade + "</td>" +
+      '<td class="num">' + (r.sigtapEncontrado ? fmtMoeda(r.valorEstimado) : "—") + "</td>" +
       "<td>" + (r.tipo === "03" ? escapeHtml(r.nomePaciente) : "—") + "</td>" +
       "<td>" + situacaoHtml(r) + "</td>" +
       "<td>" + problemasDetalheHtml(r) + "</td></tr>"
@@ -387,11 +475,12 @@
 
   function exportCsv() {
     const regs = filteredRegistros();
-    const header = ["tipo", "folha", "seq", "cbo", "cbo_nome", "sigtap", "sigtap_nome", "data_atendimento", "quantidade", "paciente", "situacao", "o_que_e_como_resolver"];
+    const header = ["tipo", "folha", "seq", "cbo", "cbo_nome", "sigtap", "sigtap_nome", "data_atendimento", "quantidade", "valor_estimado_rs", "paciente", "situacao", "o_que_e_como_resolver"];
     const linhas = regs.map((r) => [
       r.tipo, r.folha, r.seq, r.cbo, cboNome(r.cbo), r.sigtap, sigtapNome(r.sigtap),
       r.tipo === "03" ? r.dataAtendimento : "",
       r.quantidade,
+      r.valorEstimado.toFixed(2).replace(".", ","),
       r.tipo === "03" ? r.nomePaciente : "",
       r.problemas.length ? r.problemas.map((p) => p.texto).join(" | ") : "OK",
       r.problemas.length ? r.problemas.map((p) => p.texto + ": " + p.explicacao + " Como resolver: " + p.resolver).join(" | ") : "",
@@ -431,6 +520,7 @@
   function showDashboard() {
     renderAlert();
     renderSummary();
+    renderFaturamento();
     renderCards();
     renderPaineis();
     viewUpload.classList.add("hidden");

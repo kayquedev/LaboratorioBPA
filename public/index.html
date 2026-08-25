@@ -6,128 +6,184 @@
 <title>Kode - Qualidade de Dados</title>
 <style>
   :root{
-    --azul-sus: #0b5b8c;
-    --azul-sus-escuro: #073e61;
-    --azul-claro: #eaf3f9;
-    --verde: #2e7d5b;
-    --verde-claro: #e7f5ee;
-    --erro: #b3261e;
-    --erro-claro: #fbe9e7;
-    --cinza-100: #f6f7f9;
-    --cinza-200: #e7e9ed;
-    --cinza-400: #b8bec9;
-    --cinza-600: #6b7280;
-    --texto: #1c2530;
-    --branco: #ffffff;
+    --bg: #0d1a30;
+    --bg-2: #0a1526;
+    --card-bg: #142544;
+    --card-border: #23375f;
+    --text: #eef2fa;
+    --text-dim: #8fa0c4;
+    --text-dim-2: #6b7fa8;
+    --teal: #34d8a6;
+    --blue-link: #5b9df5;
+    --red: #f2545b;
+    --red-bg: rgba(242,84,91,.14);
     --sans: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
   *{ box-sizing: border-box; }
   body{
-    margin:0; font-family: var(--sans); background: var(--cinza-100); color: var(--texto);
+    margin:0; font-family: var(--sans); background: var(--bg); color: var(--text);
     min-height:100vh; display:flex; flex-direction:column;
   }
   .hidden{ display:none !important; }
+  a{ color: inherit; }
 
-  header.top{
-    background: linear-gradient(135deg, var(--azul-sus-escuro), var(--azul-sus));
-    color:#fff; padding: 34px 24px 40px;
+  /* ---------- topbar ---------- */
+  .topbar{ background: var(--bg-2); border-bottom: 1px solid var(--card-border); }
+  .topbar-wrap{
+    max-width: 1180px; margin: 0 auto; padding: 16px 24px; display:flex; align-items:center;
+    justify-content:space-between; gap: 16px; flex-wrap: wrap;
   }
-  header.top .wrap{ max-width: 1000px; margin:0 auto; display:flex; align-items:flex-start; justify-content:space-between; gap:20px; flex-wrap:wrap; }
-  header.top .eyebrow{
-    font-size:12px; letter-spacing:.12em; text-transform:uppercase; opacity:.85;
-    display:flex; align-items:center; gap:8px; margin-bottom:8px;
+  .brand{ display:flex; align-items:center; gap:14px; }
+  .brand-icon{
+    width:44px; height:44px; border-radius:12px; flex:none;
+    background: linear-gradient(135deg, var(--blue-link), var(--teal));
+    display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:700; color:#04162e;
   }
-  header.top h1{ margin:0 0 6px; font-size:28px; font-weight:700; }
-  header.top p{ margin:0; opacity:.9; font-size:14.5px; max-width:640px; line-height:1.5; }
+  .brand-title{ font-weight:700; font-size:16px; color: var(--text); }
+  .brand-sub{ font-size:12px; color: var(--text-dim); margin-top:1px; }
 
-  .session-bar{ display:flex; align-items:center; gap:12px; font-size:13.5px; }
-  .session-bar .name{ font-weight:600; }
-  .session-bar a, .session-bar button{
-    appearance:none; border:1px solid rgba(255,255,255,.4); background: rgba(255,255,255,.08); color:#fff;
-    border-radius:8px; padding:7px 12px; font-size:13px; font-weight:600; cursor:pointer; text-decoration:none;
+  .session-bar{ display:flex; align-items:center; gap:10px; font-size:13px; color: var(--text-dim); }
+  .session-bar .name{ font-weight:600; color: var(--text); }
+  .btn{
+    appearance:none; border:none; border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:600;
+    cursor:pointer; display:inline-flex; align-items:center; gap:6px; text-decoration:none;
   }
-  .session-bar a:hover, .session-bar button:hover{ background: rgba(255,255,255,.18); }
+  .btn-ghost-dark{ background: transparent; border: 1px solid var(--card-border); color: var(--text-dim); }
+  .btn-ghost-dark:hover{ color: var(--text); border-color: var(--text-dim-2); }
 
-  main{ max-width: 1000px; margin: -20px auto 0; padding: 0 20px 40px; flex:1; width:100%; }
+  /* ---------- hero ---------- */
+  .hero{ max-width: 720px; margin: 56px auto 8px; padding: 0 24px; text-align:center; }
+  .eyebrow-pill{
+    display:inline-flex; align-items:center; gap:8px; border:1px solid var(--card-border); background: var(--card-bg);
+    border-radius:999px; padding:7px 16px; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    color: var(--text-dim); font-weight:700;
+  }
+  .eyebrow-pill .dot{ width:6px; height:6px; border-radius:50%; background: var(--teal); flex:none; }
+  .hero h1{ margin: 20px 0 14px; font-size: 34px; line-height:1.25; }
+  .hero h1 .grad{
+    display:block; background: linear-gradient(90deg, var(--blue-link), var(--teal));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .hero p{ margin:0; color: var(--text-dim); font-size:14.5px; line-height:1.6; }
+
+  /* ---------- ferramenta externa (SIAPS) ---------- */
+  .externo-section{ max-width: 1000px; margin: 0 auto; padding: 0 20px; }
+  .externo-card{
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    background: var(--card-bg); border:1px solid var(--card-border); border-radius:14px; padding:18px 22px;
+    margin: 28px auto; text-decoration:none; transition: border-color .12s, transform .12s;
+  }
+  .externo-card:hover{ border-color: var(--blue-link); transform: translateY(-1px); }
+  .externo-info{ display:flex; align-items:center; gap:14px; }
+  .externo-icon{
+    width:40px; height:40px; border-radius:10px; background: rgba(91,157,245,.14); color: var(--blue-link);
+    display:flex; align-items:center; justify-content:center; font-size:19px; flex:none;
+  }
+  .externo-title{ font-weight:700; font-size:14.5px; color: var(--text); }
+  .externo-sub{ font-size:12px; color: var(--text-dim); margin-top:2px; }
+  .externo-arrow{ font-size:13px; font-weight:700; color: var(--blue-link); flex:none; }
+
+  main{ max-width: 1000px; margin: 0 auto; padding: 0 20px 40px; flex:1; width:100%; }
 
   /* ---------- login ---------- */
   .login-wrap{ display:flex; justify-content:center; padding-top: 10px; }
   .login-card{
-    background: var(--branco); border:1px solid var(--cinza-200); border-radius:14px;
-    padding:30px; max-width:360px; width:100%; box-shadow: 0 1px 2px rgba(16,24,40,.04);
+    background: var(--card-bg); border:1px solid var(--card-border); border-radius:14px;
+    padding:30px; max-width:360px; width:100%;
   }
-  .login-card h2{ margin:0 0 6px; font-size:18px; color: var(--azul-sus-escuro); }
-  .login-card .sub{ margin:0 0 20px; font-size:13px; color: var(--cinza-600); }
+  .login-card h2{ margin:0 0 6px; font-size:18px; color: var(--text); }
+  .login-card .sub{ margin:0 0 20px; font-size:13px; color: var(--text-dim); }
   .field{ margin-bottom:14px; }
-  .field label{ display:block; font-size:12.5px; font-weight:600; color: var(--cinza-600); margin-bottom:5px; }
+  .field label{ display:block; font-size:12.5px; font-weight:600; color: var(--text-dim); margin-bottom:5px; }
   .field input{
-    width:100%; padding:9px 10px; border:1px solid var(--cinza-200); border-radius:8px;
-    font-size:14px; font-family: var(--sans); background:#fff; color: var(--texto);
+    width:100%; padding:9px 10px; border:1px solid var(--card-border); border-radius:8px;
+    font-size:14px; font-family: var(--sans); background: var(--bg-2); color: var(--text);
   }
-  .field input:focus{ outline:2px solid var(--azul-sus); outline-offset:1px; }
-  .btn{
+  .field input:focus{ outline:2px solid var(--blue-link); outline-offset:1px; }
+  .btn-login{
     appearance:none; border:none; border-radius:9px; padding:11px 20px; font-size:14px; font-weight:600;
     cursor:pointer; display:inline-flex; align-items:center; gap:8px; width:100%; justify-content:center;
-    background: var(--azul-sus); color:#fff;
+    background: var(--teal); color:#04241c;
   }
-  .btn:hover{ filter: brightness(1.08); }
-  .btn:disabled{ background: var(--cinza-400); cursor:not-allowed; }
+  .btn-login:hover{ filter: brightness(1.08); }
+  .btn-login:disabled{ background: var(--card-border); color: var(--text-dim); cursor:not-allowed; }
   .msg{ border-radius:9px; padding:10px 14px; font-size:13.5px; margin:0 0 14px; display:none; }
   .msg.show{ display:block; }
-  .msg.error{ background: var(--erro-claro); color: var(--erro); }
+  .msg.error{ background: var(--red-bg); color: var(--red); }
 
   /* ---------- modules ---------- */
-  .modules{ display:grid; grid-template-columns: repeat(3, 1fr); gap:18px; }
+  .modules{ display:grid; grid-template-columns: repeat(3, 1fr); gap:18px; margin-top: 12px; }
   @media (max-width: 780px){ .modules{ grid-template-columns: 1fr; } }
 
   .mod{
-    background: var(--branco); border:1px solid var(--cinza-200); border-radius:14px;
-    padding:24px; box-shadow: 0 1px 2px rgba(16,24,40,.04); text-decoration:none; color:inherit;
-    display:flex; flex-direction:column; gap:10px; transition: transform .12s, box-shadow .12s, border-color .12s;
+    background: var(--card-bg); border:1px solid var(--card-border); border-radius:14px;
+    padding:24px; text-decoration:none; color:inherit;
+    display:flex; flex-direction:column; gap:10px; transition: transform .12s, border-color .12s;
   }
   .mod.active{ cursor:pointer; }
-  .mod.active:hover{ transform: translateY(-2px); border-color: var(--azul-sus); box-shadow: 0 8px 20px rgba(11,91,140,.12); }
-  .mod.soon, .mod.locked{ opacity:.6; }
+  .mod.active:hover{ transform: translateY(-2px); border-color: var(--blue-link); }
+  .mod.soon, .mod.locked{ opacity:.55; }
 
   .mod-icon{
-    width:44px; height:44px; border-radius:10px; background: var(--azul-claro); color: var(--azul-sus-escuro);
+    width:44px; height:44px; border-radius:10px; background: rgba(91,157,245,.14); color: var(--blue-link);
     display:flex; align-items:center; justify-content:center; font-size:20px; flex:none;
   }
-  .mod.soon .mod-icon, .mod.locked .mod-icon{ background: var(--cinza-100); color: var(--cinza-600); }
+  .mod.soon .mod-icon, .mod.locked .mod-icon{ background: rgba(255,255,255,.06); color: var(--text-dim); }
 
-  .mod h2{ margin:4px 0 0; font-size:17px; }
-  .mod p{ margin:0; font-size:13.5px; color: var(--cinza-600); line-height:1.5; }
+  .mod h2{ margin:4px 0 0; font-size:16px; color: var(--text); }
+  .mod p{ margin:0; font-size:13px; color: var(--text-dim); line-height:1.5; }
 
-  .status{ margin-top:auto; padding-top:10px; font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
-  .status.live{ color: var(--verde); }
-  .status.soon, .status.locked{ color: var(--cinza-600); }
+  .status{ margin-top:auto; padding-top:10px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+  .status.live{ color: var(--teal); }
+  .status.soon, .status.locked{ color: var(--text-dim); }
 
   .credit{
-    max-width:1000px; margin: 0 auto 24px; padding: 14px 24px 0; text-align:center;
-    font-size:11.5px; color: var(--cinza-600); border-top:1px solid var(--cinza-200);
+    max-width:1000px; margin: 0 auto 24px; padding: 16px 24px 0; text-align:center;
+    font-size:11.5px; color: var(--text-dim); border-top:1px solid var(--card-border);
   }
-  .credit-name{ font-weight:600; color: var(--texto); }
-  .credit-sep{ margin:0 8px; color: var(--cinza-400); }
-  .credit a{ color: var(--cinza-600); text-decoration:none; }
-  .credit a:hover{ color: var(--azul-sus); text-decoration:underline; }
+  .credit-name{ font-weight:600; color: var(--text); }
+  .credit-sep{ margin:0 8px; color: var(--text-dim-2); }
+  .credit a{ color: var(--text-dim); text-decoration:none; }
+  .credit a:hover{ color: var(--blue-link); text-decoration:underline; }
 </style>
 </head>
 <body>
 
-<header class="top">
-  <div class="wrap">
-    <div>
-      <div class="eyebrow">Portal de módulos</div>
-      <h1>Kode - Qualidade de Dados</h1>
-      <p>Selecione o módulo de produção que deseja gerar. Cada módulo converte dados para exportação para faturamento e/ou realiza análise de dados.</p>
+<nav class="topbar">
+  <div class="topbar-wrap">
+    <div class="brand">
+      <div class="brand-icon">+</div>
+      <div>
+        <div class="brand-title">Kode · Qualidade de Dados</div>
+        <div class="brand-sub">Portal de módulos de produção — SUS</div>
+      </div>
     </div>
     <div class="session-bar hidden" id="sessionBar">
       <span class="name" id="sessionName"></span>
-      <a href="/admin/" id="adminLink" class="hidden">Painel admin</a>
-      <button id="btnLogout">Sair</button>
+      <a href="/admin/" id="adminLink" class="btn btn-ghost-dark hidden">Painel admin</a>
+      <button class="btn btn-ghost-dark" id="btnLogout">Sair</button>
     </div>
   </div>
-</header>
+</nav>
+
+<div class="hero">
+  <div class="eyebrow-pill"><span class="dot"></span> Portal de módulos</div>
+  <h1>Qualidade de dados<span class="grad">e faturamento para o SUS</span></h1>
+  <p>Selecione o módulo de produção que deseja gerar. Cada módulo converte dados para exportação de faturamento e/ou realiza análise de qualidade.</p>
+</div>
+
+<div class="externo-section">
+  <a class="externo-card" href="https://siaps.kayque.site/" target="_blank" rel="noopener">
+    <div class="externo-info">
+      <div class="externo-icon">📈</div>
+      <div>
+        <div class="externo-title">SIAPS · Monitor de Indicadores</div>
+        <div class="externo-sub">Painel de indicadores do Previne Brasil por equipe — outra ferramenta do autor</div>
+      </div>
+    </div>
+    <div class="externo-arrow">Abrir ↗</div>
+  </a>
+</div>
 
 <main>
 
@@ -145,7 +201,7 @@
           <label for="loginSenha">Senha</label>
           <input id="loginSenha" type="password" autocomplete="current-password" placeholder="••••••••">
         </div>
-        <button class="btn" type="submit" id="btnLogin">Entrar</button>
+        <button class="btn-login" type="submit" id="btnLogin">Entrar</button>
       </form>
     </div>
   </div>

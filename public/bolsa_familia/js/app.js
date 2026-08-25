@@ -237,12 +237,16 @@
     doc.setTextColor(100);
     doc.text("Gerado em " + dataHora + " por " + usuario + " · " + lista.length + " beneficiário(s)", 14, 20);
 
+    const idxEndereco = CAMPOS_PDF.indexOf("endereco");
+
     doc.autoTable({
       startY: 25,
       head: [COLUNAS_PDF.map((c) => c.titulo)],
       body: lista.map((b) => COLUNAS_PDF.map((c) => b[c.campo] || "")),
-      styles: { fontSize: 6.5, cellPadding: 1.5 },
+      theme: "grid",
+      styles: { fontSize: 6.5, cellPadding: 1.5, lineWidth: 0.1, lineColor: [200, 200, 200] },
       headStyles: { fillColor: [13, 26, 48] },
+      columnStyles: idxEndereco === -1 ? {} : { [idxEndereco]: { cellWidth: 40, fontSize: 5 } },
       didDrawPage: () => {
         const pageCount = doc.internal.getNumberOfPages();
         doc.setFontSize(8);

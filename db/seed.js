@@ -6,13 +6,13 @@ const bcrypt = require("bcryptjs");
 const pool = require("./pool");
 
 const MODULES = [
-  { slug: "laboratorio", name: "Laboratório", description: "Gere o arquivo BPA-I para exportar para o BPA/SIA, através da importação da planilha do Excel do laboratório.", status: "live", sort_order: 1 },
-  { slug: "qualidade_bpa", name: "Qualidade BPA", description: "Analisa um arquivo BPA já gerado (BPA-C/BPA-I), com painéis, filtros e verificações de qualidade dos dados por procedimento SIGTAP.", status: "live", sort_order: 2 },
-  { slug: "correcao_bpa", name: "Correção BPA", description: "Corrige as pendências detectadas no Qualidade BPA — renumera folha/sequência automaticamente e guia a correção manual do resto — e gera o arquivo corrigido.", status: "live", sort_order: 3 },
-  { slug: "oftalmo", name: "Oftalmo", description: "Gere o arquivo BPA para exportar para o SIA, através da importação da planilha dos dados dos pacientes.", status: "soon", sort_order: 4 },
-  { slug: "esus_pec", name: "ESUS PEC", description: "Gerador de BPA a partir da produção registrada no ESUS PEC.", status: "soon", sort_order: 5 },
-  { slug: "bolsa_familia", name: "Bolsa Família", description: "Cruza o Mapa de Acompanhamento do Bolsa Família com os cidadãos vinculados do e-SUS PEC para identificar a microárea de cada beneficiário.", status: "live", sort_order: 6 },
-  { slug: "siaps_indicadores", name: "SIAPS · Monitor de Indicadores", description: "Ferramenta de análise de dados dos indicadores do Saúde Brasil 360, analisando através da importação das planilhas do SIAPS e dos Cidadãos Vinculados do ESUS PEC.", status: "live", sort_order: 7 },
+  { slug: "siaps_indicadores", name: "SIAPS · Monitor de Indicadores", description: "Ferramenta de análise de dados dos indicadores do Saúde Brasil 360, analisando através da importação das planilhas do SIAPS e dos Cidadãos Vinculados do ESUS PEC.", status: "live", sort_order: 1 },
+  { slug: "laboratorio", name: "Laboratório", description: "Gere o arquivo BPA-I para exportar para o BPA/SIA, através da importação da planilha do Excel do laboratório.", status: "live", sort_order: 2 },
+  { slug: "qualidade_bpa", name: "Qualidade BPA", description: "Analisa um arquivo BPA já gerado (BPA-C/BPA-I), com painéis, filtros e verificações de qualidade dos dados por procedimento SIGTAP.", status: "live", sort_order: 3 },
+  { slug: "correcao_bpa", name: "Correção BPA", description: "Corrige as pendências detectadas no Qualidade BPA — renumera folha/sequência automaticamente e guia a correção manual do resto — e gera o arquivo corrigido.", status: "live", sort_order: 4 },
+  { slug: "bolsa_familia", name: "Bolsa Família", description: "Cruza o Mapa de Acompanhamento do Bolsa Família com os cidadãos vinculados do e-SUS PEC para identificar a microárea de cada beneficiário.", status: "live", sort_order: 5 },
+  { slug: "oftalmo", name: "Oftalmo", description: "Gere o arquivo BPA para exportar para o SIA, através da importação da planilha dos dados dos pacientes.", status: "soon", sort_order: 6 },
+  { slug: "esus_pec", name: "ESUS PEC", description: "Gerador de BPA a partir da produção registrada no ESUS PEC.", status: "soon", sort_order: 7 },
 ];
 
 async function main() {

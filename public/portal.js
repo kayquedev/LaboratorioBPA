@@ -32,10 +32,20 @@
     loginMsg.classList.remove("show");
   }
 
+  // só mostra módulos (disponíveis ou "em breve") que o usuário tem
+  // permissão de ver - nada de card desabilitado/"sem acesso" pra quem
+  // não foi liberado.
   function renderModules(modules) {
     modulesView.innerHTML = "";
-    modules.forEach((m) => {
-      const clickable = m.status === "live" && m.granted;
+    const visiveis = modules.filter((m) => m.granted);
+
+    if (!visiveis.length) {
+      modulesView.innerHTML = '<p style="grid-column:1/-1;color:var(--text-dim);font-size:13.5px;">Nenhum módulo liberado para o seu usuário ainda — fale com o administrador.</p>';
+      return;
+    }
+
+    visiveis.forEach((m) => {
+      const clickable = m.status === "live";
       const externo = EXTERNAL_URLS[m.slug];
       const el = document.createElement(clickable ? "a" : "div");
       if (clickable) {
@@ -43,9 +53,8 @@
         if (externo) { el.target = "_blank"; el.rel = "noopener"; }
       }
 
-      let statusClass = "live", statusText = "Disponível";
-      if (m.status !== "live") { statusClass = "soon"; statusText = "Em breve"; }
-      else if (!m.granted) { statusClass = "locked"; statusText = "Sem acesso"; }
+      const statusClass = clickable ? "live" : "soon";
+      const statusText = clickable ? "Disponível" : "Em breve";
 
       el.className = "mod " + (clickable ? "active" : statusClass);
       el.innerHTML =

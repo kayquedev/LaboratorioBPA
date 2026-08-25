@@ -29,7 +29,7 @@
   <section id="viewUpload" class="view-dark">
     <div class="wrap-narrow">
       <div class="eyebrow">Bolsa Família × e-SUS PEC</div>
-      <h1>Cruzamento de Microárea</h1>
+      <h1>Beneficiários por Microárea</h1>
       <p class="lead">Suba o "Mapa de Acompanhamento" do Bolsa Família (.html) e o export "Acompanhamento de cidadãos vinculados" do e-SUS PEC (.csv). O cruzamento é feito por <b>nome completo + data de nascimento</b> — CPF/CNS/NIS podem faltar em qualquer um dos dois arquivos, então nome + nascimento é a chave mais confiável disponível nos dois. Beneficiários sem correspondência aparecem como <b>FA</b> (fora de área / sem cadastro na Atenção Primária). Nada é enviado a nenhum servidor — o cruzamento inteiro acontece no seu navegador.</p>
 
       <div class="group-label">Arquivo 1 — Mapa de Acompanhamento (Bolsa Família)</div>
@@ -73,6 +73,11 @@
             <label for="fBusca">Buscar por nome</label>
             <input id="fBusca" placeholder="Nome do beneficiário...">
           </div>
+        </div>
+
+        <div class="sidebar-block">
+          <div class="sidebar-title">Legenda</div>
+          <div class="legenda-item"><span class="badge sev-erro">FA</span> Beneficiários que não estão vinculados à ESF aparecem como FA.</div>
         </div>
 
         <div class="sidebar-block">

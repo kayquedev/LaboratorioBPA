@@ -701,6 +701,19 @@
 
     document.getElementById("sidebarCount").textContent = regs.length.toLocaleString("pt-BR");
 
+    let receberF = 0, pendenteF = 0;
+    regs.forEach((r) => {
+      if (!r.sigtapEncontrado) return;
+      const temErro = r.problemas.some((p) => p.sev === "erro");
+      if (temErro) pendenteF += r.valorEstimado; else receberF += r.valorEstimado;
+    });
+    const totalF = receberF + pendenteF;
+    const pctPagarF = totalF ? Math.round((receberF / totalF) * 100) : 0;
+    document.getElementById("sidebarValorTotal").textContent = fmtMoeda(totalF);
+    document.getElementById("sidebarValorPagar").textContent = fmtMoeda(receberF);
+    document.getElementById("sidebarValorPagarLabel").textContent =
+      "valor total a pagar (" + pctPagarF + "% do total · " + fmtMoeda(pendenteF) + " pendente)";
+
     const body = document.getElementById("registrosBody");
     body.innerHTML = regs.slice(0, MAX).map((r) =>
       "<tr><td>" + r.tipo + "</td>" +

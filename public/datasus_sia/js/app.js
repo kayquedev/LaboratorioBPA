@@ -147,6 +147,24 @@
     }).join("");
   }
 
+  // mesmos indicadores por setor já usados no Qualidade BPA/Correção BPA
+  const SETOR_INDICADORES = {
+    "Laboratório": ["0202020380"],
+    "Pronto Atendimento": ["0301060096"],
+    "Especialidades": ["0301010072", "0301010048"],
+    "Fisioterapia": ["0302050027"],
+    "TFD (transporte)": ["0803010125", "0803010109"],
+  };
+  function renderSetores() {
+    const codigosPresentes = new Set(todosRegistros().map((r) => r.sigtap));
+    const html = Object.entries(SETOR_INDICADORES).map(([nome, codigos]) => {
+      const importado = codigos.some((c) => codigosPresentes.has(c));
+      return '<span class="badge ' + (importado ? "b-ok" : "sev-erro") + '" style="margin-right:8px;">' +
+        (importado ? "✓" : "✗") + " " + escapeHtml(nome) + "</span>";
+    }).join(" ");
+    document.getElementById("setoresResumo").innerHTML = html;
+  }
+
   function agruparPorChave(registros, chaveFn) {
     const mapa = new Map();
     registros.forEach((r) => {
@@ -193,6 +211,7 @@
     renderResumo();
     renderConferencia();
     renderFontes();
+    renderSetores();
     renderPainelGlosas();
     renderPainelUnidades();
   }

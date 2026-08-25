@@ -15,6 +15,8 @@
       <button class="back-btn hidden" id="btnBack" title="Início">← Início</button>
       <div class="topbar-brand" id="topbarTitle">Qualidade BPA</div>
       <div class="topbar-actions hidden" id="topbarActions">
+        <input type="file" id="addFileInput" accept=".txt" class="hidden">
+        <button class="btn btn-ghost-dark" id="btnAddFile">+ Adicionar arquivo</button>
         <button class="btn btn-ghost-dark" id="btnExport">⬇ Exportar CSV</button>
         <button class="btn btn-ghost-dark" id="btnReimport">↻ Novo arquivo</button>
       </div>
@@ -30,7 +32,7 @@
     <div class="wrap-narrow">
       <div class="eyebrow">SUS · SIA · BPA Magnético</div>
       <h1>Qualidade BPA</h1>
-      <p class="lead">Suba um arquivo BPA já gerado (linhas tipo 02 / BPA-C e/ou 03 / BPA-I) pra ver estatísticas de produção por SIGTAP e conferir possíveis problemas de qualidade — tudo processado aqui no navegador, o arquivo não é enviado ao servidor.</p>
+      <p class="lead">Suba um arquivo BPA já gerado (linhas tipo 02 / BPA-C e/ou 03 / BPA-I) pra ver estatísticas de produção por SIGTAP e conferir possíveis problemas de qualidade — tudo processado aqui no navegador, o arquivo não é enviado ao servidor. Depois de carregar o primeiro, dá pra adicionar mais arquivos (ex: um do laboratório terceirizado) e analisar tudo junto.</p>
 
       <label class="drop" id="drop">
         <input type="file" id="fileInput" accept=".txt">
@@ -90,6 +92,12 @@
               <option value="03">03 · BPA-I</option>
             </select>
           </div>
+          <div class="field hidden" id="campoOrigem">
+            <label for="fOrigem">Origem (arquivo)</label>
+            <select id="fOrigem">
+              <option value="">Todas</option>
+            </select>
+          </div>
           <div class="field">
             <label for="fCbo">CBO</label>
             <input id="fCbo" placeholder="Todos">
@@ -121,7 +129,7 @@
           <table class="preview">
             <thead>
               <tr>
-                <th>Tipo</th><th>Folha</th><th>Seq.</th><th>CBO</th><th>SIGTAP</th>
+                <th>Tipo</th><th>Origem</th><th>Folha</th><th>Seq.</th><th>CBO</th><th>SIGTAP</th>
                 <th>Data</th><th>Qtd.</th><th>Valor (R$)</th><th>Paciente</th><th>Situação</th><th>O que é / Como resolver</th>
               </tr>
             </thead>

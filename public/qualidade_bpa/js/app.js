@@ -3,8 +3,8 @@
 
   const parser = window.QualidadeBpaParser;
 
-  let parsed = null;      // { header, registros, linhasIgnoradas }
-  let drillState = null;  // { title, preset: {tipo, cbo, sigtap, soProblemas} }
+  let parsed = null;      // { fontes: [{nome, header, registros}], registros } - registros junta todas as fontes
+  let drillState = null;  // { title, preset: {tipo, cbo, sigtap, soProblemas, origem} }
 
   // ---------- helpers ----------
   function setMsg(el, type, text) { el.className = "msg show " + type; el.textContent = text; }
@@ -104,53 +104,78 @@
   const fileInput = document.getElementById("fileInput");
   const fname = document.getElementById("fname");
   const uploadMsg = document.getElementById("uploadMsg");
+  const addFileInput = document.getElementById("addFileInput");
 
   ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("drag"); }));
   ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("drag"); }));
   drop.addEventListener("drop", (e) => {
-    if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; handleFile(e.dataTransfer.files[0]); }
+    if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; handleFile(e.dataTransfer.files[0], "novo"); }
   });
-  fileInput.addEventListener("change", () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+  fileInput.addEventListener("change", () => { if (fileInput.files.length) handleFile(fileInput.files[0], "novo"); });
+  addFileInput.addEventListener("change", () => {
+    if (addFileInput.files.length) handleFile(addFileInput.files[0], "adicionar");
+    addFileInput.value = "";
+  });
 
-  function handleFile(file) {
-    fname.textContent = file.name;
-    clearMsg(uploadMsg);
+  function handleFile(file, modo) {
+    if (modo === "novo") { fname.textContent = file.name; clearMsg(uploadMsg); }
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const result = parser.parseFile(e.target.result);
         if (!result.header && result.registros.length === 0) {
-          setMsg(uploadMsg, "error", "Não encontrei um cabeçalho (tipo 01) nem linhas de produção (tipo 02/03) nesse arquivo.");
+          const msg = "Não encontrei um cabeçalho (tipo 01) nem linhas de produção (tipo 02/03) em \"" + file.name + "\".";
+          if (modo === "adicionar") { window.alert(msg); } else { setMsg(uploadMsg, "error", msg); }
           return;
         }
-        parsed = result;
+        result.registros.forEach((r) => { r.origem = file.name; });
+        const fonte = { nome: file.name, header: result.header, registros: result.registros };
+        if (modo === "adicionar" && parsed) {
+          parsed.fontes.push(fonte);
+          parsed.registros = parsed.registros.concat(result.registros);
+        } else {
+          parsed = { fontes: [fonte], registros: result.registros.slice() };
+        }
         avaliarTodos();
         window.QualidadeBpaLookup.ready.finally(showDashboard);
       } catch (err) {
-        setMsg(uploadMsg, "error", "Não foi possível ler o arquivo. (" + err.message + ")");
+        const msg = "Não foi possível ler \"" + file.name + "\". (" + err.message + ")";
+        if (modo === "adicionar") { window.alert(msg); } else { setMsg(uploadMsg, "error", msg); }
       }
     };
     reader.readAsText(file, "utf-8");
   }
 
+  // numeração de folha/seq e a competência do cabeçalho são escopadas a cada
+  // arquivo (cada BPA magnético é uma submissão independente) — por isso as
+  // checagens abaixo comparam cada registro só com os outros do mesmo arquivo.
+  function checarCabecalho(fonte) {
+    if (!fonte.header) return null;
+    const distinctFolhas = new Set(fonte.registros.map((r) => r.folha)).size;
+    const linhasOk = fonte.header.numLinhas === fonte.registros.length;
+    const folhasOk = fonte.header.numFolhas === distinctFolhas;
+    return { linhasOk, folhasOk, distinctFolhas, ok: linhasOk && folhasOk };
+  }
+
   // ---------- qualidade (por registro + agregada) ----------
   function avaliarTodos() {
-    const regs = parsed.registros;
-    const header = parsed.header;
     const hoje = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const lookup = window.QualidadeBpaLookup;
 
-    const folhaSeqCount = {};
-    regs.forEach((r) => { const k = r.folha + "/" + r.seq; folhaSeqCount[k] = (folhaSeqCount[k] || 0) + 1; });
-
+    // duplicidade de paciente/procedimento/data vale entre TODAS as fontes
+    // (o mesmo atendimento pode ter sido lançado duas vezes em arquivos diferentes)
     const dupCount = {};
-    regs.filter((r) => r.tipo === "03").forEach((r) => {
+    parsed.registros.filter((r) => r.tipo === "03").forEach((r) => {
       const k = pacienteChave(r) + "|" + r.sigtap + "|" + r.dataAtendimento;
       dupCount[k] = (dupCount[k] || 0) + 1;
     });
 
-    const lookup = window.QualidadeBpaLookup;
+    parsed.fontes.forEach((fonte) => {
+    const header = fonte.header;
+    const folhaSeqCount = {};
+    fonte.registros.forEach((r) => { const k = r.folha + "/" + r.seq; folhaSeqCount[k] = (folhaSeqCount[k] || 0) + 1; });
 
-    regs.forEach((r) => {
+    fonte.registros.forEach((r) => {
       const codigos = [];
       const sigtapValido = /^\d{10}$/.test(r.sigtap) && !/^0+$/.test(r.sigtap);
       if (!sigtapValido) codigos.push("SIGTAP_INVALIDO");
@@ -195,31 +220,40 @@
       r.sigtapEncontrado = !!info;
       r.valorEstimado = info ? info.valor * (r.quantidade || 0) : 0;
     });
+    });
   }
 
   // ---------- dashboard ----------
   function renderAlert() {
     const el = document.getElementById("headerAlert");
-    const regs = parsed.registros;
-    if (!parsed.header) {
+    const linhas = [];
+    let algumaDivergencia = false;
+
+    parsed.fontes.forEach((fonte) => {
+      const rotulo = "<b>" + escapeHtml(fonte.nome) + "</b>";
+      if (!fonte.header) {
+        algumaDivergencia = true;
+        linhas.push(rotulo + ": sem cabeçalho (tipo 01) — não dá pra conferir numLinhas/numFolhas declarados.");
+        return;
+      }
+      const chk = checarCabecalho(fonte);
+      if (!chk.ok) {
+        algumaDivergencia = true;
+        const partes = [];
+        if (!chk.linhasOk) partes.push("cabeçalho declara <b>" + fonte.header.numLinhas + "</b> linha(s), o arquivo tem <b>" + fonte.registros.length + "</b>");
+        if (!chk.folhasOk) partes.push("cabeçalho declara <b>" + fonte.header.numFolhas + "</b> folha(s), foram encontradas <b>" + chk.distinctFolhas + "</b>");
+        linhas.push(rotulo + " (competência " + fonte.header.competencia + "): " + partes.join("; ") + ".");
+      }
+    });
+
+    if (algumaDivergencia) {
       el.className = "alert-banner show";
-      el.innerHTML = "<b>Sem cabeçalho.</b> O arquivo não tem uma linha tipo 01 — não dá pra conferir numLinhas/numFolhas declarados.";
-      return;
-    }
-    const maxFolha = regs.reduce((m, r) => Math.max(m, r.folha || 0), 0);
-    const divergencias = [];
-    if (parsed.header.numLinhas !== regs.length) {
-      divergencias.push("cabeçalho declara <b>" + parsed.header.numLinhas + "</b> linha(s), o arquivo tem <b>" + regs.length + "</b>");
-    }
-    if (parsed.header.numFolhas !== maxFolha) {
-      divergencias.push("cabeçalho declara <b>" + parsed.header.numFolhas + "</b> folha(s), a maior folha encontrada é <b>" + maxFolha + "</b>");
-    }
-    if (divergencias.length) {
-      el.className = "alert-banner show";
-      el.innerHTML = "<b>Divergência no cabeçalho.</b> Competência " + parsed.header.competencia + " — " + divergencias.join("; ") + ".";
+      el.innerHTML = "<b>Divergência no cabeçalho.</b><br>" + linhas.join("<br>");
     } else {
       el.className = "alert-banner show ok";
-      el.innerHTML = "<b>Cabeçalho confere.</b> Competência " + parsed.header.competencia + " — contagem de linhas e folhas batem com o declarado. Processado 100% no navegador, nada é enviado ao servidor.";
+      const nomes = parsed.fontes.map((f) => escapeHtml(f.nome)).join(", ");
+      const plural = parsed.fontes.length > 1 ? "s conferem" : " confere";
+      el.innerHTML = "<b>Cabeçalho" + plural + ".</b> " + nomes + " — contagem de linhas e folhas batem com o declarado. Processado 100% no navegador, nada é enviado ao servidor.";
     }
   }
 
@@ -228,11 +262,15 @@
     const t02 = regs.filter((r) => r.tipo === "02").length;
     const t03 = regs.filter((r) => r.tipo === "03").length;
     const pacientes = new Set(regs.filter((r) => r.tipo === "03").map(pacienteChave)).size;
+    const competencias = [...new Set(parsed.fontes.map((f) => f.header ? f.header.competencia : null).filter(Boolean))];
+    const quartaStat = parsed.fontes.length > 1
+      ? ["Arquivos importados", parsed.fontes.length]
+      : ["Competência", competencias[0] || "—"];
     const stats = [
       ["Registros", regs.length],
       ["BPA-C × BPA-I", t02 + " <small>/</small> " + t03],
       ["Pacientes distintos", pacientes],
-      ["Competência", parsed.header ? parsed.header.competencia : "—"],
+      quartaStat,
     ];
     document.getElementById("summaryRow").innerHTML = stats.map(
       ([l, n]) => '<div class="stat-box"><div class="l">' + l + '</div><div class="n">' + n + "</div></div>"
@@ -310,15 +348,15 @@
       preset: { soProblemas: true }, title: "Registros com problema de qualidade",
     });
 
-    let headerValor = "—", headerDesc = "Arquivo sem cabeçalho (tipo 01).", headerCor = null;
-    if (parsed.header) {
-      const maxFolha = regs.reduce((m, r) => Math.max(m, r.folha || 0), 0);
-      const ok = parsed.header.numLinhas === total && parsed.header.numFolhas === maxFolha;
+    let headerValor = "—", headerDesc = "Nenhum arquivo com cabeçalho (tipo 01).", headerCor = null;
+    const comHeader = parsed.fontes.filter((f) => f.header);
+    if (comHeader.length) {
+      const ok = comHeader.every((f) => checarCabecalho(f).ok);
       headerValor = ok ? "✓" : "✗";
       headerCor = ok ? "var(--teal)" : "var(--red)";
       headerDesc = ok
-        ? "numLinhas e numFolhas do cabeçalho batem com o arquivo."
-        : "numLinhas/numFolhas do cabeçalho não batem com o arquivo — veja o aviso acima.";
+        ? "numLinhas e numFolhas do(s) cabeçalho(s) batem com o(s) arquivo(s)."
+        : "numLinhas/numFolhas de algum cabeçalho não bate com o arquivo — veja o aviso acima.";
     }
     cardsQ.push({
       id: "cabecalho", badge: '<span class="badge b-soon">Resumo</span>', corValor: headerCor,
@@ -343,10 +381,10 @@
 
   // ---------- painéis ----------
   function topN(map, n) { return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, n); }
-  function painelHtml(titulo, entries, formatKey) {
+  function painelHtml(titulo, entries, formatKey, formatVal) {
     if (!entries.length) return '<div class="painel"><h3>' + titulo + '</h3><div class="vazio">Sem dados.</div></div>';
     const rows = entries.map(([k, v]) =>
-      "<tr><td>" + (formatKey ? formatKey(k) : escapeHtml(k)) + '</td><td class="n">' + v.toLocaleString("pt-BR") + "</td></tr>"
+      "<tr><td>" + (formatKey ? formatKey(k) : escapeHtml(k)) + '</td><td class="n">' + (formatVal ? formatVal(v) : v.toLocaleString("pt-BR")) + "</td></tr>"
     ).join("");
     return '<div class="painel"><h3>' + titulo + "</h3><table>" + rows + "</table></div>";
   }
@@ -357,24 +395,32 @@
   function renderPaineis() {
     const regs = parsed.registros;
     const porProcedimentoQtd = {}, porProcedimentoOcorr = {}, porCbo = {}, porDia = {}, porSexo = {}, porBairro = {};
+    const porOrigemCount = {}, porOrigemValor = {};
     regs.forEach((r) => {
       porProcedimentoQtd[r.sigtap] = (porProcedimentoQtd[r.sigtap] || 0) + (r.quantidade || 0);
       porProcedimentoOcorr[r.sigtap] = (porProcedimentoOcorr[r.sigtap] || 0) + 1;
       porCbo[r.cbo] = (porCbo[r.cbo] || 0) + 1;
+      porOrigemCount[r.origem] = (porOrigemCount[r.origem] || 0) + 1;
+      porOrigemValor[r.origem] = (porOrigemValor[r.origem] || 0) + r.valorEstimado;
       if (r.tipo === "03") {
         porDia[fmtData(r.dataAtendimento)] = (porDia[fmtData(r.dataAtendimento)] || 0) + 1;
         porSexo[r.sexo || "—"] = (porSexo[r.sexo || "—"] || 0) + 1;
         porBairro[r.bairro || "—"] = (porBairro[r.bairro || "—"] || 0) + 1;
       }
     });
-    document.getElementById("paineisGrid").innerHTML = [
+    const paineis = [
       painelHtml("Top procedimentos (quantidade)", topN(porProcedimentoQtd, 8), (c) => labelComNome(c, sigtapNome(c))),
       painelHtml("Top procedimentos (ocorrências)", topN(porProcedimentoOcorr, 8), (c) => labelComNome(c, sigtapNome(c))),
       painelHtml("Por CBO", topN(porCbo, 8), (c) => labelComNome(c, cboNome(c))),
       painelHtml("Por dia (BPA-I)", topN(porDia, 8)),
       painelHtml("Por sexo (BPA-I)", topN(porSexo, 8)),
       painelHtml("Por bairro (BPA-I)", topN(porBairro, 8)),
-    ].join("");
+    ];
+    if (parsed.fontes.length > 1) {
+      paineis.push(painelHtml("Por origem (registros)", topN(porOrigemCount, 8)));
+      paineis.push(painelHtml("Por origem (R$ estimado)", topN(porOrigemValor, 8), null, fmtMoeda));
+    }
+    document.getElementById("paineisGrid").innerHTML = paineis.join("");
     renderGlossario();
   }
 
@@ -405,14 +451,30 @@
 
   // ---------- drilldown ----------
   const fTipo = document.getElementById("fTipo");
+  const fOrigem = document.getElementById("fOrigem");
   const fCbo = document.getElementById("fCbo");
   const fSigtap = document.getElementById("fSigtap");
   const fBusca = document.getElementById("fBusca");
   const fSoProblemas = document.getElementById("fSoProblemas");
   const filterMsg = document.getElementById("filterMsg");
+  const campoOrigem = document.getElementById("campoOrigem");
+
+  function populateOrigemFilter() {
+    if (parsed.fontes.length <= 1) {
+      campoOrigem.classList.add("hidden");
+      fOrigem.value = "";
+      return;
+    }
+    campoOrigem.classList.remove("hidden");
+    const atual = fOrigem.value;
+    fOrigem.innerHTML = '<option value="">Todas</option>' +
+      parsed.fontes.map((f) => '<option value="' + escapeHtml(f.nome) + '">' + escapeHtml(f.nome) + "</option>").join("");
+    fOrigem.value = parsed.fontes.some((f) => f.nome === atual) ? atual : "";
+  }
 
   function filteredRegistros() {
     const tipo = fTipo.value;
+    const origem = fOrigem.value;
     const cbo = fCbo.value.trim();
     const sigtap = fSigtap.value.trim();
     const busca = fBusca.value.trim().toLowerCase();
@@ -420,6 +482,7 @@
 
     return parsed.registros.filter((r) => {
       if (tipo && r.tipo !== tipo) return false;
+      if (origem && r.origem !== origem) return false;
       if (cbo && r.cbo.indexOf(cbo) === -1) return false;
       if (sigtap && r.sigtap.indexOf(sigtap) === -1) return false;
       if (soProblemas && r.problemas.length === 0) return false;
@@ -455,6 +518,7 @@
     const body = document.getElementById("registrosBody");
     body.innerHTML = regs.slice(0, MAX).map((r) =>
       "<tr><td>" + r.tipo + "</td>" +
+      '<td title="' + escapeHtml(r.origem) + '">' + escapeHtml(r.origem) + "</td>" +
       '<td class="num">' + r.folha + "</td>" +
       '<td class="num">' + r.seq + "</td>" +
       '<td class="num">' + cboCelHtml(r.cbo) + "</td>" +
@@ -471,13 +535,13 @@
     if (regs.length === 0) setMsg(filterMsg, "warn", "Nenhum registro corresponde aos filtros aplicados.");
     else if (regs.length > MAX) setMsg(filterMsg, "warn", regs.length + " registros encontrados — mostrando os primeiros " + MAX + ".");
   }
-  [fTipo, fCbo, fSigtap, fBusca, fSoProblemas].forEach((el) => el.addEventListener("input", renderDrilldown));
+  [fTipo, fOrigem, fCbo, fSigtap, fBusca, fSoProblemas].forEach((el) => el.addEventListener("input", renderDrilldown));
 
   function exportCsv() {
     const regs = filteredRegistros();
-    const header = ["tipo", "folha", "seq", "cbo", "cbo_nome", "sigtap", "sigtap_nome", "data_atendimento", "quantidade", "valor_estimado_rs", "paciente", "situacao", "o_que_e_como_resolver"];
+    const header = ["tipo", "origem", "folha", "seq", "cbo", "cbo_nome", "sigtap", "sigtap_nome", "data_atendimento", "quantidade", "valor_estimado_rs", "paciente", "situacao", "o_que_e_como_resolver"];
     const linhas = regs.map((r) => [
-      r.tipo, r.folha, r.seq, r.cbo, cboNome(r.cbo), r.sigtap, sigtapNome(r.sigtap),
+      r.tipo, r.origem, r.folha, r.seq, r.cbo, cboNome(r.cbo), r.sigtap, sigtapNome(r.sigtap),
       r.tipo === "03" ? r.dataAtendimento : "",
       r.quantidade,
       r.valorEstimado.toFixed(2).replace(".", ","),
@@ -518,6 +582,7 @@
   }
 
   function showDashboard() {
+    populateOrigemFilter();
     renderAlert();
     renderSummary();
     renderFaturamento();
@@ -533,6 +598,7 @@
 
   function showDrilldown(title, preset) {
     fTipo.value = preset.tipo || "";
+    fOrigem.value = preset.origem || "";
     fCbo.value = preset.cbo || "";
     fSigtap.value = preset.sigtap || "";
     fBusca.value = "";
@@ -558,5 +624,6 @@
   btnBack.addEventListener("click", () => { history.back(); });
   document.getElementById("btnReimport").addEventListener("click", showUpload);
   document.getElementById("btnExport").addEventListener("click", exportCsv);
+  document.getElementById("btnAddFile").addEventListener("click", () => addFileInput.click());
 
 })();

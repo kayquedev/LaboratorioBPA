@@ -93,7 +93,7 @@
     ).join("");
 
     const problemasHtml = registro.cods.map((cod) => {
-      const info = writer.PROBLEMA_CATALOG[cod];
+      const info = writer.PROBLEMA_CATALOG[cod] || { sev: "aviso", texto: cod, explicacao: "", resolver: "" };
       return '<div class="probitem probitem-' + info.sev + '"><b>' + escapeHtml(info.texto) + ":</b> " + escapeHtml(info.explicacao) +
         '<span class="resolver">Como resolver: ' + escapeHtml(info.resolver) + "</span></div>";
     }).join("");

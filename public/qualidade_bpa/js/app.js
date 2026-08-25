@@ -677,7 +677,9 @@
           idx, sigtap: r.sigtap, cbo: r.cbo, quantidade: r.quantidade, competencia: r.competencia,
           dataAtendimento: r.dataAtendimento, dataNascimento: r.dataNascimento,
           cep: r.cep, sexo: r.sexo, nomePaciente: r.nomePaciente,
-          cods: r.problemas.map((p) => p.cod),
+          // folha/seq duplicada nunca aparece aqui mesmo quando o registro tem
+          // outro problema junto — aquela parte já foi resolvida automaticamente
+          cods: r.problemas.map((p) => p.cod).filter((cod) => cod !== "FOLHA_SEQ_DUPLICADA"),
         });
       });
       return {

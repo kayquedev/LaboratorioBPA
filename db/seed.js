@@ -11,6 +11,7 @@ const MODULES = [
   { slug: "esus_pec", name: "ESUS PEC", description: "Gerador de BPA a partir da produção registrada no ESUS PEC.", status: "soon", sort_order: 3 },
   { slug: "qualidade_bpa", name: "Qualidade BPA", description: "Analisa um arquivo BPA já gerado (BPA-C/BPA-I), com painéis, filtros e verificações de qualidade dos dados por procedimento SIGTAP.", status: "live", sort_order: 4 },
   { slug: "correcao_bpa", name: "Correção BPA", description: "Corrige as pendências detectadas no Qualidade BPA — renumera folha/sequência automaticamente e guia a correção manual do resto — e gera o arquivo corrigido.", status: "live", sort_order: 5 },
+  { slug: "bolsa_familia", name: "Bolsa Família", description: "Cruza o Mapa de Acompanhamento do Bolsa Família com os cidadãos vinculados do e-SUS PEC para identificar a microárea de cada beneficiário.", status: "live", sort_order: 6 },
 ];
 
 async function main() {

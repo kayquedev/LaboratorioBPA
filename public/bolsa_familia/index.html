@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bolsa Família</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/5.0.8/jspdf.plugin.autotable.min.js"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="appShell" class="hidden">
+
+  <nav class="topbar">
+    <div class="topbar-wrap">
+      <button class="back-btn hidden" id="btnVoltarUpload" title="Início">← Início</button>
+      <a class="back-btn" href="/">← Portal</a>
+      <div class="topbar-brand">Bolsa Família</div>
+      <div class="topbar-user">
+        <span id="topbarUsername"></span>
+        <button class="btn btn-ghost-dark" id="btnLogout">Sair</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===================== UPLOAD (escuro) ===================== -->
+  <section id="viewUpload" class="view-dark">
+    <div class="wrap-narrow">
+      <div class="eyebrow">Bolsa Família × e-SUS PEC</div>
+      <h1>Cruzamento de Microárea</h1>
+      <p class="lead">Suba o "Mapa de Acompanhamento" do Bolsa Família (.html) e o export "Acompanhamento de cidadãos vinculados" do e-SUS PEC (.csv). O cruzamento é feito por <b>nome completo + data de nascimento</b> — CPF/CNS/NIS podem faltar em qualquer um dos dois arquivos, então nome + nascimento é a chave mais confiável disponível nos dois. Beneficiários sem correspondência aparecem como <b>FA</b> (fora de área / sem cadastro na Atenção Primária). Nada é enviado a nenhum servidor — o cruzamento inteiro acontece no seu navegador.</p>
+
+      <div class="group-label">Arquivo 1 — Mapa de Acompanhamento (Bolsa Família)</div>
+      <div class="drop" id="dropBf">
+        <input type="file" id="inputBf" accept=".html,.htm">
+        <div class="icon">📄</div>
+        <div>Clique ou arraste o arquivo .html aqui</div>
+        <div class="fname" id="fnameBf"></div>
+      </div>
+
+      <div class="group-label" style="margin-top:22px;">Arquivo 2 — Cidadãos vinculados (e-SUS PEC)</div>
+      <div class="drop" id="dropEsus">
+        <input type="file" id="inputEsus" accept=".csv">
+        <div class="icon">📄</div>
+        <div>Clique ou arraste o arquivo .csv aqui</div>
+        <div class="fname" id="fnameEsus"></div>
+      </div>
+
+      <div class="msg" id="msgUpload"></div>
+    </div>
+  </section>
+
+  <!-- ===================== RESULTADO (claro) ===================== -->
+  <section id="viewResultado" class="view-light hidden">
+    <div class="drill-layout">
+
+      <aside class="sidebar">
+        <div class="sidebar-block">
+          <div class="sidebar-title">Resultado</div>
+          <div class="sidebar-stat" id="sidebarCount">—</div>
+          <div class="sidebar-stat-label">beneficiário(s) na tabela</div>
+        </div>
+
+        <div class="sidebar-block">
+          <div class="sidebar-title">Filtros</div>
+          <div class="field">
+            <label for="fMicroarea">Microárea</label>
+            <select id="fMicroarea"><option value="">Todas</option></select>
+          </div>
+          <div class="field">
+            <label for="fBusca">Buscar por nome</label>
+            <input id="fBusca" placeholder="Nome do beneficiário...">
+          </div>
+        </div>
+
+        <div class="sidebar-block">
+          <div class="sidebar-title">Exportar</div>
+          <button class="btn" id="btnExportarExcel" style="width:100%;justify-content:center;background:var(--teal);color:#04241c;margin-bottom:8px;">⬇ Exportar Excel (.xlsx)</button>
+          <button class="btn" id="btnExportarPdf" style="width:100%;justify-content:center;background:var(--blue-link);color:#04241c;">⬇ Exportar PDF</button>
+        </div>
+      </aside>
+
+      <main class="drill-main">
+        <div class="group-label">Resumo</div>
+        <div class="cards-grid" id="cardsResumo" style="margin-bottom:24px;"></div>
+
+        <div class="msg" id="filterMsg"></div>
+        <div class="tbl-wrap">
+          <table class="preview">
+            <thead id="tabelaHead"></thead>
+            <tbody id="tabelaBody"></tbody>
+          </table>
+        </div>
+      </main>
+
+    </div>
+  </section>
+
+</div>
+
+<script src="js/session.js"></script>
+<script src="js/parserBolsaFamilia.js"></script>
+<script src="js/parserEsus.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>

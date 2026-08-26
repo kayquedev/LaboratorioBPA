@@ -114,26 +114,12 @@
 
   function renderSetores() {
     const codigosPresentes = new Set(parsed.registros.map((r) => r.sigtap));
-    const setores = Object.entries(SETOR_INDICADORES).map(([nome, codigos]) => ({
-      nome, importado: codigos.some((c) => codigosPresentes.has(c)),
-    }));
-
-    document.getElementById("setoresList").innerHTML = setores.map((s) =>
-      '<div class="fonte-row"><div class="fonte-info"><span class="fonte-nome">' + escapeHtml(s.nome) + "</span></div>" +
-      '<span class="badge ' + (s.importado ? "b-ok" : "sev-erro") + '">' + (s.importado ? "✓ Importado" : "✗ Não importado") + "</span></div>"
-    ).join("");
-
-    const faltando = setores.filter((s) => !s.importado);
-    const el = document.getElementById("setoresAlert");
-    if (faltando.length) {
-      el.className = "alert-banner show";
-      el.innerHTML = "<b>Atenção antes de enviar.</b> Não foi encontrado nenhum procedimento indicador de: " +
-        faltando.map((s) => "<b>" + escapeHtml(s.nome) + "</b>").join(", ") +
-        ". Confira se esse(s) setor(es) realmente não tiveram produção nessa competência, ou se algum arquivo ficou de fora da importação.";
-    } else {
-      el.className = "alert-banner show ok";
-      el.innerHTML = "<b>Todos os setores monitorados têm produção neste arquivo.</b>";
-    }
+    const html = Object.entries(SETOR_INDICADORES).map(([nome, codigos]) => {
+      const importado = codigos.some((c) => codigosPresentes.has(c));
+      return '<span class="badge ' + (importado ? "b-ok" : "sev-erro") + '" style="margin-right:8px;">' +
+        (importado ? "✓" : "✗") + " " + escapeHtml(nome) + "</span>";
+    }).join(" ");
+    document.getElementById("setoresResumo").innerHTML = html;
   }
 
   // ---------- estabelecimentos (CNES -> nome, cadastrado manualmente e

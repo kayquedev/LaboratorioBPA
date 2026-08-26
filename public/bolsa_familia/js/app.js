@@ -43,6 +43,26 @@
     return v.trim();
   }
 
+  // -------- unificação de beneficiários duplicados no próprio arquivo do
+  // Bolsa Família (mesmo NIS, ou — se o NIS faltar — mesmo nome + data de
+  // nascimento) --------
+  function chaveBeneficiario(b) {
+    const nis = (b.nis || "").trim();
+    return nis ? "nis:" + nis : chave(b.nome, b.dataNascimento);
+  }
+  function unificarDuplicados(lista) {
+    const vistos = new Set();
+    const unicos = [];
+    let duplicados = 0;
+    lista.forEach((b) => {
+      const k = chaveBeneficiario(b);
+      if (vistos.has(k)) { duplicados++; return; }
+      vistos.add(k);
+      unicos.push(b);
+    });
+    return { unicos, duplicados };
+  }
+
   // -------- upload dos 2 arquivos --------
   let arquivoBf = null;
   let arquivoEsus = null;
@@ -83,6 +103,7 @@
   }
 
   let beneficiarios = [];
+  let duplicadosUnificados = 0;
 
   function tentarProcessar() {
     if (!arquivoBf || !arquivoEsus) return;
@@ -90,11 +111,13 @@
     Promise.all([lerArrayBuffer(arquivoBf), lerArrayBuffer(arquivoEsus)])
       .then(([bufBf, bufEsus]) => {
         const textoBf = bf.decodeArrayBuffer(bufBf);
-        const lista = bf.parseHtml(textoBf);
-        if (!lista.length) {
+        const listaBruta = bf.parseHtml(textoBf);
+        if (!listaBruta.length) {
           setMsg(msgUpload, "error", "Não encontrei nenhum beneficiário no arquivo do Bolsa Família — confirme se é o export \"Mapa de Acompanhamento\" correto.");
           return;
         }
+        const { unicos: lista, duplicados } = unificarDuplicados(listaBruta);
+        duplicadosUnificados = duplicados;
 
         const textoEsus = esus.decodeArrayBuffer(bufEsus);
         const resultado = esus.parseCsv(textoEsus);
@@ -179,7 +202,19 @@
     else if (lista.length > MAX) setMsg(msg, "warn", lista.length + " beneficiários encontrados — mostrando os primeiros " + MAX + ".");
   }
 
+  function renderDuplicados() {
+    const el = document.getElementById("alertDuplicados");
+    if (duplicadosUnificados > 0) {
+      el.className = "alert-banner show";
+      el.innerHTML = "<b>" + duplicadosUnificados + " cadastro(s) duplicado(s)</b> encontrado(s) no Mapa de Acompanhamento (mesmo NIS, ou mesmo nome + data de nascimento quando o NIS faltava) — foram unificados automaticamente, mantendo só a primeira ocorrência de cada beneficiário.";
+    } else {
+      el.className = "alert-banner";
+      el.innerHTML = "";
+    }
+  }
+
   function renderResultado() {
+    renderDuplicados();
     renderResumo();
     popularFiltros();
     renderTabela();

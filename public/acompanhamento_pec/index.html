@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acompanhamento Cidadãos PEC</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="appShell" class="hidden">
+
+  <nav class="topbar">
+    <div class="topbar-wrap">
+      <button class="back-btn hidden" id="btnVoltarDashboard" title="Resumo">← Resumo</button>
+      <a class="back-btn" href="/">← Início</a>
+      <div class="topbar-brand">Acompanhamento Cidadãos PEC</div>
+      <div class="topbar-user">
+        <span id="topbarUsername"></span>
+        <button class="btn btn-ghost-dark" id="btnLogout">Sair</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===================== UPLOAD (escuro) ===================== -->
+  <section id="viewUpload" class="view-dark hidden">
+    <div class="wrap-narrow">
+      <div class="eyebrow">e-SUS PEC · Território</div>
+      <h1>Acompanhamento Cidadãos PEC</h1>
+      <p class="lead">Cruza os relatórios de <b>Cidadãos vinculados</b>, <b>Condições de saúde</b> e <b>Território</b> do e-SUS PEC para achar cadastros sem endereço, desatualizados, sem nenhum atendimento registrado e sem domicílio mapeado no território. Só o arquivo de cidadãos vinculados é obrigatório — os outros dois enriquecem a análise quando enviados. Nada é enviado a nenhum servidor — a análise acontece no seu navegador.</p>
+
+      <div class="group-label">Arquivo 1 — Cidadãos vinculados (obrigatório)</div>
+      <div class="drop" id="dropVinc">
+        <input type="file" id="inputVinc" accept=".csv">
+        <div class="icon">📄</div>
+        <div>Clique ou arraste o arquivo .csv aqui</div>
+        <div class="fname" id="fnameVinc"></div>
+      </div>
+
+      <div class="group-label" style="margin-top:22px;">Arquivo 2 — Condições de saúde (opcional)</div>
+      <div class="drop" id="dropCond">
+        <input type="file" id="inputCond" accept=".csv">
+        <div class="icon">📄</div>
+        <div>Clique ou arraste o arquivo .csv aqui</div>
+        <div class="fname" id="fnameCond"></div>
+      </div>
+
+      <div class="group-label" style="margin-top:22px;">Arquivo 3 — Território (opcional, pode enviar vários — um por microárea)</div>
+      <div class="drop" id="dropTerr">
+        <input type="file" id="inputTerr" accept=".csv" multiple>
+        <div class="icon">📄</div>
+        <div>Clique ou arraste o(s) arquivo(s) .csv aqui</div>
+        <div class="fname" id="fnameTerr"></div>
+      </div>
+
+      <div class="msg" id="msgUpload"></div>
+    </div>
+  </section>
+
+  <!-- ===================== DASHBOARD (escuro) ===================== -->
+  <section id="viewDashboard" class="view-dark hidden">
+    <div class="wrap-wide">
+
+      <div class="eyebrow">e-SUS PEC · Território</div>
+      <h1 style="margin:0 0 16px;font-size:22px;">Acompanhamento de cadastros</h1>
+
+      <div class="group-label">Arquivos importados</div>
+      <div class="fontes-list" id="fontesResumo"></div>
+
+      <div class="stat-row" id="statsRow"></div>
+
+      <div id="paineisBasicos"></div>
+
+      <div id="blocoAtendimento" class="hidden" style="margin-top:30px;">
+        <div class="group-label">Registro de atendimentos (condições de saúde)</div>
+        <div class="cards-grid" id="cardSemAtendimento" style="margin-bottom:20px;">
+        </div>
+        <div class="paineis-grid" style="margin-bottom:30px;">
+          <div class="painel" id="painelSemAtendimento"></div>
+          <div id="painelConsolidado" style="grid-column: span 2;"></div>
+        </div>
+      </div>
+
+      <div id="blocoTerritorio" class="hidden" style="margin-top:10px;">
+        <div class="group-label">Território</div>
+        <div class="cards-grid" id="cardSemDomicilio" style="margin-bottom:20px;">
+        </div>
+        <div class="paineis-grid" style="margin-bottom:30px;">
+          <div class="painel" id="painelSemDomicilio"></div>
+        </div>
+      </div>
+
+      <button class="btn" id="btnVerTabela" style="background:var(--teal);color:#04241c;margin-bottom:30px;">Ver todos os cidadãos →</button>
+
+    </div>
+  </section>
+
+  <!-- ===================== TABELA (claro) ===================== -->
+  <section id="viewTabela" class="view-light hidden">
+    <div class="drill-layout">
+
+      <aside class="sidebar">
+        <div class="sidebar-block">
+          <div class="sidebar-title">Resultado</div>
+          <div class="sidebar-stat" id="sidebarCount">—</div>
+          <div class="sidebar-stat-label">cidadão(s)</div>
+        </div>
+
+        <div class="sidebar-block">
+          <div class="sidebar-title">Filtros</div>
+          <div class="field">
+            <label for="fMicroarea">Microárea</label>
+            <select id="fMicroarea"><option value="">Todas</option></select>
+          </div>
+          <div class="field">
+            <label for="fOrigem">Origem</label>
+            <select id="fOrigem">
+              <option value="">Todas</option>
+              <option value="CDS">CDS</option>
+              <option value="PEC">PEC</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="fSexo">Sexo</label>
+            <select id="fSexo"><option value="">Todos</option></select>
+          </div>
+          <div class="field">
+            <label for="fBusca">Buscar (nome)</label>
+            <input id="fBusca" placeholder="Ex.: Maria...">
+          </div>
+          <div class="field">
+            <label for="fSoSemEndereco">
+              <input type="checkbox" id="fSoSemEndereco"> Só sem endereço
+            </label>
+          </div>
+          <div class="field">
+            <label for="fSoDesatualizado">
+              <input type="checkbox" id="fSoDesatualizado"> Só desatualizado (+2 anos)
+            </label>
+          </div>
+          <div class="field hidden" id="campoSemAtendimento">
+            <label for="fSoSemAtendimento">
+              <input type="checkbox" id="fSoSemAtendimento"> Só sem atendimento
+            </label>
+          </div>
+          <div class="field hidden" id="campoSemDomicilio">
+            <label for="fSoSemDomicilio">
+              <input type="checkbox" id="fSoSemDomicilio"> Só sem domicílio
+            </label>
+          </div>
+        </div>
+      </aside>
+
+      <main class="drill-main">
+        <div class="msg" id="filterMsg"></div>
+        <div class="tbl-wrap">
+          <table class="preview">
+            <thead>
+              <tr>
+                <th>Nome</th><th>Microárea</th><th>Origem</th><th>Última atualização</th>
+                <th>Endereço</th><th>Atendimento</th><th>Domicílio</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaBody"></tbody>
+          </table>
+        </div>
+      </main>
+
+    </div>
+  </section>
+
+</div>
+
+<script src="js/session.js"></script>
+<script src="js/parserCsvGenerico.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>

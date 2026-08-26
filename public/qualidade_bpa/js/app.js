@@ -451,8 +451,8 @@
     let receber = 0, pendente = 0, naoLocalizados = 0;
     regs.forEach((r) => {
       if (!r.sigtapEncontrado) { naoLocalizados++; return; }
-      const temErro = r.problemas.some((p) => p.sev === "erro");
-      if (temErro) pendente += r.valorEstimado; else receber += r.valorEstimado;
+      const temPendencia = r.problemas.length > 0;
+      if (temPendencia) pendente += r.valorEstimado; else receber += r.valorEstimado;
     });
     const total = receber + pendente;
     const pctReceber = total ? Math.round((receber / total) * 100) : 0;
@@ -468,13 +468,13 @@
         id: "fatReceber", badge: '<span class="badge b-ok pct-badge">' + pctReceber + '% do total</span>',
         corValor: "var(--teal)", pct: pctReceber, barColor: "var(--teal)",
         valor: fmtMoeda(receber), titulo: "Faturamento estimado a receber",
-        desc: "Registros sem erro bloqueante — tendência de serem aceitos e pagos pelo SIA.",
+        desc: "Registros sem nenhuma pendência detectada — tendência de serem aceitos e pagos pelo SIA.",
       },
       {
         id: "fatPendente", badge: '<span class="badge sev-erro pct-badge">' + pctPendente + '% do total</span>',
         corValor: "var(--red)", pct: pctPendente, barColor: "var(--red)",
         valor: fmtMoeda(pendente), titulo: "Pendente / risco de glosa",
-        desc: "Registros com pelo menos um erro (SIGTAP/CBO inválido, instrumento incompatível, sexo/idade incompatível etc.), risco de rejeição ou glosa.",
+        desc: "Registros com pelo menos uma pendência (erro ou aviso — SIGTAP/CBO inválido, data suspeita, CEP inválido, possível duplicidade etc.), risco de rejeição, glosa, ou que merece revisão antes do envio.",
       },
     ];
     if (naoLocalizados) {
@@ -792,8 +792,8 @@
     let receberF = 0, pendenteF = 0;
     regs.forEach((r) => {
       if (!r.sigtapEncontrado) return;
-      const temErro = r.problemas.some((p) => p.sev === "erro");
-      if (temErro) pendenteF += r.valorEstimado; else receberF += r.valorEstimado;
+      const temPendencia = r.problemas.length > 0;
+      if (temPendencia) pendenteF += r.valorEstimado; else receberF += r.valorEstimado;
     });
     const totalF = receberF + pendenteF;
     const pctPagarF = totalF ? Math.round((receberF / totalF) * 100) : 0;

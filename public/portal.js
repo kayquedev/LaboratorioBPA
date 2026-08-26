@@ -2,6 +2,17 @@
   "use strict";
 
   const ICONS = { laboratorio: "🧪", oftalmo: "👁", esus_pec: "🏥", qualidade_bpa: "📊", correcao_bpa: "🛠", bolsa_familia: "👪", siaps_indicadores: "📈", datasus_sia: "💰", acompanhamento_pec: "🏘" };
+  // texto da tag de status pros módulos disponíveis - substitui o "Disponível"
+  // genérico por uma etiqueta específica do que aquele módulo faz.
+  const STATUS_TAGS = {
+    siaps_indicadores: "INDICADORES",
+    laboratorio: "BPA",
+    bolsa_familia: "ACOMPANHAMENTO",
+    qualidade_bpa: "FATURAMENTO",
+    correcao_bpa: "FATURAMENTO",
+    datasus_sia: "FATURAMENTO",
+    acompanhamento_pec: "ACOMPANHAMENTO",
+  };
   // módulos que não são páginas internas nossas, e sim links pra fora - mesmo
   // cartão/mesma regra de acesso (status live + grant), só o destino muda.
   const EXTERNAL_URLS = { siaps_indicadores: "https://siaps.kayque.site/" };
@@ -54,7 +65,7 @@
       }
 
       const statusClass = clickable ? "live" : "soon";
-      const statusText = clickable ? "Disponível" : "Em breve";
+      const statusText = clickable ? (STATUS_TAGS[m.slug] || "Disponível") : "Em breve";
 
       el.className = "mod " + (clickable ? "active" : statusClass);
       el.innerHTML =

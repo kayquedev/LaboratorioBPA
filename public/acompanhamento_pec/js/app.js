@@ -129,9 +129,20 @@
     });
   }
 
-  wireUpload("dropVinc", "inputVinc", "fnameVinc", false, (files) => { arquivoVinc = files[0]; processar(); });
-  wireUpload("dropCond", "inputCond", "fnameCond", false, (files) => { arquivoCond = files[0]; processar(); });
-  wireUpload("dropTerr", "inputTerr", "fnameTerr", true, (files) => { arquivosTerr = arquivosTerr.concat(files); processar(); });
+  const btnGerarPainel = document.getElementById("btnGerarPainel");
+
+  wireUpload("dropVinc", "inputVinc", "fnameVinc", false, (files) => { arquivoVinc = files[0]; clearMsg(msgUpload); });
+  wireUpload("dropCond", "inputCond", "fnameCond", false, (files) => { arquivoCond = files[0]; clearMsg(msgUpload); });
+  wireUpload("dropTerr", "inputTerr", "fnameTerr", true, (files) => { arquivosTerr = arquivosTerr.concat(files); clearMsg(msgUpload); });
+  wireUpload("dropTerrDashboard", "inputTerrDashboard", null, true, (files) => { arquivosTerr = arquivosTerr.concat(files); processar(); });
+
+  btnGerarPainel.addEventListener("click", () => {
+    if (!arquivoVinc) {
+      setMsg(msgUpload, "error", "Selecione ao menos o arquivo de cidadãos vinculados antes de gerar o painel.");
+      return;
+    }
+    processar();
+  });
 
   function processar() {
     if (!arquivoVinc) return;
@@ -161,6 +172,7 @@
           condicoesLinhas = [];
         }
 
+        territorioLinhas = [];
         const rsTerr = resultados.filter((r) => r.tipo === "terr");
         rsTerr.forEach((r) => {
           const parsedTerr = csv.parseCsv(csv.decodeArrayBuffer(r.buf));

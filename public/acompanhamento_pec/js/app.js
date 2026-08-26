@@ -258,6 +258,26 @@
     ).join("");
   }
 
+  function renderOrigem() {
+    const total = indicadores.length;
+    const cds = indicadores.filter((i) => (i.origem || "").toUpperCase() === "CDS").length;
+    const pec = indicadores.filter((i) => (i.origem || "").toUpperCase() === "PEC").length;
+    const pctCds = total ? Math.round((cds / total) * 100) : 0;
+    const pctPec = total ? Math.round((pec / total) * 100) : 0;
+    document.getElementById("cardsOrigem").innerHTML = [
+      cardHtml({
+        valor: String(cds), titulo: "Cadastros CDS", cor: "var(--teal)",
+        desc: "Fichas de coleta de dados simplificada (CDS), em papel, digitadas depois no sistema.",
+        badge: '<span class="badge b-ok pct-badge">' + pctCds + "%</span>",
+      }),
+      cardHtml({
+        valor: String(pec), titulo: "Cadastros PEC", cor: "var(--blue-link)",
+        desc: "Cadastros feitos diretamente no Prontuário Eletrônico do Cidadão (PEC).",
+        badge: '<span class="badge b-ok pct-badge">' + pctPec + "%</span>",
+      }),
+    ].join("");
+  }
+
   function painelConteudo(titulo, itens, vazio) {
     if (!itens.length) return "<h3>" + titulo + " (0)</h3><p class=\"vazio\">" + vazio + "</p>";
     return "<h3>" + titulo + " (" + itens.length + ")</h3><table><tbody>" +
@@ -337,6 +357,7 @@
 
   function renderDashboard() {
     indicadores = calcularIndicadores();
+    renderOrigem();
     renderResumo();
     renderPaineis();
     renderArquivos();
@@ -415,6 +436,59 @@
     else if (lista.length > MAX) setMsg(filterMsg, "warn", lista.length + " encontrados — mostrando os primeiros " + MAX + ".");
   }
   [fMicroarea, fOrigem, fSexo, fBusca, fSoSemEndereco, fSoDesatualizado, fSoSemAtendimento, fSoSemDomicilio].forEach((el) => el.addEventListener("input", renderTabela));
+
+  // -------- exportação PDF --------
+  const COLUNAS_PDF = [
+    { titulo: "Nome", get: (i) => i.nome },
+    { titulo: "Microárea", get: (i) => i.microarea },
+    { titulo: "Origem", get: (i) => i.origem },
+    { titulo: "Última atualização", get: (i) => i.ultimaAtualizacao + (i.desatualizado ? " (+2 anos)" : "") },
+    { titulo: "Endereço", get: (i) => (i.semEndereco ? "Sem endereço" : i.endereco) },
+    { titulo: "Atendimento", get: (i) => (i.semAtendimento === null ? "—" : i.semAtendimento ? "Sem atendimento" : "Tem atendimento") },
+    { titulo: "Domicílio", get: (i) => (i.semDomicilio === null ? "—" : i.semDomicilio ? "Sem domicílio" : "No território") },
+  ];
+
+  function nomeArquivoPdf() {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    return "acompanhamento_pec_" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + ".pdf";
+  }
+
+  document.getElementById("btnExportarPdf").addEventListener("click", () => {
+    const lista = filtrados();
+    const doc = new window.jspdf.jsPDF({ orientation: "landscape" });
+    const dataHora = new Date().toLocaleString("pt-BR");
+    const usuario = document.getElementById("topbarUsername").textContent || "";
+
+    doc.setFontSize(13);
+    doc.text("Acompanhamento Cidadãos PEC", 14, 14);
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text("Gerado em " + dataHora + " por " + usuario + " · " + lista.length + " cidadão(s)", 14, 20);
+
+    const idxEndereco = COLUNAS_PDF.findIndex((c) => c.titulo === "Endereço");
+
+    doc.autoTable({
+      startY: 25,
+      head: [COLUNAS_PDF.map((c) => c.titulo)],
+      body: lista.map((i) => COLUNAS_PDF.map((c) => c.get(i) || "")),
+      theme: "grid",
+      styles: { fontSize: 6.5, cellPadding: 1.5, lineWidth: 0.1, lineColor: [200, 200, 200] },
+      headStyles: { fillColor: [13, 26, 48] },
+      columnStyles: idxEndereco === -1 ? {} : { [idxEndereco]: { cellWidth: 45, fontSize: 5.5 } },
+      didDrawPage: () => {
+        const pageCount = doc.internal.getNumberOfPages();
+        doc.setFontSize(8);
+        doc.setTextColor(120);
+        doc.text(
+          "Página " + doc.internal.getCurrentPageInfo().pageNumber + " de " + pageCount,
+          doc.internal.pageSize.getWidth() - 30,
+          doc.internal.pageSize.getHeight() - 8
+        );
+      },
+    });
+    doc.save(nomeArquivoPdf());
+  });
 
   // -------- navegação --------
   function showDashboard() {

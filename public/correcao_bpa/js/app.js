@@ -419,6 +419,7 @@
       btn.addEventListener("click", () => {
         const fonte = fontes[+btn.dataset.baixarFonte];
         const out = writer.montarArquivo(fonte);
+        if (out.avisos && out.avisos.length) window.alert(out.avisos.join("\n\n"));
         baixarTexto(nomeCorrigido(fonte.nome), out.texto);
       });
     });
@@ -426,6 +427,7 @@
     if (btnUnico) {
       btnUnico.addEventListener("click", () => {
         const out = writer.montarArquivoUnico(fontes);
+        if (out.avisos && out.avisos.length) window.alert(out.avisos.join("\n\n"));
         baixarTexto("bpa_corrigido_unico.txt", out.texto);
       });
     }

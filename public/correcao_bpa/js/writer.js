@@ -130,12 +130,50 @@
       resolver: "Confirme se o código existe na competência vigente do SIGTAP; esse aviso, sozinho, não indica que a linha está errada." },
   };
 
-  // 20 registros por folha, ordem original preservada (mesma convencao
-  // observada num arquivo real: folha muda a cada 20 sequencias)
+  // Folha/seq no BPA magnetico NAO e um contador corrido: cada folha e
+  // homogenea — um so instrumento (02 = BPA-C / 03 = BPA-I), CNES,
+  // competencia, CBO e, no BPA-I, um so profissional. Agrupa os registros
+  // por essa chave, preserva a ordem original dentro do grupo, e numera cada
+  // grupo com contagem propria — folha nova quando a chave muda OU a cada 20
+  // linhas. As linhas saem reordenadas por folha (BPA-C primeiro, depois
+  // BPA-I), do jeito que o BPAMAG gera; assim o mesmo numero de folha nunca
+  // aparece em dois CNES / dois CBOs / dois instrumentos diferentes.
+  const LINHAS_POR_FOLHA = 20;
+
+  function chaveGrupo(r) {
+    return [
+      r.tipo || "",
+      r.cnes || "",
+      r.competencia || "",
+      r.cbo || "",
+      r.tipo === "03" ? (r.cnsProfissional || "") : "",
+    ].join("|");
+  }
+
   function renumerar(registros) {
-    return registros.map((r, i) => {
-      const idx = i + 1;
-      return { registro: r, novaFolha: Math.ceil(idx / 20), novoSeq: ((idx - 1) % 20) + 1 };
+    const ordenados = registros
+      .map((registro, ordemOriginal) => ({ registro, ordemOriginal }))
+      .sort((a, b) => {
+        const ka = chaveGrupo(a.registro);
+        const kb = chaveGrupo(b.registro);
+        if (ka < kb) return -1;
+        if (ka > kb) return 1;
+        return a.ordemOriginal - b.ordemOriginal; // estavel dentro do grupo
+      });
+
+    let folha = 0;
+    let seq = 0;
+    let chaveAnterior = null;
+
+    return ordenados.map(({ registro }) => {
+      const chave = chaveGrupo(registro);
+      if (chave !== chaveAnterior || seq >= LINHAS_POR_FOLHA) {
+        folha += 1;
+        seq = 0;
+        chaveAnterior = chave;
+      }
+      seq += 1;
+      return { registro, novaFolha: folha, novoSeq: seq };
     });
   }
 
@@ -156,14 +194,22 @@
   function montarConteudo(headerLinhaOriginal, registrosIncluidos) {
     const renum = renumerar(registrosIncluidos);
     const linhas = renum.map(({ registro, novaFolha, novoSeq }) => linhaFinal(registro, novaFolha, novoSeq));
-    const numFolhas = renum.length ? renum[renum.length - 1].novaFolha : 0;
+    const numFolhas = renum.reduce((max, x) => (x.novaFolha > max ? x.novaFolha : max), 0);
     let headerLine = headerLinhaOriginal || null;
     if (headerLine) {
       headerLine = patchField(headerLine, "header", "numLinhas", linhas.length);
       headerLine = patchField(headerLine, "header", "numFolhas", numFolhas);
     }
     const todasLinhas = headerLine ? [headerLine].concat(linhas) : linhas;
-    return { texto: todasLinhas.join("\r\n") + "\r\n", numLinhas: linhas.length, numFolhas };
+    const avisos = [];
+    if (numFolhas > 999) {
+      avisos.push(
+        "O arquivo ficou com " + numFolhas + " folhas, mas o campo de folha do BPA " +
+        "magnetico so tem 3 digitos (maximo 999). O SIA vai recusar o arquivo — " +
+        "separe a producao em mais de um arquivo antes de enviar."
+      );
+    }
+    return { texto: todasLinhas.join("\r\n") + "\r\n", numLinhas: linhas.length, numFolhas, avisos };
   }
 
   function montarArquivo(fonte) {

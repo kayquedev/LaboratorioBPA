@@ -288,7 +288,9 @@
   // checagens abaixo comparam cada registro só com os outros do mesmo arquivo.
   function checarCabecalho(fonte) {
     if (!fonte.header) return null;
-    const distinctFolhas = new Set(fonte.registros.map((r) => r.folha)).size;
+    // folha e um documento por (instrumento + CNES): a folha 3 do BPA-C de um
+    // CNES e a folha 3 do BPA-I (ou de outro CNES) sao folhas diferentes.
+    const distinctFolhas = new Set(fonte.registros.map((r) => r.tipo + "|" + r.cnes + "|" + r.folha)).size;
     const linhasOk = fonte.header.numLinhas === fonte.registros.length;
     const folhasOk = fonte.header.numFolhas === distinctFolhas;
     return { linhasOk, folhasOk, distinctFolhas, ok: linhasOk && folhasOk };
@@ -309,8 +311,11 @@
 
     parsed.fontes.forEach((fonte) => {
     const header = fonte.header;
+    // duplicidade real = mesmo instrumento + mesmo CNES + mesma folha/seq
+    // (folha e escopada por instrumento e por estabelecimento)
+    const folhaSeqChave = (r) => r.tipo + "/" + r.cnes + "/" + r.folha + "/" + r.seq;
     const folhaSeqCount = {};
-    fonte.registros.forEach((r) => { const k = r.folha + "/" + r.seq; folhaSeqCount[k] = (folhaSeqCount[k] || 0) + 1; });
+    fonte.registros.forEach((r) => { const k = folhaSeqChave(r); folhaSeqCount[k] = (folhaSeqCount[k] || 0) + 1; });
 
     fonte.registros.forEach((r) => {
       const codigos = [];
@@ -319,7 +324,7 @@
       if ((r.quantidade || 0) <= 0) codigos.push("QUANTIDADE_INVALIDA");
       if (!/^\d{6}$/.test(r.cbo)) codigos.push("CBO_INVALIDO");
       if (header && r.competencia !== header.competencia) codigos.push("COMPETENCIA_DIVERGENTE");
-      if (folhaSeqCount[r.folha + "/" + r.seq] > 1) codigos.push("FOLHA_SEQ_DUPLICADA");
+      if (folhaSeqCount[folhaSeqChave(r)] > 1) codigos.push("FOLHA_SEQ_DUPLICADA");
 
       const info = sigtapValido && lookup ? lookup.sigtapInfo(r.sigtap) : null;
       if (sigtapValido && !info) codigos.push("SIGTAP_NAO_ENCONTRADO");

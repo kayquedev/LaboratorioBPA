@@ -17,12 +17,16 @@
   function clearMsg(el) { el.className = "msg"; el.textContent = ""; }
 
   // -------- cruzamento: nome + data de nascimento --------
-  // 1º tenta o match exato (nome completo normalizado + data de nascimento).
-  // Se não achar, cai pro match por PRIMEIRO NOME + data de nascimento, que
-  // cobre os casos de sobrenome divergente entre o Bolsa Família e o e-SUS
-  // (nome de casada, sobrenome abreviado/faltando, ordem trocada). O match
-  // relaxado só vale quando é inequívoco: se o mesmo "1º nome + nascimento"
-  // aparece no e-SUS com microáreas diferentes, não dá pra decidir e fica FA.
+  // 1) match exato: nome completo normalizado + data de nascimento.
+  // 2) se não achar, dentro dos registros do e-SUS com a MESMA data de
+  //    nascimento, casa por NOME PARCIAL: um conjunto de nomes contido no
+  //    outro, com pelo menos 2 nomes em comum. Cobre sobrenome a mais ou a
+  //    menos (nome de casada, sobrenome faltando) e ordem trocada —
+  //    ex.: "KATIA LUCIA GUIMARAES" (e-SUS) x "KATIA LUCIA GUIMARAES CABRAL"
+  //    (Bolsa Família). Só vale se for inequívoco: se sobrar mais de uma
+  //    microárea possível entre os compatíveis, fica FA.
+  const CONECTORES = new Set(["DE", "DA", "DAS", "DO", "DOS", "E"]);
+
   function normalizarNome(nome) {
     return (nome || "")
       .replace(/\(O\)\s*$/i, "")
@@ -31,44 +35,57 @@
       .replace(/\s+/g, " ")
       .trim();
   }
-  function primeiroNome(nome) {
-    return normalizarNome(nome).split(" ")[0] || "";
+  function tokensNome(nome) {
+    return normalizarNome(nome).split(" ").filter((t) => t && !CONECTORES.has(t));
   }
   function chave(nome, dataNascimento) {
     return normalizarNome(nome) + "|" + (dataNascimento || "").trim();
-  }
-  function chavePrimeiroNome(nome, dataNascimento) {
-    return primeiroNome(nome) + "|" + (dataNascimento || "").trim();
   }
   function microareaValida(m) {
     const v = (m || "").trim();
     return v && !/^n[aã]o informad/i.test(v) ? v : "";
   }
+  // um conjunto de nomes está contido no outro e há >= 2 nomes em comum
+  function nomeParcialCompativel(tokensA, tokensB) {
+    const A = new Set(tokensA), B = new Set(tokensB);
+    if (A.size < 2 || B.size < 2) return false;
+    const comuns = [...A].filter((t) => B.has(t)).length;
+    if (comuns < 2) return false;
+    const menor = A.size <= B.size ? A : B;
+    const maior = A.size <= B.size ? B : A;
+    return [...menor].every((t) => maior.has(t));
+  }
   function construirMapaMicroarea(registrosEsus) {
-    const exato = new Map();           // "NOME COMPLETO|nasc" -> microárea (1ª ocorrência)
-    const porPrimeiroNome = new Map(); // "PRIMEIRO|nasc" -> Set(microáreas válidas distintas)
+    const exato = new Map();        // "NOME COMPLETO|nasc" -> microárea (1ª ocorrência)
+    const porNascimento = new Map(); // "nasc" -> [{ tokens, microarea }]
     registrosEsus.forEach((r) => {
       const kE = chave(r.nome, r.dataNascimento);
       if (!exato.has(kE)) exato.set(kE, r.microarea);
 
-      const v = microareaValida(r.microarea);
-      if (!v) return;
-      const kP = chavePrimeiroNome(r.nome, r.dataNascimento);
-      let set = porPrimeiroNome.get(kP);
-      if (!set) { set = new Set(); porPrimeiroNome.set(kP, set); }
-      set.add(v);
+      const nasc = (r.dataNascimento || "").trim();
+      if (!nasc) return;
+      let arr = porNascimento.get(nasc);
+      if (!arr) { arr = []; porNascimento.set(nasc, arr); }
+      arr.push({ tokens: tokensNome(r.nome), microarea: r.microarea });
     });
-    return { exato, porPrimeiroNome };
+    return { exato, porNascimento };
   }
-  // devolve { microarea, match } — match: "exata" | "primeiro-nome" | "" (FA)
+  // devolve { microarea, match } — match: "exata" | "parcial" | "" (FA)
   function microareaFinal(nome, dataNascimento, mapa) {
     const vExato = microareaValida(mapa.exato.get(chave(nome, dataNascimento)));
     if (vExato) return { microarea: vExato, match: "exata" };
 
-    if (primeiroNome(nome) && (dataNascimento || "").trim()) {
-      const cand = mapa.porPrimeiroNome.get(chavePrimeiroNome(nome, dataNascimento));
-      if (cand && cand.size === 1) return { microarea: [...cand][0], match: "primeiro-nome" };
-    }
+    const nasc = (dataNascimento || "").trim();
+    const bfTokens = tokensNome(nome);
+    if (!nasc || bfTokens.length < 2) return { microarea: "FA", match: "" };
+
+    const bucket = mapa.porNascimento.get(nasc) || [];
+    const microareas = new Set();
+    bucket.forEach((r) => {
+      const m = microareaValida(r.microarea);
+      if (m && nomeParcialCompativel(bfTokens, r.tokens)) microareas.add(m);
+    });
+    if (microareas.size === 1) return { microarea: [...microareas][0], match: "parcial" };
     return { microarea: "FA", match: "" };
   }
 
@@ -186,7 +203,7 @@
     const pct = total ? Math.round((localizados / total) * 100) : 0;
     const cards = [
       { valor: String(total), titulo: "Total de beneficiários", desc: "Extraídos do Mapa de Acompanhamento do Bolsa Família." },
-      { valor: String(localizados), titulo: "Microárea localizada", cor: "var(--teal)", desc: "Encontrados no e-SUS PEC por nome completo + data de nascimento, ou por 1º nome + nascimento quando o sobrenome diverge." },
+      { valor: String(localizados), titulo: "Microárea localizada", cor: "var(--teal)", desc: "Encontrados no e-SUS PEC por nome completo + data de nascimento, ou por nome parcial + nascimento quando o sobrenome difere." },
       { valor: pct + "%", titulo: "Vinculados à ESF", cor: "var(--blue-link)", desc: "Percentual de beneficiários encontrados como vinculados a uma equipe de saúde (ESF) no e-SUS PEC." },
       { valor: String(fa), titulo: "FA — fora de área", cor: "var(--red)", desc: "Sem correspondência no e-SUS PEC (ou sem microárea informada lá)." },
     ];
@@ -223,8 +240,8 @@
       return "<tr>" + bf.COLUNAS_SAIDA.map((c) => {
         if (c.campo === "microarea") {
           if (b.microarea === "FA") return '<td><span class="badge sev-erro">FA</span></td>';
-          if (b.microareaMatch === "primeiro-nome") {
-            return '<td><span class="badge sev-aviso" title="Vinculado por 1º nome + data de nascimento — o sobrenome diverge entre o Bolsa Família e o e-SUS PEC. Confira.">' + escapeHtml(b.microarea) + "</span></td>";
+          if (b.microareaMatch === "parcial") {
+            return '<td><span class="badge sev-aviso" title="Vinculado por nome parcial + data de nascimento — o sobrenome difere entre o Bolsa Família e o e-SUS PEC (sobrenome a mais ou a menos). Confira.">' + escapeHtml(b.microarea) + "</span></td>";
           }
           return '<td><span class="badge b-ok">' + escapeHtml(b.microarea) + "</span></td>";
         }
@@ -249,14 +266,14 @@
     }
   }
 
-  function renderPrimeiroNome() {
+  function renderNomeParcial() {
     const el = document.getElementById("alertPrimeiroNome");
     if (!el) return;
-    const n = beneficiarios.filter((b) => b.microareaMatch === "primeiro-nome").length;
+    const n = beneficiarios.filter((b) => b.microareaMatch === "parcial").length;
     if (n > 0) {
       el.className = "alert-banner show";
-      el.innerHTML = "<b>" + n + " beneficiário(s) vinculado(s) por 1º nome + data de nascimento</b> — " +
-        "o sobrenome diverge entre o Bolsa Família e o e-SUS PEC (nome de casada, sobrenome abreviado/faltando etc.). " +
+      el.innerHTML = "<b>" + n + " beneficiário(s) vinculado(s) por nome parcial + data de nascimento</b> — " +
+        "o sobrenome difere entre o Bolsa Família e o e-SUS PEC (sobrenome a mais ou a menos, nome de casada, ordem trocada). " +
         "Estão marcados em <span class=\"badge sev-aviso\">amarelo</span> na tabela; confira antes de usar.";
     } else {
       el.className = "alert-banner";
@@ -266,7 +283,7 @@
 
   function renderResultado() {
     renderDuplicados();
-    renderPrimeiroNome();
+    renderNomeParcial();
     renderResumo();
     popularFiltros();
     renderTabela();

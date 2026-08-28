@@ -16,7 +16,13 @@
   function setMsg(el, type, text) { el.className = "msg show " + type; el.textContent = text; }
   function clearMsg(el) { el.className = "msg"; el.textContent = ""; }
 
-  // -------- cruzamento: nome normalizado + data de nascimento --------
+  // -------- cruzamento: nome + data de nascimento --------
+  // 1º tenta o match exato (nome completo normalizado + data de nascimento).
+  // Se não achar, cai pro match por PRIMEIRO NOME + data de nascimento, que
+  // cobre os casos de sobrenome divergente entre o Bolsa Família e o e-SUS
+  // (nome de casada, sobrenome abreviado/faltando, ordem trocada). O match
+  // relaxado só vale quando é inequívoco: se o mesmo "1º nome + nascimento"
+  // aparece no e-SUS com microáreas diferentes, não dá pra decidir e fica FA.
   function normalizarNome(nome) {
     return (nome || "")
       .replace(/\(O\)\s*$/i, "")
@@ -25,22 +31,45 @@
       .replace(/\s+/g, " ")
       .trim();
   }
+  function primeiroNome(nome) {
+    return normalizarNome(nome).split(" ")[0] || "";
+  }
   function chave(nome, dataNascimento) {
     return normalizarNome(nome) + "|" + (dataNascimento || "").trim();
   }
-  function construirMapaMicroarea(registrosEsus) {
-    const mapa = new Map();
-    registrosEsus.forEach((r) => {
-      const k = chave(r.nome, r.dataNascimento);
-      const atual = mapa.get(k);
-      if (!atual) mapa.set(k, r.microarea);
-    });
-    return mapa;
+  function chavePrimeiroNome(nome, dataNascimento) {
+    return primeiroNome(nome) + "|" + (dataNascimento || "").trim();
   }
+  function microareaValida(m) {
+    const v = (m || "").trim();
+    return v && !/^n[aã]o informad/i.test(v) ? v : "";
+  }
+  function construirMapaMicroarea(registrosEsus) {
+    const exato = new Map();           // "NOME COMPLETO|nasc" -> microárea (1ª ocorrência)
+    const porPrimeiroNome = new Map(); // "PRIMEIRO|nasc" -> Set(microáreas válidas distintas)
+    registrosEsus.forEach((r) => {
+      const kE = chave(r.nome, r.dataNascimento);
+      if (!exato.has(kE)) exato.set(kE, r.microarea);
+
+      const v = microareaValida(r.microarea);
+      if (!v) return;
+      const kP = chavePrimeiroNome(r.nome, r.dataNascimento);
+      let set = porPrimeiroNome.get(kP);
+      if (!set) { set = new Set(); porPrimeiroNome.set(kP, set); }
+      set.add(v);
+    });
+    return { exato, porPrimeiroNome };
+  }
+  // devolve { microarea, match } — match: "exata" | "primeiro-nome" | "" (FA)
   function microareaFinal(nome, dataNascimento, mapa) {
-    const v = mapa.get(chave(nome, dataNascimento));
-    if (!v || !v.trim() || /^n[aã]o informad/i.test(v.trim())) return "FA";
-    return v.trim();
+    const vExato = microareaValida(mapa.exato.get(chave(nome, dataNascimento)));
+    if (vExato) return { microarea: vExato, match: "exata" };
+
+    if (primeiroNome(nome) && (dataNascimento || "").trim()) {
+      const cand = mapa.porPrimeiroNome.get(chavePrimeiroNome(nome, dataNascimento));
+      if (cand && cand.size === 1) return { microarea: [...cand][0], match: "primeiro-nome" };
+    }
+    return { microarea: "FA", match: "" };
   }
 
   // -------- unificação de beneficiários duplicados no próprio arquivo do
@@ -127,7 +156,11 @@
         }
 
         const mapa = construirMapaMicroarea(resultado.registros);
-        lista.forEach((b) => { b.microarea = microareaFinal(b.nome, b.dataNascimento, mapa); });
+        lista.forEach((b) => {
+          const r = microareaFinal(b.nome, b.dataNascimento, mapa);
+          b.microarea = r.microarea;
+          b.microareaMatch = r.match;
+        });
 
         beneficiarios = lista;
         renderResultado();
@@ -153,7 +186,7 @@
     const pct = total ? Math.round((localizados / total) * 100) : 0;
     const cards = [
       { valor: String(total), titulo: "Total de beneficiários", desc: "Extraídos do Mapa de Acompanhamento do Bolsa Família." },
-      { valor: String(localizados), titulo: "Microárea localizada", cor: "var(--teal)", desc: "Encontrados no e-SUS PEC por nome + data de nascimento." },
+      { valor: String(localizados), titulo: "Microárea localizada", cor: "var(--teal)", desc: "Encontrados no e-SUS PEC por nome completo + data de nascimento, ou por 1º nome + nascimento quando o sobrenome diverge." },
       { valor: pct + "%", titulo: "Vinculados à ESF", cor: "var(--blue-link)", desc: "Percentual de beneficiários encontrados como vinculados a uma equipe de saúde (ESF) no e-SUS PEC." },
       { valor: String(fa), titulo: "FA — fora de área", cor: "var(--red)", desc: "Sem correspondência no e-SUS PEC (ou sem microárea informada lá)." },
     ];
@@ -189,8 +222,11 @@
     tbody.innerHTML = lista.slice(0, MAX).map((b) => {
       return "<tr>" + bf.COLUNAS_SAIDA.map((c) => {
         if (c.campo === "microarea") {
-          const cls = b.microarea === "FA" ? "sev-erro" : "b-ok";
-          return '<td><span class="badge ' + cls + '">' + escapeHtml(b.microarea) + "</span></td>";
+          if (b.microarea === "FA") return '<td><span class="badge sev-erro">FA</span></td>';
+          if (b.microareaMatch === "primeiro-nome") {
+            return '<td><span class="badge sev-aviso" title="Vinculado por 1º nome + data de nascimento — o sobrenome diverge entre o Bolsa Família e o e-SUS PEC. Confira.">' + escapeHtml(b.microarea) + "</span></td>";
+          }
+          return '<td><span class="badge b-ok">' + escapeHtml(b.microarea) + "</span></td>";
         }
         return "<td>" + escapeHtml(b[c.campo]) + "</td>";
       }).join("") + "</tr>";
@@ -213,8 +249,24 @@
     }
   }
 
+  function renderPrimeiroNome() {
+    const el = document.getElementById("alertPrimeiroNome");
+    if (!el) return;
+    const n = beneficiarios.filter((b) => b.microareaMatch === "primeiro-nome").length;
+    if (n > 0) {
+      el.className = "alert-banner show";
+      el.innerHTML = "<b>" + n + " beneficiário(s) vinculado(s) por 1º nome + data de nascimento</b> — " +
+        "o sobrenome diverge entre o Bolsa Família e o e-SUS PEC (nome de casada, sobrenome abreviado/faltando etc.). " +
+        "Estão marcados em <span class=\"badge sev-aviso\">amarelo</span> na tabela; confira antes de usar.";
+    } else {
+      el.className = "alert-banner";
+      el.innerHTML = "";
+    }
+  }
+
   function renderResultado() {
     renderDuplicados();
+    renderPrimeiroNome();
     renderResumo();
     popularFiltros();
     renderTabela();

@@ -271,10 +271,10 @@
     if (!el) return;
     const n = beneficiarios.filter((b) => b.microareaMatch === "parcial").length;
     if (n > 0) {
-      el.className = "alert-banner show";
+      el.className = "alert-banner info show";
       el.innerHTML = "<b>" + n + " beneficiário(s) vinculado(s) por nome parcial + data de nascimento</b> — " +
-        "o sobrenome difere entre o Bolsa Família e o e-SUS PEC (sobrenome a mais ou a menos, nome de casada, ordem trocada). " +
-        "Estão marcados em <span class=\"badge sev-aviso\">amarelo</span> na tabela; confira antes de usar.";
+        "o sobrenome difere entre o Bolsa Família e o e-SUS PEC (sobrenome a mais ou faltando). " +
+        "Estão marcados em <span class=\"badge sev-aviso\">amarelo</span> na tabela; confira se trata da mesma pessoa na micro.";
     } else {
       el.className = "alert-banner";
       el.innerHTML = "";

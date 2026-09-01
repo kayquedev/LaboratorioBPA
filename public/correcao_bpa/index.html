@@ -68,8 +68,34 @@
         <div class="padroes-grid">
           <label class="pcampo"><span>CEP do endereço da Secretaria (usado só na substituição)</span>
             <input id="padCep" maxlength="8" inputmode="numeric" placeholder="35544000"></label>
-          <label class="pcampo"><span>Cód. tipo de logradouro (opcional)</span>
-            <input id="padTipoLograd" maxlength="3" inputmode="numeric" placeholder="081"></label>
+          <label class="pcampo"><span>Tipo de logradouro</span>
+            <select id="padTipoLograd">
+              <option value="081">081 — Rua</option>
+              <option value="008">008 — Avenida</option>
+              <option value="086">086 — Travessa</option>
+              <option value="065">065 — Praça</option>
+              <option value="034">034 — Estrada</option>
+              <option value="075">075 — Rodovia</option>
+              <option value="094">094 — Via</option>
+              <option value="002">002 — Acesso</option>
+              <option value="004">004 — Área</option>
+              <option value="011">011 — Beco</option>
+              <option value="019">019 — Caminho</option>
+              <option value="021">021 — Chácara</option>
+              <option value="029">029 — Distrito</option>
+              <option value="037">037 — Fazenda</option>
+              <option value="045">045 — Jardim</option>
+              <option value="046">046 — Ladeira</option>
+              <option value="049">049 — Largo</option>
+              <option value="050">050 — Loteamento</option>
+              <option value="056">056 — Parque</option>
+              <option value="068">068 — Quadra</option>
+              <option value="072">072 — Residencial</option>
+              <option value="079">079 — Setor</option>
+              <option value="082">082 — Sítio</option>
+              <option value="095">095 — Vila</option>
+              <option value="">— não informar —</option>
+            </select></label>
           <label class="pcampo pcampo-wide"><span>Logradouro (rua / avenida)</span>
             <input id="padLogradouro" maxlength="30" placeholder="RUA DA SECRETARIA DE SAUDE"></label>
           <label class="pcampo"><span>Número (ou SN)</span>

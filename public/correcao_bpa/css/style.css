@@ -259,11 +259,13 @@ tr.linha-excluida td{ text-decoration: line-through; opacity: .45; }
 .pcampo{ display:flex; flex-direction:column; gap:5px; font-size: 12px; color: var(--text-dim); }
 .pcampo > span{ font-weight:600; }
 .pcampo-wide{ grid-column: 1 / -1; }
-.pcampo input{
+.pcampo input,
+.pcampo select{
   padding: 9px 10px; border: 1px solid var(--card-border); border-radius: 7px; font-size: 13px;
   font-family: var(--sans); background: var(--card-bg); color: var(--text);
 }
-.pcampo input:focus{ outline: 2px solid var(--blue-link); outline-offset: 1px; }
+.pcampo input:focus,
+.pcampo select:focus{ outline: 2px solid var(--blue-link); outline-offset: 1px; }
 .pcampo-checkbox{ flex-direction: row; align-items: center; gap: 8px; align-self: end; }
 .pcampo-checkbox input{ width: 16px; height: 16px; flex: none; }
 .pcampo-checkbox > span{ font-weight: 500; color: var(--text-dim); }

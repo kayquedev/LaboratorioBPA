@@ -103,7 +103,7 @@
     cepTodos: "35544000",
     servicoPreferencial: "126",
     preencherServico: true,
-    secretaria: { cep: "", tipoLogradouro: "", logradouro: "", numero: "", complemento: "", bairro: "" },
+    secretaria: { cep: "", tipoLogradouro: "081", logradouro: "", numero: "", complemento: "", bairro: "" },
   };
   function carregarPadroes() {
     try {

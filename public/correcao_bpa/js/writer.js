@@ -30,9 +30,11 @@
       folha: [44, 3, "num"],
       seq: [47, 2, "num"],
       sigtap: [49, 10, "num"],
+      cnsCpfPaciente: [59, 15, "num"],
       sexo: [74, 1, "txt"],
       municipio: [75, 6, "num"],
       dataNascimento: [142, 8, "num"],
+      cpfPaciente: [338, 11, "num"],
       servico: [159, 3, "num"],
       classificacao: [162, 3, "num"],
       cep: [191, 8, "num"],
@@ -88,11 +90,13 @@
     SIGTAP_SEXO_INCOMPATIVEL: ["sexo", "sigtap"],
     SIGTAP_IDADE_INCOMPATIVEL: ["dataNascimento", "dataAtendimento", "sigtap"],
     SIGTAP_DV_INVALIDO: ["sigtap"],
+    SIGTAP_NAO_ENCONTRADO: ["sigtap"],
     CLASSIFICACAO_INVALIDA: ["servico", "classificacao"],
+    PACIENTE_SEM_IDENTIFICACAO: ["cnsCpfPaciente", "cpfPaciente"],
     // FOLHA_SEQ_DUPLICADA: resolvido automaticamente, nao aparece pra revisao manual
-    // POSSIVEL_DUPLICIDADE / SIGTAP_NAO_ENCONTRADO: sem campo unico, so "excluir" ou "revisar"
-    // MUNICIPIO_INVALIDO / ENDERECO_INVALIDO / PACIENTE_SEM_IDENTIFICACAO / CNS_* /
-    //   CARATER_ATENDIMENTO_AUSENTE / RACA_COR_AUSENTE / NACIONALIDADE_AUSENTE:
+    // POSSIVEL_DUPLICIDADE: sem campo unico, so "excluir" ou "revisar"
+    // MUNICIPIO_INVALIDO / ENDERECO_INVALIDO: cobertos pelos Padroes do municipio
+    // CNS_* / CARATER_ATENDIMENTO_AUSENTE / RACA_COR_AUSENTE / NACIONALIDADE_AUSENTE:
     //   sem patch de campo unico aqui, corrigir na origem e reimportar
   };
 
@@ -100,6 +104,7 @@
     sigtap: "SIGTAP", quantidade: "Quantidade", cbo: "CBO", competencia: "Competência",
     dataAtendimento: "Data atendimento", dataNascimento: "Data nascimento", cep: "CEP", sexo: "Sexo",
     servico: "Serviço", classificacao: "Classificação",
+    cnsCpfPaciente: "CNS do paciente", cpfPaciente: "CPF do paciente",
   };
 
   // mesmo texto do catalogo em public/qualidade_bpa/js/app.js (menos

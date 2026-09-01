@@ -598,6 +598,11 @@
     const lista = filteredPendencias();
     const MAX = 500;
     document.getElementById("sidebarCount").textContent = lista.length.toLocaleString("pt-BR");
+    const valorFiltrado = lista.reduce((s, { registro: r }) => {
+      const info = lookup.sigtapInfo(sigtapEfetivo(r));
+      return s + (info ? info.valor * (r.quantidade || 0) : 0);
+    }, 0);
+    document.getElementById("sidebarValorPend").textContent = fmtMoeda(valorFiltrado);
     document.getElementById("tabelaRevisaoBody").innerHTML = lista.slice(0, MAX).map(({ fonteIdx, regIdx, registro, fonte }) =>
       linhaRevisaoHtml(fonteIdx, regIdx, registro, fonte.label || fonte.nome)
     ).join("");

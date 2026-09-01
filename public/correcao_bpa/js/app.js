@@ -41,6 +41,14 @@
   function sigtapEfetivo(registro) {
     return (registro.correcoes && registro.correcoes.sigtap) || registro.sigtap;
   }
+  function quantidadeEfetiva(registro) {
+    const c = registro.correcoes && registro.correcoes.quantidade;
+    if (c != null && c !== "") {
+      const n = parseInt(c, 10);
+      if (!isNaN(n)) return n;
+    }
+    return registro.quantidade || 0;
+  }
   function pacienteChave(r) {
     if (r.cnsCpfPaciente) return "cns:" + r.cnsCpfPaciente;
     if (r.cpfPaciente) return "cpf:" + r.cpfPaciente;
@@ -353,7 +361,7 @@
       if (r.excluido) return;
       const info = lookup.sigtapInfo(sigtapEfetivo(r));
       if (!info) return;
-      const valor = info.valor * (r.quantidade || 0);
+      const valor = info.valor * quantidadeEfetiva(r);
       total += valor;
       if (temPendenciaAtiva(r)) pendente += valor;
     }));
@@ -576,7 +584,8 @@
       : "";
 
     const infoSigtap = lookup.sigtapInfo(sigtapEfetivo(registro));
-    const valorHtml = infoSigtap ? fmtMoeda(infoSigtap.valor * (registro.quantidade || 0)) : "—";
+    const qtd = quantidadeEfetiva(registro);
+    const valorHtml = infoSigtap ? fmtMoeda(infoSigtap.valor * qtd) : "—";
 
     return '<tr data-linha-fonte="' + fonteIdx + '" data-linha-reg="' + regIdx + '">' +
       "<td>" + registro.tipo + "</td>" +
@@ -584,6 +593,7 @@
       "<td>" + escapeHtml(origemLabel) + "</td>" +
       "<td>" + (registro.tipo === "03" ? fmtData(registro.dataAtendimento) : "—") + "</td>" +
       '<td class="num">' + sigtapCelHtml(registro.sigtap) + "</td>" +
+      '<td class="num">' + qtd + "</td>" +
       '<td class="num">' + valorHtml + "</td>" +
       '<td class="num">' + cboCelHtml(registro.cbo) + "</td>" +
       "<td>" + (registro.tipo === "03" ? escapeHtml(registro.nomePaciente || "") : "—") + "</td>" +
@@ -600,7 +610,7 @@
     document.getElementById("sidebarCount").textContent = lista.length.toLocaleString("pt-BR");
     const valorFiltrado = lista.reduce((s, { registro: r }) => {
       const info = lookup.sigtapInfo(sigtapEfetivo(r));
-      return s + (info ? info.valor * (r.quantidade || 0) : 0);
+      return s + (info ? info.valor * quantidadeEfetiva(r) : 0);
     }, 0);
     document.getElementById("sidebarValorPend").textContent = fmtMoeda(valorFiltrado);
     document.getElementById("tabelaRevisaoBody").innerHTML = lista.slice(0, MAX).map(({ fonteIdx, regIdx, registro, fonte }) =>

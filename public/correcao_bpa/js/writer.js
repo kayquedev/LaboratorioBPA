@@ -93,6 +93,7 @@
     SIGTAP_NAO_ENCONTRADO: ["sigtap"],
     CLASSIFICACAO_INVALIDA: ["servico", "classificacao"],
     PACIENTE_SEM_IDENTIFICACAO: ["cnsCpfPaciente", "cpfPaciente"],
+    PROCEDIMENTO_EXIGE_CNS: ["cnsCpfPaciente", "cpfPaciente"],
     // FOLHA_SEQ_DUPLICADA: resolvido automaticamente, nao aparece pra revisao manual
     // POSSIVEL_DUPLICIDADE: sem campo unico, so "excluir" ou "revisar"
     // MUNICIPIO_INVALIDO / ENDERECO_INVALIDO: cobertos pelos Padroes do municipio
@@ -168,8 +169,11 @@
       explicacao: "O procedimento exige um par Serviço/Classificação específico (tabela SIGTAP) e o informado na linha está em branco ou não é um dos aceitos. O BPA Magnético recusa a linha (crítica 050 — classificação inválida).",
       resolver: "Ajuste os campos Serviço e Classificação da linha para um par válido do procedimento." },
     PACIENTE_SEM_IDENTIFICACAO: { sev: "erro", texto: "Paciente sem CNS nem CPF",
-      explicacao: "A linha do BPA-I não traz CNS nem CPF do paciente. O BPA Magnético recusa (críticas 060 — CNS obrigatório / 025 — procedimento exige CNS). Vários procedimentos não aceitam CPF no lugar do CNS.",
-      resolver: "Informe o CNS do paciente (15 dígitos). Onde o procedimento aceitar, o CPF pode ser usado — mas confira, porque muitos exigem o CNS." },
+      explicacao: "A linha do BPA-I não traz CNS nem CPF do paciente. O BPA Magnético exige identificação do paciente no BPA-I.",
+      resolver: "Informe o CNS (15 dígitos) ou o CPF do paciente." },
+    PROCEDIMENTO_EXIGE_CNS: { sev: "erro", texto: "Procedimento exige CNS/CPF do paciente",
+      explicacao: "Este procedimento está marcado na tabela SIGTAP como \"Exige CPF/CNS\" (detalhe 009) e a linha não traz nem CNS nem CPF do paciente. O BPA Magnético recusa a linha (críticas 025 — procedimento exige CNS / 060 — CNS obrigatório).",
+      resolver: "Informe o CNS (15 dígitos) do paciente; para estes procedimentos o CPF também é aceito." },
     CNS_PACIENTE_INVALIDO: { sev: "aviso", texto: "CNS do paciente com dígito verificador inválido",
       explicacao: "O CNS informado para o paciente não passa na validação de dígito verificador — provavelmente foi digitado errado.",
       resolver: "Confira o CNS do paciente (15 dígitos) no CADSUS e corrija no cadastro." },

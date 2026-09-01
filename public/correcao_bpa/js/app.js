@@ -96,6 +96,110 @@
   }
   const todasPendencias = pendenciasFlat();
 
+  // -------- padrões do município (IBGE único + endereço da Secretaria) --------
+  const PADROES_KEY = "correcao_bpa_padroes_municipio";
+  const PADROES_DEFAULT = {
+    municipioIbge: "316180",
+    secretaria: { cep: "", tipoLogradouro: "", logradouro: "", numero: "", complemento: "", bairro: "" },
+  };
+  function carregarPadroes() {
+    try {
+      const raw = JSON.parse(window.localStorage.getItem(PADROES_KEY) || "null");
+      if (raw && typeof raw === "object") {
+        return {
+          municipioIbge: typeof raw.municipioIbge === "string" ? raw.municipioIbge : PADROES_DEFAULT.municipioIbge,
+          secretaria: Object.assign({}, PADROES_DEFAULT.secretaria, raw.secretaria || {}),
+        };
+      }
+    } catch (e) { /* localStorage indisponível ou JSON inválido */ }
+    return JSON.parse(JSON.stringify(PADROES_DEFAULT));
+  }
+  function salvarPadroes() {
+    try { window.localStorage.setItem(PADROES_KEY, JSON.stringify(padroes)); } catch (e) { /* ignore */ }
+  }
+  let padroes = carregarPadroes();
+
+  const padInputs = {
+    municipioIbge: document.getElementById("padMunicipio"),
+    cep: document.getElementById("padCep"),
+    tipoLogradouro: document.getElementById("padTipoLograd"),
+    logradouro: document.getElementById("padLogradouro"),
+    numero: document.getElementById("padNumero"),
+    complemento: document.getElementById("padComplemento"),
+    bairro: document.getElementById("padBairro"),
+  };
+  function preencherPadroesForm() {
+    padInputs.municipioIbge.value = padroes.municipioIbge || "";
+    padInputs.cep.value = padroes.secretaria.cep || "";
+    padInputs.tipoLogradouro.value = padroes.secretaria.tipoLogradouro || "";
+    padInputs.logradouro.value = padroes.secretaria.logradouro || "";
+    padInputs.numero.value = padroes.secretaria.numero || "";
+    padInputs.complemento.value = padroes.secretaria.complemento || "";
+    padInputs.bairro.value = padroes.secretaria.bairro || "";
+  }
+  function lerPadroesForm() {
+    padroes.municipioIbge = padInputs.municipioIbge.value.replace(/\D/g, "").slice(0, 7);
+    padroes.secretaria.cep = padInputs.cep.value.replace(/\D/g, "").slice(0, 8);
+    padroes.secretaria.tipoLogradouro = padInputs.tipoLogradouro.value.replace(/\D/g, "").slice(0, 3);
+    padroes.secretaria.logradouro = padInputs.logradouro.value.slice(0, 30);
+    padroes.secretaria.numero = padInputs.numero.value.slice(0, 5);
+    padroes.secretaria.complemento = padInputs.complemento.value.slice(0, 10);
+    padroes.secretaria.bairro = padInputs.bairro.value.slice(0, 30);
+    salvarPadroes();
+    recalcularComPadroes();
+  }
+  Object.keys(padInputs).forEach((k) => {
+    if (padInputs[k]) padInputs[k].addEventListener("input", lerPadroesForm);
+  });
+
+  function registrosIncluidosFlat() {
+    const arr = [];
+    fontes.forEach((f) => f.registros.forEach((r) => { if (!r.excluido) arr.push(r); }));
+    return arr;
+  }
+  function ibgePadraoOk() { return /^\d{6,7}$/.test((padroes.municipioIbge || "").trim()); }
+  function secretariaOk() {
+    return (padroes.secretaria.logradouro || "").trim() !== "" && (padroes.secretaria.bairro || "").trim() !== "";
+  }
+  // códigos de pendência que os padrões do município já resolvem ao gerar o arquivo
+  function codsResolvidosPorPadroes(registro) {
+    if (registro.tipo !== "03" || !registro.cods) return [];
+    const enderInc = String(registro.endereco || "").trim() === "" || String(registro.bairro || "").trim() === "";
+    const out = [];
+    registro.cods.forEach((c) => {
+      if (c === "MUNICIPIO_INVALIDO" && ibgePadraoOk()) out.push(c);
+      else if (c === "ENDERECO_INVALIDO" && secretariaOk()) out.push(c);
+      else if (c === "CEP_INVALIDO" && secretariaOk() && enderInc) out.push(c);
+    });
+    return out;
+  }
+  function temPendenciaAtiva(registro) {
+    if (!registro.cods || !registro.cods.length || registro.revisado) return false;
+    const resolvidos = codsResolvidosPorPadroes(registro);
+    return registro.cods.some((c) => resolvidos.indexOf(c) === -1);
+  }
+  function renderImpactoPadroes() {
+    const el = document.getElementById("padroesImpacto");
+    if (!el) return;
+    const imp = writer.contarImpactoPadroes(registrosIncluidosFlat(), padroes);
+    const ibge = (padroes.municipioIbge || "").trim();
+    const partes = [];
+    partes.push(ibgePadraoOk()
+      ? "<b>" + imp.municipio + "</b> linha(s) com município ajustado para <b>" + escapeHtml(ibge) + "</b>"
+      : "informe o código IBGE do município");
+    partes.push(secretariaOk()
+      ? "<b>" + imp.endereco + "</b> endereço(s) em branco substituído(s) pelo da Secretaria"
+      : "preencha logradouro e bairro da Secretaria para cobrir os endereços em branco");
+    el.className = "msg show " + (ibgePadraoOk() && secretariaOk() ? "ok" : "warn");
+    el.innerHTML = "Ao gerar o arquivo: " + partes.join(" · ") + ".";
+  }
+  function recalcularComPadroes() {
+    renderImpactoPadroes();
+    renderResumo();
+    atualizarFaturamentos();
+    if (!viewRevisao.classList.contains("hidden")) renderTabela();
+  }
+
   // -------- resumo geral --------
   function renderResumo() {
     const totalComProblema = autoResolvidos + todasPendencias.length;
@@ -105,10 +209,12 @@
       el.innerHTML = "<b>Nenhuma pendência encontrada.</b> Folha/sequência já renumerada e conferida para " +
         fontes.length + " arquivo(s) — pode baixar direto.";
     } else {
+      const cobertas = todasPendencias.filter((p) => !temPendenciaAtiva(p.registro)).length;
       el.className = "alert-banner show";
       el.innerHTML = "<b>" + totalComProblema + " registro(s) com pendência</b> em " + fontes.length + " arquivo(s). " +
         "<b>" + autoResolvidos + "</b> resolvido(s) automaticamente (renumeração de folha/sequência). " +
-        "<b>" + todasPendencias.length + "</b> precisa(m) de revisão manual — corrija ou deixe como está (pular).";
+        (cobertas ? "<b>" + cobertas + "</b> cobertos pelos padrões do município. " : "") +
+        "<b>" + (todasPendencias.length - cobertas) + "</b> ainda precisa(m) de revisão manual — corrija ou deixe como está (pular).";
     }
 
     const btnVer = document.getElementById("btnVerPendencias");
@@ -140,7 +246,7 @@
       if (!info) return;
       const valor = info.valor * (r.quantidade || 0);
       total += valor;
-      if (r.cods && r.cods.length && !r.revisado) pendente += valor;
+      if (temPendenciaAtiva(r)) pendente += valor;
     }));
     return { total, pendente, receber: total - pendente };
   }
@@ -159,7 +265,8 @@
   // painel simplificado no resumo: so % sem problema + valor em risco
   function renderFaturamento() {
     const totalRegistros = fontes.reduce((s, f) => s + f.registros.length, 0);
-    const semProblemas = totalRegistros - todasPendencias.length;
+    const pendentesAtivas = todasPendencias.reduce((n, p) => n + (temPendenciaAtiva(p.registro) ? 1 : 0), 0);
+    const semProblemas = totalRegistros - pendentesAtivas;
     const pct = totalRegistros ? Math.round((semProblemas / totalRegistros) * 100) : 100;
     const f = calcularFaturamento();
 
@@ -327,6 +434,15 @@
         '<span class="resolver">Como resolver: ' + escapeHtml(info.resolver) + "</span></div>";
     }).join("");
 
+    const cobertos = codsResolvidosPorPadroes(registro);
+    const notaPadroes = cobertos.length
+      ? '<div class="probitem probitem-aviso"><b>Padrões do município:</b> ' +
+        (cobertos.length === registro.cods.length
+          ? "esta linha será corrigida automaticamente ao gerar o arquivo (IBGE / endereço da Secretaria)."
+          : "parte desta linha (" + escapeHtml(cobertos.join(", ")) + ") será corrigida ao gerar.") +
+        "</div>"
+      : "";
+
     const infoSigtap = lookup.sigtapInfo(sigtapEfetivo(registro));
     const valorHtml = infoSigtap ? fmtMoeda(infoSigtap.valor * (registro.quantidade || 0)) : "—";
 
@@ -339,7 +455,7 @@
       '<td class="num">' + valorHtml + "</td>" +
       '<td class="num">' + cboCelHtml(registro.cbo) + "</td>" +
       "<td>" + (registro.tipo === "03" ? escapeHtml(registro.nomePaciente || "") : "—") + "</td>" +
-      '<td><div class="problema-list">' + problemasHtml + "</div></td>" +
+      '<td><div class="problema-list">' + notaPadroes + problemasHtml + "</div></td>" +
       "<td>" + (inputs || '<span class="ok-txt">sem campo — só revisar</span>') + "</td>" +
       '<td class="col-acoes"><label><input type="checkbox" data-revisado data-fonte="' + fonteIdx + '" data-reg="' + regIdx + '"' + (registro.revisado ? " checked" : "") + '> Revisado</label>' +
       '<label><input type="checkbox" data-excluir data-fonte="' + fonteIdx + '" data-reg="' + regIdx + '"' + (registro.excluido ? " checked" : "") + '> Excluir linha</label></td>' +
@@ -420,7 +536,7 @@
     document.querySelectorAll("[data-baixar-fonte]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const fonte = fontes[+btn.dataset.baixarFonte];
-        const out = writer.montarArquivo(fonte);
+        const out = writer.montarArquivo(fonte, padroes);
         if (out.avisos && out.avisos.length) window.alert(out.avisos.join("\n\n"));
         baixarTexto(nomeCorrigido(fonte.nome), out.texto);
       });
@@ -428,7 +544,7 @@
     const btnUnico = document.getElementById("btnBaixarUnico");
     if (btnUnico) {
       btnUnico.addEventListener("click", () => {
-        const out = writer.montarArquivoUnico(fontes);
+        const out = writer.montarArquivoUnico(fontes, padroes);
         if (out.avisos && out.avisos.length) window.alert(out.avisos.join("\n\n"));
         baixarTexto("bpa_corrigido_unico.txt", out.texto);
       });
@@ -466,6 +582,8 @@
   btnVoltarResumo.addEventListener("click", showResumo);
 
   lookup.ready.finally(() => {
+    preencherPadroesForm();
+    renderImpactoPadroes();
     renderResumo();
     renderFontes();
     renderFaturamento();

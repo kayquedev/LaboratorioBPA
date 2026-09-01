@@ -238,3 +238,20 @@ tr.linha-revisada td{ opacity: .55; }
 tr.linha-excluida td{ text-decoration: line-through; opacity: .45; }
 
 .downloads-box{ display:flex; flex-wrap:wrap; gap:10px; margin-top: 18px; }
+
+/* ---------- padroes do municipio (viewResumo) ---------- */
+.padroes-block{ text-align:left; margin-bottom: 26px; }
+.padroes-sub{
+  font-size: 11px; text-transform: uppercase; letter-spacing:.05em; color: var(--text-dim);
+  font-weight:700; margin: 18px 0 10px;
+}
+.padroes-grid{ display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 620px){ .padroes-grid{ grid-template-columns: 1fr; } }
+.pcampo{ display:flex; flex-direction:column; gap:5px; font-size: 12px; color: var(--text-dim); }
+.pcampo > span{ font-weight:600; }
+.pcampo-wide{ grid-column: 1 / -1; }
+.pcampo input{
+  padding: 9px 10px; border: 1px solid var(--card-border); border-radius: 7px; font-size: 13px;
+  font-family: var(--sans); background: var(--card-bg); color: var(--text);
+}
+.pcampo input:focus{ outline: 2px solid var(--blue-link); outline-offset: 1px; }

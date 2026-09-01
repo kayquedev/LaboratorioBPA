@@ -44,6 +44,40 @@
       <div class="group-label">Arquivos carregados para correção</div>
       <div class="fontes-list" id="fontesResumo"></div>
 
+      <div class="group-label">Padrões do município (aplicados ao gerar o arquivo)</div>
+      <div class="padroes-block">
+        <p class="lead" style="font-size:12.5px;margin:0 0 14px;">
+          O código IBGE abaixo é gravado em <b>todas</b> as linhas do BPA-I cujo município esteja em branco
+          ou diferente dele. O endereço da Secretaria de Saúde substitui o endereço dos pacientes com
+          <b>logradouro ou bairro em branco</b>. Fica salvo neste navegador.
+        </p>
+
+        <div class="padroes-grid">
+          <label class="pcampo pcampo-wide">
+            <span>Município — código IBGE (6 dígitos, sem dígito verificador)</span>
+            <input id="padMunicipio" maxlength="7" inputmode="numeric" placeholder="316180">
+          </label>
+        </div>
+
+        <div class="padroes-sub">Endereço padrão — Secretaria de Saúde</div>
+        <div class="padroes-grid">
+          <label class="pcampo"><span>CEP (8 dígitos)</span>
+            <input id="padCep" maxlength="8" inputmode="numeric" placeholder="35544000"></label>
+          <label class="pcampo"><span>Cód. tipo de logradouro (opcional)</span>
+            <input id="padTipoLograd" maxlength="3" inputmode="numeric" placeholder="081"></label>
+          <label class="pcampo pcampo-wide"><span>Logradouro (rua / avenida)</span>
+            <input id="padLogradouro" maxlength="30" placeholder="RUA DA SECRETARIA DE SAUDE"></label>
+          <label class="pcampo"><span>Número (ou SN)</span>
+            <input id="padNumero" maxlength="5" placeholder="SN"></label>
+          <label class="pcampo"><span>Complemento (opcional)</span>
+            <input id="padComplemento" maxlength="10"></label>
+          <label class="pcampo pcampo-wide"><span>Bairro</span>
+            <input id="padBairro" maxlength="30" placeholder="CENTRO"></label>
+        </div>
+
+        <div class="msg" id="padroesImpacto" style="margin-top:14px;"></div>
+      </div>
+
       <div class="group-label">Faturamento (R$)</div>
       <div class="cards-grid" id="cardsFaturamento"></div>
 

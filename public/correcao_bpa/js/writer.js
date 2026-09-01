@@ -31,10 +31,16 @@
       seq: [47, 2, "num"],
       sigtap: [49, 10, "num"],
       sexo: [74, 1, "txt"],
+      municipio: [75, 6, "num"],
       dataNascimento: [142, 8, "num"],
       servico: [159, 3, "num"],
       classificacao: [162, 3, "num"],
       cep: [191, 8, "num"],
+      codLogradouro: [199, 3, "num"],
+      endereco: [202, 30, "txt"],
+      complemento: [232, 10, "txt"],
+      numero: [242, 5, "numTxt"],
+      bairro: [247, 30, "txt"],
     },
   };
 
@@ -50,13 +56,21 @@
     v = (v + " ".repeat(len)).slice(0, len);
     return line.slice(0, start) + v + line.slice(start + len);
   }
+  // numero da residencia: preenche com zeros a esquerda quando e so digito,
+  // senao trata como texto ("SN", "S/N", "KM 12"...) alinhado a esquerda.
+  function patchNumTxt(line, start, len, valor) {
+    const raw = String(valor == null ? "" : valor).trim();
+    return /^\d+$/.test(raw) ? patchNum(line, start, len, raw) : patchTxt(line, start, len, raw);
+  }
 
   function patchField(linha, tipo, campo, valor) {
     const tabela = tipo === "header" ? HEADER_OFFSETS : OFFSETS[tipo];
     const def = tabela && tabela[campo];
     if (!def || linha == null) return linha;
     const [start, len, kind] = def;
-    return kind === "num" ? patchNum(linha, start, len, valor) : patchTxt(linha, start, len, valor);
+    if (kind === "num") return patchNum(linha, start, len, valor);
+    if (kind === "numTxt") return patchNumTxt(linha, start, len, valor);
+    return patchTxt(linha, start, len, valor);
   }
 
   // campos editaveis manualmente por codigo de problema (usado pela tela de revisao)
@@ -221,11 +235,61 @@
     });
   }
 
-  function linhaFinal(registro, novaFolha, novoSeq) {
+  // ---------- padroes do municipio (definidos na tela de resumo) ----------
+  // padroes = { municipioIbge: "316180",
+  //   secretaria: { cep, tipoLogradouro, logradouro, numero, complemento, bairro } }
+  // Municipio: grava o IBGE em toda linha 03 cujo valor esteja em branco ou
+  // diferente. Endereco: quando logradouro OU bairro do paciente estao em
+  // branco, troca o bloco de endereco inteiro pelo da Secretaria de Saude.
+  function ibgePadraoOk(padroes) {
+    return !!padroes && /^\d{6,7}$/.test(String(padroes.municipioIbge || "").trim());
+  }
+  function enderecoSecretariaOk(padroes) {
+    const s = (padroes && padroes.secretaria) || {};
+    return String(s.logradouro || "").trim() !== "" && String(s.bairro || "").trim() !== "";
+  }
+  function registroEnderecoIncompleto(r) {
+    return String(r.endereco || "").trim() === "" || String(r.bairro || "").trim() === "";
+  }
+  function aplicarPadroes(linha, registro, padroes) {
+    if (!padroes || registro.tipo !== "03") return linha;
+    const ibge = String(padroes.municipioIbge || "").trim();
+    if (ibgePadraoOk(padroes) && String(registro.municipioIbge || "").trim() !== ibge) {
+      linha = patchField(linha, "03", "municipio", ibge);
+    }
+    if (enderecoSecretariaOk(padroes) && registroEnderecoIncompleto(registro)) {
+      const s = padroes.secretaria;
+      if (String(s.cep || "").trim()) linha = patchField(linha, "03", "cep", s.cep);
+      if (String(s.tipoLogradouro || "").trim()) linha = patchField(linha, "03", "codLogradouro", s.tipoLogradouro);
+      linha = patchField(linha, "03", "endereco", s.logradouro);
+      linha = patchField(linha, "03", "numero", String(s.numero || "").trim() || "SN");
+      linha = patchField(linha, "03", "complemento", s.complemento || "");
+      linha = patchField(linha, "03", "bairro", s.bairro);
+    }
+    return linha;
+  }
+  // quantas linhas 03 (nao excluidas) cada padrao vai tocar - pra previa na UI
+  function contarImpactoPadroes(registros, padroes) {
+    let municipio = 0, endereco = 0;
+    if (!padroes) return { municipio, endereco };
+    const ibge = String(padroes.municipioIbge || "").trim();
+    const ibgeOk = ibgePadraoOk(padroes);
+    const secOk = enderecoSecretariaOk(padroes);
+    (registros || []).forEach((r) => {
+      if (r.tipo !== "03" || r.excluido) return;
+      if (ibgeOk && String(r.municipioIbge || "").trim() !== ibge) municipio++;
+      if (secOk && registroEnderecoIncompleto(r)) endereco++;
+    });
+    return { municipio, endereco };
+  }
+
+  function linhaFinal(registro, novaFolha, novoSeq, padroes) {
     let linha = registro.linha;
     const tipo = registro.tipo;
     linha = patchField(linha, tipo, "folha", novaFolha);
     linha = patchField(linha, tipo, "seq", novoSeq);
+    // padroes do municipio antes das correcoes manuais (que tem prioridade)
+    linha = aplicarPadroes(linha, registro, padroes);
     const correcoes = registro.correcoes || {};
     Object.keys(correcoes).forEach((campo) => {
       if (correcoes[campo] !== "" && correcoes[campo] != null) {
@@ -235,9 +299,9 @@
     return linha;
   }
 
-  function montarConteudo(headerLinhaOriginal, registrosIncluidos) {
+  function montarConteudo(headerLinhaOriginal, registrosIncluidos, padroes) {
     const renum = renumerar(registrosIncluidos);
-    const linhas = renum.map(({ registro, novaFolha, novoSeq }) => linhaFinal(registro, novaFolha, novoSeq));
+    const linhas = renum.map(({ registro, novaFolha, novoSeq }) => linhaFinal(registro, novaFolha, novoSeq, padroes));
     const numFolhas = renum.reduce((max, x) => (x.novaFolha > max ? x.novaFolha : max), 0);
     let headerLine = headerLinhaOriginal || null;
     if (headerLine) {
@@ -253,21 +317,24 @@
         "separe a producao em mais de um arquivo antes de enviar."
       );
     }
-    return { texto: todasLinhas.join("\r\n") + "\r\n", numLinhas: linhas.length, numFolhas, avisos };
+    return {
+      texto: todasLinhas.join("\r\n") + "\r\n", numLinhas: linhas.length, numFolhas, avisos,
+      impacto: contarImpactoPadroes(registrosIncluidos, padroes),
+    };
   }
 
-  function montarArquivo(fonte) {
+  function montarArquivo(fonte, padroes) {
     const incluidos = fonte.registros.filter((r) => !r.excluido);
-    return montarConteudo(fonte.header && fonte.header.linha, incluidos);
+    return montarConteudo(fonte.header && fonte.header.linha, incluidos, padroes);
   }
 
-  function montarArquivoUnico(fontes) {
+  function montarArquivoUnico(fontes, padroes) {
     const incluidos = [];
     fontes.forEach((fonte) => {
       fonte.registros.filter((r) => !r.excluido).forEach((r) => incluidos.push(r));
     });
     const fonteComHeader = fontes.find((f) => f.header && f.header.linha);
-    return montarConteudo(fonteComHeader && fonteComHeader.header.linha, incluidos);
+    return montarConteudo(fonteComHeader && fonteComHeader.header.linha, incluidos, padroes);
   }
 
   function mesmaCompetencia(fontes) {
@@ -277,6 +344,7 @@
 
   const api = {
     patchField, renumerar, linhaFinal, montarArquivo, montarArquivoUnico, mesmaCompetencia,
+    contarImpactoPadroes, aplicarPadroes,
     CAMPOS_POR_PROBLEMA, CAMPO_LABEL, PROBLEMA_CATALOG,
   };
 

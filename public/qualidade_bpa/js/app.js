@@ -497,7 +497,12 @@
       const pClf = r.problemas.find((p) => p.cod === "CLASSIFICACAO_INVALIDA");
       if (pClf && permitidosSrv && permitidosSrv.length) {
         pClf.resolver += " Para o procedimento " + r.sigtap + ", o BPA aceita: " +
-          permitidosSrv.map((sc) => sc + (lookup.nomeClassificacao(sc) ? " · " + lookup.nomeClassificacao(sc) : "")).join(" | ") + ".";
+          permitidosSrv.map((sc) => {
+            const srvNome = lookup.nomeServico ? lookup.nomeServico(sc.slice(0, 3)) : "";
+            const clfNome = lookup.nomeClassificacao ? lookup.nomeClassificacao(sc) : "";
+            return sc.slice(0, 3) + "-" + sc.slice(3) +
+              (srvNome ? " " + srvNome : "") + (clfNome ? " / " + clfNome : "");
+          }).join(" | ") + ".";
       }
 
       r.sigtapEncontrado = !!info;

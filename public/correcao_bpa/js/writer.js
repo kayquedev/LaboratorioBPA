@@ -300,8 +300,13 @@
     const tipo = registro.tipo;
     linha = patchField(linha, tipo, "folha", novaFolha);
     linha = patchField(linha, tipo, "seq", novoSeq);
-    // padroes do municipio antes das correcoes manuais (que tem prioridade)
+    // ordem de prioridade (menor -> maior): padroes do municipio, preenchimento
+    // automatico de servico/classificacao, correcao manual da tela de revisao.
     linha = aplicarPadroes(linha, registro, padroes);
+    const auto = registro.correcoesAuto || {};
+    Object.keys(auto).forEach((campo) => {
+      if (auto[campo] !== "" && auto[campo] != null) linha = patchField(linha, tipo, campo, auto[campo]);
+    });
     const correcoes = registro.correcoes || {};
     Object.keys(correcoes).forEach((campo) => {
       if (correcoes[campo] !== "" && correcoes[campo] != null) {

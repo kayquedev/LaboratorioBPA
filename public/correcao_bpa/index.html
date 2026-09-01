@@ -80,6 +80,24 @@
             <input id="padBairro" maxlength="30" placeholder="CENTRO"></label>
         </div>
 
+        <div class="padroes-sub">Serviço / Classificação (crítica 050)</div>
+        <p class="lead" style="font-size:12px;margin:0 0 12px;">
+          Procedimentos que exigem Serviço/Classificação e estão em branco: quando houver <b>um único</b>
+          par possível, ou um par com o <b>serviço preferencial</b> abaixo, ele é preenchido ao gerar.
+          Os ambíguos ficam para escolher na tela de revisão.
+        </p>
+        <div class="padroes-grid">
+          <label class="pcampo">
+            <span>Serviço preferencial (código, p/ desambiguar)</span>
+            <input id="padServicoPref" maxlength="3" inputmode="numeric" placeholder="126">
+          </label>
+          <label class="pcampo pcampo-checkbox">
+            <input type="checkbox" id="padPreencherServico" checked>
+            <span>Preencher Serviço/Classificação em branco automaticamente</span>
+          </label>
+        </div>
+        <div id="padroesServicoRef"></div>
+
         <div class="msg" id="padroesImpacto" style="margin-top:14px;"></div>
       </div>
 

@@ -101,6 +101,8 @@
   const PADROES_DEFAULT = {
     municipioIbge: "316180",
     cepTodos: "35544000",
+    servicoPreferencial: "126",
+    preencherServico: true,
     secretaria: { cep: "", tipoLogradouro: "", logradouro: "", numero: "", complemento: "", bairro: "" },
   };
   function carregarPadroes() {
@@ -110,6 +112,8 @@
         return {
           municipioIbge: typeof raw.municipioIbge === "string" ? raw.municipioIbge : PADROES_DEFAULT.municipioIbge,
           cepTodos: typeof raw.cepTodos === "string" ? raw.cepTodos : PADROES_DEFAULT.cepTodos,
+          servicoPreferencial: typeof raw.servicoPreferencial === "string" ? raw.servicoPreferencial : PADROES_DEFAULT.servicoPreferencial,
+          preencherServico: typeof raw.preencherServico === "boolean" ? raw.preencherServico : PADROES_DEFAULT.preencherServico,
           secretaria: Object.assign({}, PADROES_DEFAULT.secretaria, raw.secretaria || {}),
         };
       }
@@ -124,6 +128,8 @@
   const padInputs = {
     municipioIbge: document.getElementById("padMunicipio"),
     cepTodos: document.getElementById("padCepTodos"),
+    servicoPref: document.getElementById("padServicoPref"),
+    preencherServico: document.getElementById("padPreencherServico"),
     cep: document.getElementById("padCep"),
     tipoLogradouro: document.getElementById("padTipoLograd"),
     logradouro: document.getElementById("padLogradouro"),
@@ -134,6 +140,8 @@
   function preencherPadroesForm() {
     padInputs.municipioIbge.value = padroes.municipioIbge || "";
     padInputs.cepTodos.value = padroes.cepTodos || "";
+    padInputs.servicoPref.value = padroes.servicoPreferencial || "";
+    padInputs.preencherServico.checked = !!padroes.preencherServico;
     padInputs.cep.value = padroes.secretaria.cep || "";
     padInputs.tipoLogradouro.value = padroes.secretaria.tipoLogradouro || "";
     padInputs.logradouro.value = padroes.secretaria.logradouro || "";
@@ -144,6 +152,8 @@
   function lerPadroesForm() {
     padroes.municipioIbge = padInputs.municipioIbge.value.replace(/\D/g, "").slice(0, 7);
     padroes.cepTodos = padInputs.cepTodos.value.replace(/\D/g, "").slice(0, 8);
+    padroes.servicoPreferencial = padInputs.servicoPref.value.replace(/\D/g, "").slice(0, 3);
+    padroes.preencherServico = padInputs.preencherServico.checked;
     padroes.secretaria.cep = padInputs.cep.value.replace(/\D/g, "").slice(0, 8);
     padroes.secretaria.tipoLogradouro = padInputs.tipoLogradouro.value.replace(/\D/g, "").slice(0, 3);
     padroes.secretaria.logradouro = padInputs.logradouro.value.slice(0, 30);
@@ -151,10 +161,13 @@
     padroes.secretaria.complemento = padInputs.complemento.value.slice(0, 10);
     padroes.secretaria.bairro = padInputs.bairro.value.slice(0, 30);
     salvarPadroes();
+    aplicarPreenchimentoServico();
     recalcularComPadroes();
   }
   Object.keys(padInputs).forEach((k) => {
-    if (padInputs[k]) padInputs[k].addEventListener("input", lerPadroesForm);
+    if (!padInputs[k]) return;
+    padInputs[k].addEventListener("input", lerPadroesForm);
+    padInputs[k].addEventListener("change", lerPadroesForm);
   });
 
   function registrosIncluidosFlat() {
@@ -170,7 +183,42 @@
   function secretariaOk() {
     return (padroes.secretaria.logradouro || "").trim() !== "" && (padroes.secretaria.bairro || "").trim() !== "";
   }
-  // códigos de pendência que os padrões do município já resolvem ao gerar o arquivo
+
+  // ---- preenchimento de Serviço/Classificação (crítica 050) ----
+  function paresDoProc(sigtap) {
+    return (lookup.servicosDoProcedimento && lookup.servicosDoProcedimento(sigtap)) || null;
+  }
+  // par (6 díg.) que deve ser gravado numa linha 03 com Serviço/Classificação
+  // em branco/inválido: único possível, ou o do serviço preferencial. null =
+  // ambíguo, escolher manualmente. `forcar` ignora o checkbox (usado só na prévia).
+  function parAlvoServico(registro, forcar) {
+    if (registro.tipo !== "03") return null;
+    if (!forcar && !padroes.preencherServico) return null;
+    const pares = paresDoProc(registro.sigtap);
+    if (!pares || !pares.length) return null;
+    const atual = (registro.servico || "").trim() + (registro.classificacao || "").trim();
+    if (/^\d{6}$/.test(atual) && pares.indexOf(atual) !== -1) return null; // já válido
+    const pref = (padroes.servicoPreferencial || "").trim();
+    if (pref) {
+      const m = pares.filter((p) => p.slice(0, 3) === pref);
+      if (m.length === 1) return m[0];
+      if (m.length > 1) return null;
+    }
+    return pares.length === 1 ? pares[0] : null;
+  }
+  function aplicarPreenchimentoServico() {
+    fontes.forEach((f) => f.registros.forEach((r) => {
+      const alvo = parAlvoServico(r, false);
+      if (alvo) r.correcoesAuto = { servico: alvo.slice(0, 3), classificacao: alvo.slice(3) };
+      else if (r.correcoesAuto) delete r.correcoesAuto;
+    }));
+  }
+  function parCorrecaoManual(registro) {
+    const c = registro.correcoes || {};
+    return String(c.servico || "") + String(c.classificacao || "");
+  }
+
+  // códigos de pendência que os padrões já resolvem ao gerar o arquivo
   function codsResolvidosPorPadroes(registro) {
     if (registro.tipo !== "03" || !registro.cods) return [];
     const enderInc = String(registro.endereco || "").trim() === "" || String(registro.bairro || "").trim() === "";
@@ -179,6 +227,12 @@
       if (c === "MUNICIPIO_INVALIDO" && ibgePadraoOk()) out.push(c);
       else if (c === "ENDERECO_INVALIDO" && secretariaOk()) out.push(c);
       else if (c === "CEP_INVALIDO" && (cepPadraoOk() || (secretariaOk() && enderInc))) out.push(c);
+      else if (c === "CLASSIFICACAO_INVALIDA") {
+        const pares = paresDoProc(registro.sigtap);
+        const manual = parCorrecaoManual(registro);
+        if (/^\d{6}$/.test(manual) && pares && pares.indexOf(manual) !== -1) out.push(c);
+        else if (registro.correcoesAuto) out.push(c);
+      }
     });
     return out;
   }
@@ -203,11 +257,53 @@
     partes.push(secretariaOk()
       ? "<b>" + imp.endereco + "</b> endereço(s) em branco substituído(s) pelo da Secretaria"
       : "preencha logradouro e bairro da Secretaria para cobrir os endereços em branco");
+    if (padroes.preencherServico) {
+      const autoServico = registrosIncluidosFlat().filter((r) => r.correcoesAuto).length;
+      const ambiguos = todasPendencias.filter((p) =>
+        (p.registro.cods || []).indexOf("CLASSIFICACAO_INVALIDA") !== -1 &&
+        codsResolvidosPorPadroes(p.registro).indexOf("CLASSIFICACAO_INVALIDA") === -1
+      ).length;
+      partes.push("<b>" + autoServico + "</b> serviço/classificação preenchido(s) automaticamente" +
+        (ambiguos ? " · <b>" + ambiguos + "</b> ambíguo(s) para escolher na revisão" : ""));
+    }
     el.className = "msg show " + (ibgePadraoOk() && cepPadraoOk() ? "ok" : "warn");
     el.innerHTML = "Ao gerar o arquivo: " + partes.join(" · ") + ".";
   }
+  // referência: pra cada procedimento pendente de Serviço/Classificação no
+  // arquivo, mostra os pares aceitos e marca qual será preenchido
+  function renderPadroesServicoRef() {
+    const el = document.getElementById("padroesServicoRef");
+    if (!el) return;
+    const porProc = {};
+    todasPendencias.forEach((p) => {
+      const r = p.registro;
+      if ((r.cods || []).indexOf("CLASSIFICACAO_INVALIDA") === -1) return;
+      (porProc[r.sigtap] = porProc[r.sigtap] || []).push(r);
+    });
+    const procs = Object.keys(porProc).sort();
+    if (!procs.length) { el.innerHTML = ""; return; }
+    el.className = "padroes-ref";
+    el.innerHTML = procs.map((pa) => {
+      const pares = paresDoProc(pa) || [];
+      const alvo = parAlvoServico(porProc[pa][0], true);
+      const paresHtml = pares.map((sc) => {
+        const isAlvo = sc === alvo;
+        return '<div class="padroes-ref-par' + (isAlvo ? " is-alvo" : "") + '">' +
+          '<span class="cod">' + sc.slice(0, 3) + "-" + sc.slice(3) + "</span> · " +
+          escapeHtml(lookup.nomeServico(sc.slice(0, 3))) + " / " + escapeHtml(lookup.nomeClassificacao(sc)) +
+          (isAlvo ? " — preenchido automaticamente" : "") + "</div>";
+      }).join("");
+      return '<div class="padroes-ref-item">' +
+        '<div class="padroes-ref-proc">' + escapeHtml(pa) + " <small>" + escapeHtml(lookup.nomeSigtap(pa)) + "</small>" +
+        " · <small>" + porProc[pa].length + " linha(s) pendente(s)</small></div>" +
+        '<div class="padroes-ref-pares">' + paresHtml +
+        (!alvo ? '<div class="padroes-ref-par" style="color:var(--amber)">nenhum preenchido automaticamente — escolha na tela de revisão</div>' : "") +
+        "</div></div>";
+    }).join("");
+  }
   function recalcularComPadroes() {
     renderImpactoPadroes();
+    renderPadroesServicoRef();
     renderResumo();
     atualizarFaturamentos();
     if (!viewRevisao.classList.contains("hidden")) renderTabela();
@@ -433,13 +529,36 @@
     return registro[campo];
   }
 
+  // dropdown com os pares Serviço/Classificação aceitos pelo procedimento
+  function selectServicoClassificacaoHtml(fonteIdx, regIdx, registro) {
+    const pares = paresDoProc(registro.sigtap) || [];
+    if (!pares.length) return "";
+    const manual = parCorrecaoManual(registro);
+    const auto = registro.correcoesAuto ? registro.correcoesAuto.servico + registro.correcoesAuto.classificacao : "";
+    const sel = /^\d{6}$/.test(manual) ? manual : auto;
+    const opts = ['<option value="">— escolher —</option>'].concat(pares.map((sc) => {
+      const nome = lookup.nomeClassificacao(sc) || lookup.nomeServico(sc.slice(0, 3));
+      return '<option value="' + sc + '"' + (sc === sel ? " selected" : "") + ">" +
+        escapeHtml(sc.slice(0, 3) + "-" + sc.slice(3) + " · " + nome) + "</option>";
+    }));
+    const dica = (auto && !/^\d{6}$/.test(manual))
+      ? '<span class="campo-auto">preenchido automaticamente: ' + escapeHtml(auto.slice(0, 3) + "-" + auto.slice(3)) + "</span>"
+      : "";
+    return '<label class="campo-corrigir">Serviço/Classificação:' +
+      '<select data-srvclf data-fonte="' + fonteIdx + '" data-reg="' + regIdx + '">' + opts.join("") + "</select>" +
+      dica + "</label>";
+  }
+
   function linhaRevisaoHtml(fonteIdx, regIdx, registro, origemLabel) {
-    const campos = camposEditaveis(registro.cods);
+    const temClf = (registro.cods || []).indexOf("CLASSIFICACAO_INVALIDA") !== -1;
+    const campos = camposEditaveis(registro.cods)
+      .filter((c) => !(temClf && (c === "servico" || c === "classificacao")));
     const inputs = campos.map((campo) =>
       '<label class="campo-corrigir">' + writer.CAMPO_LABEL[campo] + ":" +
       '<input data-fonte="' + fonteIdx + '" data-reg="' + regIdx + '" data-campo="' + campo + '" value="' +
       escapeHtml(valorAtual(registro, campo)) + '"></label>'
     ).join("");
+    const selClf = temClf ? selectServicoClassificacaoHtml(fonteIdx, regIdx, registro) : "";
 
     const problemasHtml = registro.cods.map((cod) => {
       const info = writer.PROBLEMA_CATALOG[cod] || { sev: "aviso", texto: cod, explicacao: "", resolver: "" };
@@ -469,7 +588,7 @@
       '<td class="num">' + cboCelHtml(registro.cbo) + "</td>" +
       "<td>" + (registro.tipo === "03" ? escapeHtml(registro.nomePaciente || "") : "—") + "</td>" +
       '<td><div class="problema-list">' + notaPadroes + problemasHtml + "</div></td>" +
-      "<td>" + (inputs || '<span class="ok-txt">sem campo — só revisar</span>') + "</td>" +
+      "<td>" + (selClf + inputs || '<span class="ok-txt">sem campo — só revisar</span>') + "</td>" +
       '<td class="col-acoes"><label><input type="checkbox" data-revisado data-fonte="' + fonteIdx + '" data-reg="' + regIdx + '"' + (registro.revisado ? " checked" : "") + '> Revisado</label>' +
       '<label><input type="checkbox" data-excluir data-fonte="' + fonteIdx + '" data-reg="' + regIdx + '"' + (registro.excluido ? " checked" : "") + '> Excluir linha</label></td>' +
       "</tr>";
@@ -496,6 +615,20 @@
         const registro = fontes[+input.dataset.fonte].registros[+input.dataset.reg];
         registro.correcoes = registro.correcoes || {};
         registro.correcoes[input.dataset.campo] = input.value;
+      });
+    });
+    document.querySelectorAll("#tabelaRevisaoBody select[data-srvclf]").forEach((sel) => {
+      sel.addEventListener("change", () => {
+        const registro = fontes[+sel.dataset.fonte].registros[+sel.dataset.reg];
+        registro.correcoes = registro.correcoes || {};
+        if (sel.value) {
+          registro.correcoes.servico = sel.value.slice(0, 3);
+          registro.correcoes.classificacao = sel.value.slice(3);
+        } else {
+          delete registro.correcoes.servico;
+          delete registro.correcoes.classificacao;
+        }
+        atualizarFaturamentos();
       });
     });
     document.querySelectorAll("#tabelaRevisaoBody input[data-revisado]").forEach((chk) => {
@@ -596,7 +729,9 @@
 
   lookup.ready.finally(() => {
     preencherPadroesForm();
+    aplicarPreenchimentoServico();
     renderImpactoPadroes();
+    renderPadroesServicoRef();
     renderResumo();
     renderFontes();
     renderFaturamento();

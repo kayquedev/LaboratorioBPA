@@ -349,7 +349,7 @@
       head: [COLUNAS_PDF.map((c) => c.titulo)],
       body: lista.map((b) => COLUNAS_PDF.map((c) => b[c.campo] || "")),
       theme: "grid",
-      styles: { fontSize: 6.5, cellPadding: 1.5, lineWidth: 0.1, lineColor: [200, 200, 200] },
+      styles: { fontSize: 6.5, cellPadding: 1.5, lineWidth: 0.3, lineColor: [120, 120, 120] },
       headStyles: { fillColor: [13, 26, 48] },
       columnStyles: idxEndereco === -1 ? {} : { [idxEndereco]: { cellWidth: 40, fontSize: 5 } },
       didDrawPage: () => {

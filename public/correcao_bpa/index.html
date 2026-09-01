@@ -47,21 +47,26 @@
       <div class="group-label">Padrões do município (aplicados ao gerar o arquivo)</div>
       <div class="padroes-block">
         <p class="lead" style="font-size:12.5px;margin:0 0 14px;">
-          O código IBGE abaixo é gravado em <b>todas</b> as linhas do BPA-I cujo município esteja em branco
-          ou diferente dele. O endereço da Secretaria de Saúde substitui o endereço dos pacientes com
+          O <b>código IBGE</b> e o <b>CEP</b> abaixo são gravados em <b>todas</b> as linhas do BPA-I —
+          o IBGE quando estiver em branco ou diferente, e o CEP <b>sempre</b> (independe de ter endereço).
+          O endereço da Secretaria de Saúde substitui o endereço dos pacientes com
           <b>logradouro ou bairro em branco</b>. Fica salvo neste navegador.
         </p>
 
         <div class="padroes-grid">
-          <label class="pcampo pcampo-wide">
-            <span>Município — código IBGE (6 dígitos, sem dígito verificador)</span>
+          <label class="pcampo">
+            <span>Município — código IBGE (6 díg., sem dígito verificador)</span>
             <input id="padMunicipio" maxlength="7" inputmode="numeric" placeholder="316180">
+          </label>
+          <label class="pcampo">
+            <span>CEP — aplicar em TODOS os pacientes</span>
+            <input id="padCepTodos" maxlength="8" inputmode="numeric" placeholder="35544000">
           </label>
         </div>
 
         <div class="padroes-sub">Endereço padrão — Secretaria de Saúde</div>
         <div class="padroes-grid">
-          <label class="pcampo"><span>CEP (8 dígitos)</span>
+          <label class="pcampo"><span>CEP do endereço da Secretaria (usado só na substituição)</span>
             <input id="padCep" maxlength="8" inputmode="numeric" placeholder="35544000"></label>
           <label class="pcampo"><span>Cód. tipo de logradouro (opcional)</span>
             <input id="padTipoLograd" maxlength="3" inputmode="numeric" placeholder="081"></label>

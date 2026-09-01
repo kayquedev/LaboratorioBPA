@@ -100,6 +100,7 @@
   const PADROES_KEY = "correcao_bpa_padroes_municipio";
   const PADROES_DEFAULT = {
     municipioIbge: "316180",
+    cepTodos: "35544000",
     secretaria: { cep: "", tipoLogradouro: "", logradouro: "", numero: "", complemento: "", bairro: "" },
   };
   function carregarPadroes() {
@@ -108,6 +109,7 @@
       if (raw && typeof raw === "object") {
         return {
           municipioIbge: typeof raw.municipioIbge === "string" ? raw.municipioIbge : PADROES_DEFAULT.municipioIbge,
+          cepTodos: typeof raw.cepTodos === "string" ? raw.cepTodos : PADROES_DEFAULT.cepTodos,
           secretaria: Object.assign({}, PADROES_DEFAULT.secretaria, raw.secretaria || {}),
         };
       }
@@ -121,6 +123,7 @@
 
   const padInputs = {
     municipioIbge: document.getElementById("padMunicipio"),
+    cepTodos: document.getElementById("padCepTodos"),
     cep: document.getElementById("padCep"),
     tipoLogradouro: document.getElementById("padTipoLograd"),
     logradouro: document.getElementById("padLogradouro"),
@@ -130,6 +133,7 @@
   };
   function preencherPadroesForm() {
     padInputs.municipioIbge.value = padroes.municipioIbge || "";
+    padInputs.cepTodos.value = padroes.cepTodos || "";
     padInputs.cep.value = padroes.secretaria.cep || "";
     padInputs.tipoLogradouro.value = padroes.secretaria.tipoLogradouro || "";
     padInputs.logradouro.value = padroes.secretaria.logradouro || "";
@@ -139,6 +143,7 @@
   }
   function lerPadroesForm() {
     padroes.municipioIbge = padInputs.municipioIbge.value.replace(/\D/g, "").slice(0, 7);
+    padroes.cepTodos = padInputs.cepTodos.value.replace(/\D/g, "").slice(0, 8);
     padroes.secretaria.cep = padInputs.cep.value.replace(/\D/g, "").slice(0, 8);
     padroes.secretaria.tipoLogradouro = padInputs.tipoLogradouro.value.replace(/\D/g, "").slice(0, 3);
     padroes.secretaria.logradouro = padInputs.logradouro.value.slice(0, 30);
@@ -158,6 +163,10 @@
     return arr;
   }
   function ibgePadraoOk() { return /^\d{6,7}$/.test((padroes.municipioIbge || "").trim()); }
+  function cepPadraoOk() {
+    const c = (padroes.cepTodos || "").trim();
+    return /^\d{8}$/.test(c) && !/^0+$/.test(c);
+  }
   function secretariaOk() {
     return (padroes.secretaria.logradouro || "").trim() !== "" && (padroes.secretaria.bairro || "").trim() !== "";
   }
@@ -169,7 +178,7 @@
     registro.cods.forEach((c) => {
       if (c === "MUNICIPIO_INVALIDO" && ibgePadraoOk()) out.push(c);
       else if (c === "ENDERECO_INVALIDO" && secretariaOk()) out.push(c);
-      else if (c === "CEP_INVALIDO" && secretariaOk() && enderInc) out.push(c);
+      else if (c === "CEP_INVALIDO" && (cepPadraoOk() || (secretariaOk() && enderInc))) out.push(c);
     });
     return out;
   }
@@ -183,14 +192,18 @@
     if (!el) return;
     const imp = writer.contarImpactoPadroes(registrosIncluidosFlat(), padroes);
     const ibge = (padroes.municipioIbge || "").trim();
+    const cepAlvo = (padroes.cepTodos || "").trim();
     const partes = [];
     partes.push(ibgePadraoOk()
       ? "<b>" + imp.municipio + "</b> linha(s) com município ajustado para <b>" + escapeHtml(ibge) + "</b>"
       : "informe o código IBGE do município");
+    partes.push(cepPadraoOk()
+      ? "<b>" + imp.cep + "</b> linha(s) com CEP forçado para <b>" + escapeHtml(cepAlvo) + "</b>"
+      : "informe o CEP a aplicar em todos os pacientes");
     partes.push(secretariaOk()
       ? "<b>" + imp.endereco + "</b> endereço(s) em branco substituído(s) pelo da Secretaria"
       : "preencha logradouro e bairro da Secretaria para cobrir os endereços em branco");
-    el.className = "msg show " + (ibgePadraoOk() && secretariaOk() ? "ok" : "warn");
+    el.className = "msg show " + (ibgePadraoOk() && cepPadraoOk() ? "ok" : "warn");
     el.innerHTML = "Ao gerar o arquivo: " + partes.join(" · ") + ".";
   }
   function recalcularComPadroes() {
@@ -213,7 +226,7 @@
       el.className = "alert-banner show";
       el.innerHTML = "<b>" + totalComProblema + " registro(s) com pendência</b> em " + fontes.length + " arquivo(s). " +
         "<b>" + autoResolvidos + "</b> resolvido(s) automaticamente (renumeração de folha/sequência). " +
-        (cobertas ? "<b>" + cobertas + "</b> cobertos pelos padrões do município. " : "") +
+        (cobertas ? "<b>" + cobertas + "</b> cobertos pelos padrões (município / CEP / endereço da Secretaria). " : "") +
         "<b>" + (todasPendencias.length - cobertas) + "</b> ainda precisa(m) de revisão manual — corrija ou deixe como está (pular).";
     }
 

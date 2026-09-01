@@ -236,13 +236,18 @@
   }
 
   // ---------- padroes do municipio (definidos na tela de resumo) ----------
-  // padroes = { municipioIbge: "316180",
+  // padroes = { municipioIbge: "316180", cepTodos: "35544000",
   //   secretaria: { cep, tipoLogradouro, logradouro, numero, complemento, bairro } }
   // Municipio: grava o IBGE em toda linha 03 cujo valor esteja em branco ou
-  // diferente. Endereco: quando logradouro OU bairro do paciente estao em
-  // branco, troca o bloco de endereco inteiro pelo da Secretaria de Saude.
+  // diferente. cepTodos: grava o CEP em TODAS as linhas 03 (tenha endereco ou
+  // nao). Endereco: quando logradouro OU bairro do paciente estao em branco,
+  // troca o bloco de endereco inteiro pelo da Secretaria de Saude.
   function ibgePadraoOk(padroes) {
     return !!padroes && /^\d{6,7}$/.test(String(padroes.municipioIbge || "").trim());
+  }
+  function cepTodosOk(padroes) {
+    const c = String((padroes && padroes.cepTodos) || "").trim();
+    return /^\d{8}$/.test(c) && !/^0+$/.test(c);
   }
   function enderecoSecretariaOk(padroes) {
     const s = (padroes && padroes.secretaria) || {};
@@ -266,21 +271,28 @@
       linha = patchField(linha, "03", "complemento", s.complemento || "");
       linha = patchField(linha, "03", "bairro", s.bairro);
     }
+    // CEP forcado em todas as linhas 03 - por ultimo, prevalece sobre o da Secretaria
+    if (cepTodosOk(padroes)) {
+      linha = patchField(linha, "03", "cep", String(padroes.cepTodos).trim());
+    }
     return linha;
   }
   // quantas linhas 03 (nao excluidas) cada padrao vai tocar - pra previa na UI
   function contarImpactoPadroes(registros, padroes) {
-    let municipio = 0, endereco = 0;
-    if (!padroes) return { municipio, endereco };
+    let municipio = 0, endereco = 0, cep = 0;
+    if (!padroes) return { municipio, endereco, cep };
     const ibge = String(padroes.municipioIbge || "").trim();
+    const cepAlvo = String(padroes.cepTodos || "").trim();
     const ibgeOk = ibgePadraoOk(padroes);
+    const cepOk = cepTodosOk(padroes);
     const secOk = enderecoSecretariaOk(padroes);
     (registros || []).forEach((r) => {
       if (r.tipo !== "03" || r.excluido) return;
       if (ibgeOk && String(r.municipioIbge || "").trim() !== ibge) municipio++;
+      if (cepOk && String(r.cep || "").trim() !== cepAlvo) cep++;
       if (secOk && registroEnderecoIncompleto(r)) endereco++;
     });
-    return { municipio, endereco };
+    return { municipio, endereco, cep };
   }
 
   function linhaFinal(registro, novaFolha, novoSeq, padroes) {

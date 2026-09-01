@@ -42,7 +42,9 @@
     return (registro.correcoes && registro.correcoes.sigtap) || registro.sigtap;
   }
   function pacienteChave(r) {
-    return r.cnsCpfPaciente ? "cns:" + r.cnsCpfPaciente : "nb:" + r.nomePaciente + "|" + r.dataNascimento;
+    if (r.cnsCpfPaciente) return "cns:" + r.cnsCpfPaciente;
+    if (r.cpfPaciente) return "cpf:" + r.cpfPaciente;
+    return "nb:" + r.nomePaciente + "|" + r.dataNascimento;
   }
 
   let payload = null;

@@ -55,20 +55,26 @@
       seq: toInt(cut(line, 47, 2)),
       sigtap: cut(line, 49, 10),
       quantidade: 1, // BPA-I: uma linha = um atendimento
-      cnsCpfPaciente: trim(cut(line, 59, 15)),
+      cnsCpfPaciente: trim(cut(line, 59, 15)), // CNS do paciente (posicoes 60-74)
       sexo: trim(cut(line, 74, 1)),
-      municipioIbge: cut(line, 75, 6),
+      municipioIbge: trim(cut(line, 75, 6)),
+      cid: trim(cut(line, 81, 4)),
+      caraterAtendimento: trim(cut(line, 94, 2)),
       nomePaciente: trim(cut(line, 112, 30)),
       dataNascimento: cut(line, 142, 8),
-      caraterAtendimento: trim(cut(line, 150, 2)),
-      // 152-190: raca/cor + nacionalidade (bloco nao totalmente decomposto, ver plano)
+      racaCor: trim(cut(line, 150, 2)),
+      etnia: trim(cut(line, 152, 4)),
+      nacionalidade: trim(cut(line, 156, 3)),
+      servico: trim(cut(line, 159, 3)),
+      classificacao: trim(cut(line, 162, 3)),
       cep: trim(cut(line, 191, 8)),
       codLogradouro: trim(cut(line, 199, 3)),
       endereco: trim(cut(line, 202, 30)),
       complemento: trim(cut(line, 232, 10)),
       numero: trim(cut(line, 242, 5)),
       bairro: trim(cut(line, 247, 30)),
-      telefone: trim(cut(line, 338, 11)),
+      telefone: trim(cut(line, 277, 11)),
+      cpfPaciente: trim(cut(line, 338, 11)), // CPF do paciente (posicoes 339-349)
     };
   }
 

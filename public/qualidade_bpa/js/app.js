@@ -23,7 +23,9 @@
     return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
   }
   function pacienteChave(r) {
-    return r.cnsCpfPaciente ? "cns:" + r.cnsCpfPaciente : "nb:" + r.nomePaciente + "|" + r.dataNascimento;
+    if (r.cnsCpfPaciente) return "cns:" + r.cnsCpfPaciente;
+    if (r.cpfPaciente) return "cpf:" + r.cpfPaciente;
+    return "nb:" + r.nomePaciente + "|" + r.dataNascimento;
   }
   function idadeEmMeses(nasc, atend) {
     if (!isValidDate(nasc) || !/^\d{8}$/.test(atend || "")) return null;
@@ -35,6 +37,53 @@
   }
   function fmtMoeda(v) {
     return (v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  }
+  // dígito verificador do procedimento SIGTAP: 10º dígito = (Σ dᵢ·i, i=1..9) mod 11
+  // (resto 10 vira 0). É a mesma checagem da crítica 003 do BPA Magnético.
+  function sigtapDvOk(codigo) {
+    if (!/^\d{10}$/.test(codigo)) return false;
+    let soma = 0;
+    for (let i = 0; i < 9; i++) soma += (+codigo[i]) * (i + 1);
+    const dv = soma % 11;
+    return (dv === 10 ? 0 : dv) === +codigo[9];
+  }
+  // CPF: 11 dígitos + 2 verificadores (mod 11). Rejeita sequências repetidas.
+  function cpfDvOk(cpf) {
+    if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false;
+    let s = 0;
+    for (let i = 0; i < 9; i++) s += (+cpf[i]) * (10 - i);
+    let d1 = 11 - (s % 11); if (d1 >= 10) d1 = 0;
+    if (d1 !== +cpf[9]) return false;
+    s = 0;
+    for (let i = 0; i < 10; i++) s += (+cpf[i]) * (11 - i);
+    let d2 = 11 - (s % 11); if (d2 >= 10) d2 = 0;
+    return d2 === +cpf[10];
+  }
+  // CNS: 15 dígitos. Começando por 1/2 é definitivo (base PIS + 4 de controle);
+  // começando por 7/8/9 é provisório (Σ dᵢ·(15-i) divisível por 11).
+  function cnsDvOk(cns) {
+    if (!/^\d{15}$/.test(cns)) return false;
+    const p = +cns[0];
+    if (p === 1 || p === 2) {
+      let soma = 0;
+      for (let i = 0; i < 11; i++) soma += (+cns[i]) * (15 - i);
+      let resto = soma % 11;
+      let dv = 11 - resto; if (dv === 11) dv = 0;
+      let resultado;
+      if (dv === 10) {
+        soma += 2; resto = soma % 11; dv = 11 - resto;
+        resultado = cns.slice(0, 11) + "001" + dv;
+      } else {
+        resultado = cns.slice(0, 11) + "000" + dv;
+      }
+      return resultado === cns;
+    }
+    if (p === 7 || p === 8 || p === 9) {
+      let soma = 0;
+      for (let i = 0; i < 15; i++) soma += (+cns[i]) * (15 - i);
+      return soma % 11 === 0;
+    }
+    return false;
   }
   function cboNome(codigo) { return window.QualidadeBpaLookup.nomeCbo(codigo); }
   function sigtapNome(codigo) { return window.QualidadeBpaLookup.nomeSigtap(codigo); }
@@ -79,9 +128,9 @@
     NASCIMENTO_FUTURO: { sev: "aviso", texto: "Data de nascimento futura",
       explicacao: "A data de nascimento do paciente está no futuro.",
       resolver: "Provavelmente é erro de digitação — confira o cadastro do paciente." },
-    CEP_INVALIDO: { sev: "aviso", texto: "CEP inválido",
-      explicacao: "O CEP informado não tem 8 dígitos numéricos.",
-      resolver: "Confira o CEP no cadastro do paciente; se não houver CEP correto, prefira deixar em branco." },
+    CEP_INVALIDO: { sev: "erro", texto: "CEP inválido",
+      explicacao: "O CEP do paciente não tem 8 dígitos, está zerado, ou falta quando há endereço. O BPA Magnético ainda cruza o CEP com o município na base dos Correios e recusa a linha (crítica 053) se não conferir.",
+      resolver: "Confira o CEP no cadastro do paciente e confirme que ele pertence mesmo à cidade informada." },
     POSSIVEL_DUPLICIDADE: { sev: "aviso", texto: "Possível duplicidade",
       explicacao: "Outra linha tem o mesmo paciente, mesmo procedimento e mesma data — pode ser faturamento em duplicidade.",
       resolver: "Confira se não é um lançamento duplicado; se for um caso legítimo (dois atendimentos no mesmo dia), pode ignorar." },
@@ -94,9 +143,45 @@
     SIGTAP_IDADE_INCOMPATIVEL: { sev: "erro", texto: "Idade fora da faixa do procedimento",
       explicacao: "A idade do paciente na data do atendimento está fora da faixa etária permitida pela tabela SIGTAP para esse procedimento.",
       resolver: "Confira a data de nascimento e a data do atendimento do paciente, ou se o código SIGTAP lançado é o correto para a idade dele." },
-    SIGTAP_NAO_ENCONTRADO: { sev: "aviso", texto: "SIGTAP não encontrado na tabela carregada",
-      explicacao: "O código tem formato válido, mas não foi encontrado na tabela SIGTAP usada por este módulo (pode ser de uma competência diferente da carregada aqui).",
-      resolver: "Confirme se o código existe na competência vigente do SIGTAP; esse aviso, sozinho, não indica que a linha está errada." },
+    SIGTAP_NAO_ENCONTRADO: { sev: "erro", texto: "Procedimento não existe na tabela SIGTAP",
+      explicacao: "O código tem formato e dígito verificador válidos, mas não consta na tabela SIGTAP deste módulo. O BPA Magnético rejeita o arquivo inteiro quando o procedimento não existe na competência de envio (crítica 003).",
+      resolver: "Confira o código do procedimento no SIGTAP oficial da competência. Se você carregou aqui uma competência diferente da do arquivo, valide direto no SIGTAP antes de confiar neste alerta." },
+    SIGTAP_DV_INVALIDO: { sev: "erro", texto: "Dígito verificador do procedimento incorreto",
+      explicacao: "O 10º dígito do código SIGTAP (verificador, módulo 11) não confere com os 9 primeiros — o código foi digitado errado, truncado ou deslocado. Equivale à crítica 003 do BPA Magnético.",
+      resolver: "Confira o código completo do procedimento no SIGTAP e corrija a linha (10 dígitos, incluindo o dígito verificador)." },
+    MUNICIPIO_INVALIDO: { sev: "erro", texto: "Município de residência não informado / inválido",
+      explicacao: "O código IBGE do município do paciente está em branco, zerado ou não tem 6–7 dígitos. O BPA Magnético recusa a linha (crítica 024 — município não cadastrado).",
+      resolver: "Preencha o código IBGE do município de residência do paciente (6 dígitos, sem o dígito verificador) no cadastro/sistema de origem." },
+    ENDERECO_INVALIDO: { sev: "erro", texto: "Endereço do paciente inválido",
+      explicacao: "O logradouro (rua/endereço) do paciente está em branco na linha do BPA-I. O BPA Magnético recusa a linha (crítica 054 — endereço inválido).",
+      resolver: "Preencha logradouro, número (ou 'SN' quando não houver) e bairro do paciente no cadastro/sistema de origem." },
+    CLASSIFICACAO_INVALIDA: { sev: "erro", texto: "Serviço/Classificação inválido para o procedimento",
+      explicacao: "O procedimento exige um par Serviço/Classificação específico (tabela SIGTAP) e o informado na linha está em branco ou não é um dos aceitos. O BPA Magnético recusa a linha (crítica 050 — classificação inválida).",
+      resolver: "Ajuste os campos Serviço e Classificação da linha para um par válido do procedimento." },
+    PACIENTE_SEM_IDENTIFICACAO: { sev: "erro", texto: "Paciente sem CNS nem CPF",
+      explicacao: "A linha do BPA-I não traz CNS nem CPF do paciente. O BPA Magnético recusa (críticas 060 — CNS obrigatório / 025 — procedimento exige CNS). Vários procedimentos não aceitam CPF no lugar do CNS.",
+      resolver: "Informe o CNS do paciente (15 dígitos). Onde o procedimento aceitar, o CPF pode ser usado — mas confira, porque muitos exigem o CNS." },
+    CNS_PACIENTE_INVALIDO: { sev: "aviso", texto: "CNS do paciente com dígito verificador inválido",
+      explicacao: "O CNS informado para o paciente não passa na validação de dígito verificador — provavelmente foi digitado errado.",
+      resolver: "Confira o CNS do paciente (15 dígitos) no CADSUS e corrija no cadastro." },
+    CPF_PACIENTE_INVALIDO: { sev: "aviso", texto: "CPF do paciente inválido",
+      explicacao: "O CPF informado para o paciente não passa na validação de dígito verificador.",
+      resolver: "Confira o CPF do paciente no cadastro e corrija." },
+    CNS_PROFISSIONAL_AUSENTE: { sev: "erro", texto: "CNS do profissional não informado",
+      explicacao: "A linha do BPA-I não traz o CNS do profissional executante (15 dígitos). O BPA Magnético recusa a linha.",
+      resolver: "Cadastre/importe o CNS do profissional responsável pelo atendimento no sistema de origem." },
+    CNS_PROFISSIONAL_INVALIDO: { sev: "aviso", texto: "CNS do profissional com dígito verificador inválido",
+      explicacao: "O CNS do profissional executante não passa na validação de dígito verificador.",
+      resolver: "Confira o CNS do profissional no CNES/CADSUS." },
+    CARATER_ATENDIMENTO_AUSENTE: { sev: "aviso", texto: "Caráter do atendimento não informado",
+      explicacao: "O caráter do atendimento (01 = eletivo, 02 = urgência) está em branco na linha do BPA-I.",
+      resolver: "Preencha o caráter do atendimento no sistema de origem." },
+    RACA_COR_AUSENTE: { sev: "aviso", texto: "Raça/cor não informada",
+      explicacao: "O campo raça/cor do paciente está em branco na linha do BPA-I.",
+      resolver: "Preencha a raça/cor do paciente (01 branca, 02 preta, 03 parda, 04 amarela, 05 indígena, 99 sem informação)." },
+    NACIONALIDADE_AUSENTE: { sev: "aviso", texto: "Nacionalidade não informada",
+      explicacao: "O campo nacionalidade do paciente está em branco na linha do BPA-I.",
+      resolver: "Preencha a nacionalidade do paciente (010 = brasileira) no sistema de origem." },
   };
 
   // ---------- setores (checagem por procedimento indicador) ----------
@@ -326,8 +411,10 @@
       if (header && r.competencia !== header.competencia) codigos.push("COMPETENCIA_DIVERGENTE");
       if (folhaSeqCount[folhaSeqChave(r)] > 1) codigos.push("FOLHA_SEQ_DUPLICADA");
 
+      const dvSigtapOk = sigtapValido && sigtapDvOk(r.sigtap);
+      if (sigtapValido && !dvSigtapOk) codigos.push("SIGTAP_DV_INVALIDO");
       const info = sigtapValido && lookup ? lookup.sigtapInfo(r.sigtap) : null;
-      if (sigtapValido && !info) codigos.push("SIGTAP_NAO_ENCONTRADO");
+      if (sigtapValido && dvSigtapOk && !info) codigos.push("SIGTAP_NAO_ENCONTRADO");
       if (info) {
         const registroEsperado = r.tipo === "02" ? "01" : r.tipo === "03" ? "02" : null;
         if (registroEsperado && info.registros.length && info.registros.indexOf(registroEsperado) === -1) {
@@ -335,12 +422,57 @@
         }
       }
 
+      let permitidosSrv = null;
       if (r.tipo === "03") {
         if (/^\d{8}$/.test(r.dataAtendimento) && r.dataAtendimento.slice(0, 6) !== r.competencia) codigos.push("DATA_FORA_COMPETENCIA");
         if (/^\d{8}$/.test(r.dataAtendimento) && r.dataAtendimento > hoje) codigos.push("DATA_ATENDIMENTO_FUTURA");
         if (!isValidDate(r.dataNascimento)) codigos.push("NASCIMENTO_INVALIDO");
         else if (r.dataNascimento > hoje) codigos.push("NASCIMENTO_FUTURO");
-        if (r.cep && !/^\d{8}$/.test(r.cep)) codigos.push("CEP_INVALIDO");
+
+        // CEP: 8 dígitos, não zerado; e obrigatório quando há endereço.
+        // (o BPA Magnético ainda cruza o CEP com o município na base dos Correios —
+        // isso este módulo não replica, então um CEP "bem-formado" pode mesmo assim
+        // ser recusado lá se não pertencer à cidade informada.)
+        const cep = (r.cep || "").trim();
+        const cepFmtOk = /^\d{8}$/.test(cep) && !/^0+$/.test(cep);
+        if (!cepFmtOk && (cep !== "" || (r.endereco || "").trim() !== "")) codigos.push("CEP_INVALIDO");
+
+        // identificação do paciente: CNS (60-74) ou CPF (339-349)
+        const cnsPac = (r.cnsCpfPaciente || "").trim();
+        const cpfPac = (r.cpfPaciente || "").trim();
+        const temCnsPac = /^\d{15}$/.test(cnsPac);
+        const temCpfPac = /^\d{11}$/.test(cpfPac) && !/^0+$/.test(cpfPac);
+        if (!temCnsPac && !temCpfPac) codigos.push("PACIENTE_SEM_IDENTIFICACAO");
+        else if (temCnsPac && !cnsDvOk(cnsPac)) codigos.push("CNS_PACIENTE_INVALIDO");
+        else if (!temCnsPac && temCpfPac && !cpfDvOk(cpfPac)) codigos.push("CPF_PACIENTE_INVALIDO");
+
+        // CNS do profissional executante (16-30)
+        const cnsProf = (r.cnsProfissional || "").trim();
+        if (!/^\d{15}$/.test(cnsProf)) codigos.push("CNS_PROFISSIONAL_AUSENTE");
+        else if (!cnsDvOk(cnsProf)) codigos.push("CNS_PROFISSIONAL_INVALIDO");
+
+        // município de residência (IBGE, 76-81) — crítica 024
+        const muni = (r.municipioIbge || "").trim();
+        if (!/^\d{6,7}$/.test(muni) || /^0+$/.test(muni)) codigos.push("MUNICIPIO_INVALIDO");
+
+        // endereço do paciente (logradouro, 203-232) — crítica 054
+        if ((r.endereco || "").trim() === "") codigos.push("ENDERECO_INVALIDO");
+
+        // campos obrigatórios do BPA-I que o BPA Magnético também critica
+        const caten = (r.caraterAtendimento || "").trim();
+        if (caten === "" || caten === "00") codigos.push("CARATER_ATENDIMENTO_AUSENTE");
+        const raca = (r.racaCor || "").trim();
+        if (raca === "" || raca === "00") codigos.push("RACA_COR_AUSENTE");
+        const nac = (r.nacionalidade || "").trim();
+        if (nac === "" || nac === "000") codigos.push("NACIONALIDADE_AUSENTE");
+
+        // serviço/classificação (160-165) x procedimento — crítica 050
+        permitidosSrv = lookup && lookup.servicosDoProcedimento ? lookup.servicosDoProcedimento(r.sigtap) : null;
+        if (permitidosSrv && permitidosSrv.length) {
+          const par = (r.servico || "").trim() + (r.classificacao || "").trim();
+          if (!/^\d{6}$/.test(par) || permitidosSrv.indexOf(par) === -1) codigos.push("CLASSIFICACAO_INVALIDA");
+        }
+
         const k = pacienteChave(r) + "|" + r.sigtap + "|" + r.dataAtendimento;
         if (dupCount[k] > 1) codigos.push("POSSIVEL_DUPLICIDADE");
 
@@ -359,6 +491,15 @@
       }
 
       r.problemas = codigos.map((cod) => Object.assign({ cod }, PROBLEMA_CATALOG[cod]));
+
+      // detalha, no próprio registro, quais pares Serviço/Classificação o
+      // procedimento aceita (o texto do catálogo é genérico demais pra isso)
+      const pClf = r.problemas.find((p) => p.cod === "CLASSIFICACAO_INVALIDA");
+      if (pClf && permitidosSrv && permitidosSrv.length) {
+        pClf.resolver += " Para o procedimento " + r.sigtap + ", o BPA aceita: " +
+          permitidosSrv.map((sc) => sc + (lookup.nomeClassificacao(sc) ? " · " + lookup.nomeClassificacao(sc) : "")).join(" | ") + ".";
+      }
+
       r.sigtapEncontrado = !!info;
       r.valorEstimado = info ? info.valor * (r.quantidade || 0) : 0;
     });

@@ -762,9 +762,13 @@
 
     const box = document.getElementById("glossarioBox");
     const label = document.getElementById("glossarioLabel");
+    const totaisLabel = document.getElementById("glossarioTotaisLabel");
+    const totaisBox = document.getElementById("cardsGlossarioTotais");
     if (!codigos.length) {
       label.classList.add("hidden");
+      totaisLabel.classList.add("hidden");
       box.innerHTML = "";
+      totaisBox.innerHTML = "";
       return;
     }
     label.classList.remove("hidden");
@@ -781,6 +785,30 @@
       const cod = el.dataset.glossCod;
       el.addEventListener("click", () => showDrilldown(PROBLEMA_CATALOG[cod].texto, { problema: cod }));
     });
+
+    // ---- 3 cards: valor estimado das pendências, por severidade ----
+    // "pendente" = registro com SIGTAP localizado na tabela E com ao menos um
+    // problema. Se tiver qualquer "erro" conta em erros; se só tiver aviso(s),
+    // conta em avisos. Total = erros + avisos (mesmo valor do card "Pendente /
+    // risco de glosa" do painel de Faturamento).
+    let vErro = 0, vAviso = 0, nErro = 0, nAviso = 0;
+    regs.forEach((r) => {
+      if (!r.sigtapEncontrado || !r.problemas.length) return;
+      if (r.problemas.some((p) => p.sev === "erro")) { vErro += r.valorEstimado; nErro++; }
+      else { vAviso += r.valorEstimado; nAviso++; }
+    });
+    totaisLabel.classList.remove("hidden");
+    totaisBox.innerHTML = [
+      { badge: '<span class="badge b-soon">Estimado</span>', corValor: "var(--red)",
+        valor: fmtMoeda(vErro + vAviso), titulo: "Valor total pendente",
+        desc: (nErro + nAviso) + " registro(s) com erro ou aviso e SIGTAP localizado — soma de tudo que precisa de revisão." },
+      { badge: '<span class="badge sev-aviso">Avisos</span>', corValor: "var(--amber)",
+        valor: fmtMoeda(vAviso), titulo: "Valor avisos pendente",
+        desc: nAviso + " registro(s) só com aviso(s) — revisar antes de enviar, mas tende a ser aceito." },
+      { badge: '<span class="badge sev-erro">Erros</span>', corValor: "var(--red)",
+        valor: fmtMoeda(vErro), titulo: "Valor erros pendente",
+        desc: nErro + " registro(s) com pelo menos um erro — tendem a ser rejeitados ou glosados pelo SIA." },
+    ].map(cardHtml).join("");
   }
 
   // ---------- handoff pro modulo Correcao BPA ----------

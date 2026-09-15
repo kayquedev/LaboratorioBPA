@@ -24,12 +24,12 @@
     </div>
   </nav>
 
-  <!-- ===================== UPLOAD (escuro) ===================== -->
+  <!-- ===================== UPLOAD ===================== -->
   <section id="viewUpload" class="view-dark hidden">
     <div class="wrap-narrow">
       <div class="eyebrow">e-SUS PEC · Território</div>
       <h1>Acompanhamento Cidadãos PEC</h1>
-      <p class="lead">Cruza os relatórios de <b>Cidadãos vinculados</b>, <b>Condições de saúde</b> e <b>Território</b> do e-SUS PEC para achar cadastros sem endereço, desatualizados, sem nenhum atendimento registrado e sem domicílio mapeado no território. Só o arquivo de cidadãos vinculados é obrigatório — os outros dois enriquecem a análise quando enviados. Nada é enviado a nenhum servidor — a análise acontece no seu navegador.</p>
+      <p class="lead">Cruza os relatórios de <b>Cidadãos vinculados</b>, <b>Condições de saúde</b> e <b>Território</b> do e-SUS PEC pra achar pendências de cadastro (documento, endereço, microárea, ficha desatualizada), possíveis <b>duplicidades</b> de cidadão e cobertura do <b>território</b> (domicílios sem morador, vínculo a mais de um domicílio). Só o arquivo de cidadãos vinculados é obrigatório — os outros dois enriquecem a análise quando enviados. Nada é enviado a nenhum servidor — a análise acontece no seu navegador.</p>
 
       <div class="group-label">Arquivo 1 — Cidadãos vinculados (obrigatório)</div>
       <div class="drop" id="dropVinc">
@@ -39,7 +39,7 @@
         <div class="fname" id="fnameVinc"></div>
       </div>
 
-      <div class="group-label" style="margin-top:22px;">Arquivo 2 — Condições de saúde (opcional)</div>
+      <div class="group-label" style="margin-top:22px;">Arquivo 2 — Condições de saúde (opcional, recomendado)</div>
       <div class="drop" id="dropCond">
         <input type="file" id="inputCond" accept=".csv">
         <div class="icon">📄</div>
@@ -55,58 +55,83 @@
         <div class="fname" id="fnameTerr"></div>
       </div>
 
-      <button class="btn" id="btnGerarPainel" style="background:var(--teal);color:#04241c;margin-top:22px;">Gerar painel →</button>
+      <button class="btn btn-primary" id="btnGerarPainel" style="margin-top:22px;">Gerar painel →</button>
 
       <div class="msg" id="msgUpload"></div>
     </div>
   </section>
 
-  <!-- ===================== DASHBOARD (escuro) ===================== -->
+  <!-- ===================== DASHBOARD ===================== -->
   <section id="viewDashboard" class="view-dark hidden">
     <div class="wrap-wide">
 
       <div class="eyebrow">e-SUS PEC · Território</div>
       <h1 style="margin:0 0 16px;font-size:22px;">Acompanhamento de cadastros</h1>
 
-      <div class="group-label">Origem da ficha</div>
-      <div class="cards-grid" id="cardsOrigem" style="margin-bottom:30px;"></div>
+      <div class="aviso-dado-ausente hidden" id="avisoDadosAusentes"></div>
 
       <div class="group-label">Arquivos importados</div>
       <div class="fontes-list" id="fontesResumo"></div>
-      <button class="add-file-inicial btn btn-ghost-dark" id="dropTerrDashboard" style="margin-bottom:26px;">
+      <button class="add-file-inicial btn btn-ghost-dark" id="dropTerrDashboard" style="margin-bottom:10px;">
         <input type="file" id="inputTerrDashboard" accept=".csv" multiple class="hidden">
         + Adicionar arquivos de território
       </button>
 
-      <div class="stat-row" id="statsRow"></div>
+      <nav class="tabs-nav" id="tabsNav">
+        <button class="tab-btn active" data-tab="geral">Visão Geral</button>
+        <button class="tab-btn" data-tab="pendencias">Pendências Cadastrais <span class="count" id="countPendencias">0</span></button>
+        <button class="tab-btn" data-tab="duplicidades">Duplicidades <span class="count" id="countDuplicidades">0</span></button>
+        <button class="tab-btn hidden" data-tab="territorio" id="tabBtnTerritorio">Território</button>
+        <button class="tab-btn" data-tab="exportacoes">Exportações</button>
+      </nav>
 
-      <div id="paineisBasicos"></div>
+      <!-- ---------- aba: visão geral ---------- -->
+      <div class="tab-panel active" id="tabGeral">
+        <div class="cards-grid" id="cardsOrigem"></div>
+        <div class="stat-row" id="statsRow"></div>
+        <div id="paineisBasicos"></div>
 
-      <div id="blocoAtendimento" class="hidden" style="margin-top:30px;">
-        <div class="group-label">Registro de atendimentos (condições de saúde)</div>
-        <div class="cards-grid" id="cardSemAtendimento" style="margin-bottom:20px;">
-        </div>
-        <div class="paineis-grid" style="margin-bottom:30px;">
-          <div class="painel" id="painelSemAtendimento"></div>
-          <div id="painelConsolidado" style="grid-column: span 2;"></div>
-        </div>
-      </div>
-
-      <div id="blocoTerritorio" class="hidden" style="margin-top:10px;">
-        <div class="group-label">Território</div>
-        <div class="cards-grid" id="cardSemDomicilio" style="margin-bottom:20px;">
-        </div>
-        <div class="paineis-grid" style="margin-bottom:30px;">
-          <div class="painel" id="painelSemDomicilio"></div>
+        <div id="blocoAtendimento" class="hidden" style="margin-top:10px;">
+          <div class="group-label">Consolidado (condições de saúde)</div>
+          <div id="painelConsolidado"></div>
         </div>
       </div>
 
-      <button class="btn" id="btnVerTabela" style="background:var(--teal);color:#04241c;margin-bottom:30px;">Ver todos os cidadãos →</button>
+      <!-- ---------- aba: pendências cadastrais ---------- -->
+      <div class="tab-panel" id="tabPendencias">
+        <p class="lead" style="margin:0 0 18px;font-size:13px;">Cada card é uma regra aplicada sobre a última ficha de cada cidadão vinculado. Clique num card ou no glossário pra ver a lista nominal filtrada.</p>
+        <div class="cards-grid" id="cardsPendencias"></div>
+        <div class="group-label">O que significa cada pendência</div>
+        <div class="glossario" id="glossarioPendencias"></div>
+      </div>
+
+      <!-- ---------- aba: duplicidades ---------- -->
+      <div class="tab-panel" id="tabDuplicidades">
+        <p class="lead" style="margin:0 0 18px;font-size:13px;">Comparação por texto exato (maiúsculo, sem espaço duplicado) — nunca por CPF/CNS nem aproximação. É só relatório informativo: a unificação é feita diretamente no e-SUS PEC.</p>
+        <div class="cards-grid" id="cardsDuplicidades"></div>
+        <div id="listaDuplicidadesWrap">
+          <div class="group-label">Casos encontrados</div>
+          <div class="dup-list" id="listaDuplicidades"></div>
+        </div>
+      </div>
+
+      <!-- ---------- aba: território ---------- -->
+      <div class="tab-panel" id="tabTerritorio">
+        <div class="cards-grid" id="cardsTerritorio"></div>
+        <div class="paineis-grid" id="paineisTerritorio"></div>
+      </div>
+
+      <!-- ---------- aba: exportações ---------- -->
+      <div class="tab-panel" id="tabExportacoes">
+        <div class="exportacoes-grid" id="exportacoesGrid"></div>
+      </div>
+
+      <button class="btn btn-ghost-dark" id="btnVerTabela" style="margin-top:26px;">Ver todos os cidadãos →</button>
 
     </div>
   </section>
 
-  <!-- ===================== TABELA (claro) ===================== -->
+  <!-- ===================== TABELA (drilldown) ===================== -->
   <section id="viewTabela" class="view-light hidden">
     <div class="drill-layout">
 
@@ -136,34 +161,23 @@
             <select id="fSexo"><option value="">Todos</option></select>
           </div>
           <div class="field">
+            <label for="fPendencia">Tipo de pendência</label>
+            <select id="fPendencia"><option value="">Todas</option></select>
+          </div>
+          <div class="field">
             <label for="fBusca">Buscar (nome)</label>
             <input id="fBusca" placeholder="Ex.: Maria...">
           </div>
           <div class="field">
-            <label for="fSoSemEndereco">
-              <input type="checkbox" id="fSoSemEndereco"> Só sem endereço
-            </label>
-          </div>
-          <div class="field">
-            <label for="fSoDesatualizado">
-              <input type="checkbox" id="fSoDesatualizado"> Só desatualizado (+2 anos)
-            </label>
-          </div>
-          <div class="field hidden" id="campoSemAtendimento">
-            <label for="fSoSemAtendimento">
-              <input type="checkbox" id="fSoSemAtendimento"> Só sem atendimento
-            </label>
-          </div>
-          <div class="field hidden" id="campoSemDomicilio">
-            <label for="fSoSemDomicilio">
-              <input type="checkbox" id="fSoSemDomicilio"> Só sem domicílio
+            <label for="fSoComPendencia">
+              <input type="checkbox" id="fSoComPendencia"> Só com pendência
             </label>
           </div>
         </div>
 
         <div class="sidebar-block">
           <div class="sidebar-title">Exportar</div>
-          <button class="btn" id="btnExportarPdf" style="width:100%;justify-content:center;background:var(--blue-link);color:#04241c;">⬇ Exportar PDF</button>
+          <button class="btn btn-primary" id="btnExportarPdf" style="width:100%;justify-content:center;">⬇ Exportar PDF</button>
         </div>
       </aside>
 
@@ -174,7 +188,7 @@
             <thead>
               <tr>
                 <th>Nome</th><th>Microárea</th><th>Origem</th><th>Última atualização</th>
-                <th>Endereço</th><th>Atendimento</th><th>Domicílio</th>
+                <th>Endereço</th><th>Documento</th><th>Pendências</th>
               </tr>
             </thead>
             <tbody id="tabelaBody"></tbody>

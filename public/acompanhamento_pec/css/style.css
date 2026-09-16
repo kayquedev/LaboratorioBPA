@@ -16,6 +16,10 @@
   --track: #e2e8f0;
   --blue-link: #2563eb;
   --blue-bg: rgba(37,99,235,.08);
+  --violet: #7c3aed;
+  --violet-bg: rgba(124,58,237,.10);
+  --pink: #db2777;
+  --pink-bg: rgba(219,39,119,.10);
 
   --light-bg: #f8fafc;
   --light-card: #ffffff;
@@ -280,3 +284,88 @@ table.preview td.num{ font-variant-numeric: tabular-nums; }
 .probitem.probitem-erro{ background: #fdeceb; color: #9c2b30; }
 .probitem.probitem-aviso{ background: #fdf1de; color: #8a5300; }
 .probitem .resolver{ display:block; font-weight:700; margin-top:2px; }
+
+/* ---------- KPI cards com icone e cor de destaque (Visão Geral) ---------- */
+.kpi-grid{ display:grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 24px; }
+@media (max-width: 1100px){ .kpi-grid{ grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 640px){ .kpi-grid{ grid-template-columns: 1fr 1fr; } }
+.kpi-card{
+  background: var(--card-bg); border: 1px solid var(--card-border); border-left: 4px solid var(--card-border);
+  border-radius: 10px; padding: 14px 16px; display:flex; flex-direction:column; gap:8px; min-width:0;
+}
+.kpi-card .kpi-top{ display:flex; align-items:center; gap:8px; }
+.kpi-card .kpi-icone{
+  width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center;
+  font-size:13px; flex:none;
+}
+.kpi-card .kpi-label{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color: var(--text-dim); }
+.kpi-card .kpi-valor{ font-size:23px; font-weight:700; color: var(--text); line-height:1; }
+.kpi-card .kpi-desc{ font-size:11px; color: var(--text-dim-2); line-height:1.4; }
+
+/* ---------- meter (qualidade dos dados) ---------- */
+.meter-track{ height:14px; border-radius:8px; background: var(--track); overflow:hidden; }
+.meter-fill{ height:100%; border-radius:8px; }
+.meter-legenda{ display:flex; justify-content:space-between; font-size:11px; color:var(--text-dim); margin-top:6px; }
+
+/* ---------- barra empilhada (distribuição por sexo) ---------- */
+.stackbar{ display:flex; height:22px; border-radius:6px; overflow:hidden; background:var(--track); gap:2px; }
+.stackbar-seg{ height:100%; }
+.stackbar-legenda{ display:flex; gap:18px; margin-top:12px; flex-wrap:wrap; }
+.stackbar-legenda-item{ display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--text-dim); }
+.stackbar-legenda-dot{ width:10px; height:10px; border-radius:3px; flex:none; }
+.stackbar-legenda-item b{ color: var(--text); }
+
+/* ---------- gráfico de barras (faixa etária) ---------- */
+.barchart{ display:flex; align-items:flex-end; gap:8px; height:130px; padding-top:20px; }
+.barchart-col{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; min-width:0; }
+.barchart-bar{ width:100%; max-width:30px; border-radius:4px 4px 0 0; background: var(--blue-link); }
+.barchart-valor{ font-size:10.5px; color:var(--text-dim); font-weight:700; margin-bottom:3px; }
+.barchart-label{ font-size:10px; color:var(--text-dim-2); margin-top:6px; text-align:center; }
+
+/* ---------- qualidade por microárea (lista, no lugar de mapa geográfico) ---------- */
+.microarea-quali-list{ display:flex; flex-direction:column; gap:7px; }
+.microarea-quali-item{ display:flex; align-items:center; gap:9px; font-size:12.5px; }
+.microarea-quali-dot{ width:9px; height:9px; border-radius:50%; flex:none; }
+.microarea-quali-nome{ flex:1; color:var(--text); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.microarea-quali-pct{ font-variant-numeric: tabular-nums; color:var(--text-dim); font-weight:600; flex:none; }
+
+/* ---------- pendências em destaque (tiras clicáveis) ---------- */
+.pill-strip{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:24px; }
+.pill-card{
+  display:flex; align-items:center; gap:10px; background:var(--card-bg); border:1px solid var(--card-border);
+  border-radius:10px; padding:10px 14px; text-decoration:none; color:inherit; flex:1 1 190px; min-width:0;
+  transition: border-color .12s, transform .12s;
+}
+.pill-card:hover{ border-color:var(--blue-link); transform:translateY(-1px); }
+.pill-card .pill-icone{ width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex:none; font-size:14px; }
+.pill-card .pill-info{ min-width:0; }
+.pill-card .pill-titulo{ font-size:10.5px; color:var(--text-dim); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pill-card .pill-valor{ font-size:17px; font-weight:700; color:var(--text); }
+.pill-card .pill-pct{ font-size:11px; color:var(--text-dim-2); font-weight:600; }
+
+/* ---------- barra de filtros (tabela) ---------- */
+.filtro-toolbar{
+  display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; background: var(--light-card);
+  border: 1px solid var(--light-border); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px;
+}
+.filtro-toolbar .campo{ display:flex; flex-direction:column; gap:5px; }
+.filtro-toolbar .campo label{ font-size:10.5px; font-weight:700; color:var(--light-text-dim); text-transform:uppercase; letter-spacing:.03em; }
+.filtro-toolbar .campo select, .filtro-toolbar .campo input:not([type=checkbox]){
+  padding:8px 9px; border:1px solid var(--light-border); border-radius:7px; font-size:13px;
+  font-family:var(--sans); background:#fff; color:var(--light-text); min-width:150px;
+}
+.filtro-toolbar .campo-checkbox{ flex-direction:row; align-items:center; gap:6px; padding-bottom:9px; }
+.filtro-toolbar .campo-checkbox label{ text-transform:none; font-weight:600; font-size:12px; color: var(--light-text-dim); }
+.filtro-toolbar .campo-busca input{ min-width:180px; }
+.filtro-toolbar .spacer{ flex:1 1 auto; }
+.filtro-resultado{ font-size:12.5px; color:var(--light-text-dim); margin-bottom:10px; }
+.filtro-resultado b{ color:var(--light-text); }
+
+.situacao-dot{ display:inline-block; width:10px; height:10px; border-radius:50%; flex:none; }
+.situacao-dot.dot-ok{ background: var(--teal); }
+.situacao-dot.dot-aviso{ background: var(--amber); }
+.situacao-dot.dot-erro{ background: var(--red); }
+
+table.preview th.sortavel{ cursor:pointer; user-select:none; }
+table.preview th.sortavel .seta{ font-size:9px; color: var(--light-text-dim); margin-left:3px; }
+table.preview th.sortavel:hover{ color: var(--blue-link); }

@@ -439,69 +439,131 @@
     return '<div class="ind-card">' + inner + "</div>";
   }
 
-  function renderResumo() {
-    const total = indicadores.length;
-    const semPendencia = indicadores.filter((i) => !i.pendencias.length).length;
-    const microareas = new Set(indicadores.map((i) => i.microarea)).size;
-    const stats = [
-      ["Total de vinculados", total],
-      ["Sem nenhuma pendência", total ? Math.round((semPendencia / total) * 100) + "%" : "—"],
-      ["Microáreas distintas", microareas],
-      ["Possíveis duplicidades", duplicidades.length],
-    ];
-    document.getElementById("statsRow").innerHTML = stats.map(
-      ([l, n]) => '<div class="stat-box"><div class="l">' + l + '</div><div class="n">' + n + "</div></div>"
-    ).join("");
+  // -------- aba: visão geral (KPIs, gráficos, top pendências) --------
+  const ORDEM_FAIXA = ["0-4", "5-9", "10-14", "15-19", "20-39", "40-59", "60+"];
+  const CORES_SEXO = { FEMININO: "var(--pink)", MASCULINO: "var(--blue-link)" };
+  const PILL_ICONES = {
+    SEM_CPF_SEM_CNS: "🪪", SOMENTE_CNS: "🆔", CNS_PROVISORIO: "🆔",
+    MICROAREA_INCONSISTENTE: "📍", SEM_ENDERECO: "🏠", ENDERECO_INCOMPLETO: "🏠",
+    FICHA_DESATUALIZADA: "📅", SEM_ATENDIMENTO: "🩺", SEM_FCI_APROXIMADO: "📋",
+    SEM_VINCULO_DOMICILIAR: "🔗", MULTI_DOMICILIO: "🏘️", SEM_RESPONSAVEL_FAMILIAR: "👪",
+  };
+
+  function kpiCardHtml(cor, bg, icone, label, valor, desc) {
+    return '<div class="kpi-card" style="border-left-color:' + cor + '">' +
+      '<div class="kpi-top"><div class="kpi-icone" style="background:' + bg + '">' + icone + '</div><div class="kpi-label">' + label + "</div></div>" +
+      '<div class="kpi-valor">' + valor + "</div>" +
+      '<div class="kpi-desc">' + desc + "</div></div>";
   }
 
-  function renderOrigem() {
+  function renderKpis() {
     const total = indicadores.length;
+    const semPendencia = indicadores.filter((i) => !i.pendencias.length).length;
+    const pct = total ? Math.round((semPendencia / total) * 100) : 0;
+    const pendCriticas = indicadores.filter((i) => i.pendencias.some((p) => PENDENCIA_CATALOG[p].sev === "erro")).length;
+    const microareas = new Set(indicadores.map((i) => i.microarea)).size;
+    const desatualizados = indicadores.filter((i) => i.desatualizado).length;
     const cds = indicadores.filter((i) => (i.origem || "").toUpperCase() === "CDS").length;
     const pec = indicadores.filter((i) => (i.origem || "").toUpperCase() === "PEC").length;
-    document.getElementById("cardsOrigem").innerHTML = [
-      cardHtml({
-        valor: String(cds), titulo: "Cadastros CDS", cor: "var(--teal)",
-        desc: "Fichas de coleta de dados simplificada (CDS), em papel, digitadas depois no sistema.",
-        badge: '<span class="badge b-ok pct-badge">' + fmtPct(cds, total) + "%</span>",
-      }),
-      cardHtml({
-        valor: String(pec), titulo: "Cadastros PEC", cor: "var(--blue-link)",
-        desc: "Cadastros feitos diretamente no Prontuário Eletrônico do Cidadão (PEC).",
-        badge: '<span class="badge pct-badge" style="background:var(--blue-bg);color:var(--blue-link);">' + fmtPct(pec, total) + "%</span>",
-      }),
+    const corMeter = pct >= 80 ? "var(--teal)" : pct >= 50 ? "var(--amber)" : "var(--red)";
+    const bgMeter = pct >= 80 ? "var(--teal-bg)" : pct >= 50 ? "var(--amber-bg)" : "var(--red-bg)";
+
+    const meterHtml = '<div class="kpi-card" style="border-left-color:' + corMeter + '">' +
+      '<div class="kpi-top"><div class="kpi-icone" style="background:' + bgMeter + '">✅</div><div class="kpi-label">Qualidade dos dados</div></div>' +
+      '<div class="kpi-valor" style="color:' + corMeter + '">' + pct + '%</div>' +
+      '<div class="meter-track"><div class="meter-fill" style="width:' + pct + '%;background:' + corMeter + '"></div></div>' +
+      '<div class="meter-legenda"><span>sem pendência</span><span>' + (100 - pct) + "% com pendência</span></div></div>";
+
+    document.getElementById("kpiGrid").innerHTML = [
+      kpiCardHtml("var(--blue-link)", "var(--blue-bg)", "👥", "Total de cidadãos", String(total),
+        total ? fmtPct(cds, total) + "% CDS · " + fmtPct(pec, total) + "% PEC" : "—"),
+      meterHtml,
+      kpiCardHtml("var(--red)", "var(--red-bg)", "⚠️", "Pendências críticas", String(pendCriticas),
+        fmtPct(pendCriticas, total) + "% dos vinculados com ao menos 1 erro"),
+      kpiCardHtml("var(--teal)", "var(--teal-bg)", "🏘️", "Cobertura do território", String(microareas),
+        "microárea(s) distinta(s) com cadastro"),
+      kpiCardHtml("var(--amber)", "var(--amber-bg)", "📅", "Registros desatualizados", String(desatualizados),
+        "última atualização há mais de 1 ano"),
+      kpiCardHtml("var(--violet)", "var(--violet-bg)", "📄", "Duplicidades potenciais", String(duplicidades.length),
+        "grupos de possível duplicidade de cadastro"),
     ].join("");
   }
 
-  function renderPaineisGerais() {
+  function renderGraficosGerais() {
+    const total = indicadores.length;
+
+    // distribuição por sexo (barra empilhada, categórico)
+    const porSexo = new Map();
+    indicadores.forEach((i) => { const s = (i.sexo || "").trim() || "—"; porSexo.set(s, (porSexo.get(s) || 0) + 1); });
+    const entradasSexo = [...porSexo.entries()].sort((a, b) => b[1] - a[1]);
+    const segmentosHtml = entradasSexo.map(([s, n]) => {
+      const cor = CORES_SEXO[s.toUpperCase()] || "var(--text-dim-2)";
+      return '<div class="stackbar-seg" style="width:' + fmtPct(n, total) + '%;background:' + cor + '" title="' + escapeHtml(s) + ": " + n + '"></div>';
+    }).join("");
+    const legendaSexoHtml = entradasSexo.map(([s, n]) => {
+      const cor = CORES_SEXO[s.toUpperCase()] || "var(--text-dim-2)";
+      return '<div class="stackbar-legenda-item"><span class="stackbar-legenda-dot" style="background:' + cor + '"></span>' + escapeHtml(s) + ": <b>" + n + "</b> (" + fmtPct(n, total) + "%)</div>";
+    }).join("");
+    const painelSexo = '<div class="painel"><h3>Distribuição por sexo</h3><div class="stackbar">' + segmentosHtml + '</div><div class="stackbar-legenda">' + legendaSexoHtml + "</div></div>";
+
+    // distribuição por faixa etária (barras, hue único - magnitude, não identidade)
+    const porFaixa = new Map();
+    indicadores.forEach((i) => porFaixa.set(i.faixaEtaria, (porFaixa.get(i.faixaEtaria) || 0) + 1));
+    const maxFaixa = Math.max(1, ...ORDEM_FAIXA.map((f) => porFaixa.get(f) || 0));
+    const barrasHtml = ORDEM_FAIXA.map((f) => {
+      const n = porFaixa.get(f) || 0;
+      return '<div class="barchart-col"><div class="barchart-valor">' + n + '</div>' +
+        '<div class="barchart-bar" style="height:' + Math.round((n / maxFaixa) * 100) + '%"></div>' +
+        '<div class="barchart-label">' + f + "</div></div>";
+    }).join("");
+    const painelFaixa = '<div class="painel"><h3>Distribuição por faixa etária</h3><div class="barchart">' + barrasHtml + "</div></div>";
+
+    // qualidade por microárea (lista com indicador de status, no lugar de mapa geográfico -
+    // este módulo não tem os limites geográficos do território pra desenhar um mapa de verdade)
     const porMicroarea = new Map();
-    indicadores.forEach((i) => porMicroarea.set(i.microarea, (porMicroarea.get(i.microarea) || 0) + 1));
-    const lista = [...porMicroarea.entries()].sort((a, b) => b[1] - a[1]);
-    document.getElementById("paineisBasicos").innerHTML =
-      '<div class="paineis-grid"><div class="painel"><h3>Cadastros por microárea</h3><table><tbody>' +
-      lista.map(([ma, n]) => "<tr><td>" + escapeHtml(ma || "—") + '</td><td class="n">' + n + "</td></tr>").join("") +
-      "</tbody></table></div></div>";
+    indicadores.forEach((i) => {
+      const ma = i.microarea || "—";
+      const atual = porMicroarea.get(ma) || { total: 0, semPendencia: 0 };
+      atual.total++;
+      if (!i.pendencias.length) atual.semPendencia++;
+      porMicroarea.set(ma, atual);
+    });
+    const listaMicroarea = [...porMicroarea.entries()]
+      .map(([ma, v]) => ({ ma, pct: fmtPct(v.semPendencia, v.total), total: v.total }))
+      .sort((a, b) => a.pct - b.pct);
+    const microareaHtml = listaMicroarea.length
+      ? '<div class="microarea-quali-list">' + listaMicroarea.map((m) => {
+          const dot = m.pct >= 80 ? "dot-ok" : m.pct >= 50 ? "dot-aviso" : "dot-erro";
+          return '<div class="microarea-quali-item"><span class="situacao-dot ' + dot + '"></span>' +
+            '<span class="microarea-quali-nome">' + escapeHtml(m.ma) + " (" + m.total + ")</span>" +
+            '<span class="microarea-quali-pct">' + m.pct + "%</span></div>";
+        }).join("") + "</div>"
+      : '<p class="vazio">Sem dados.</p>';
+    const painelMicroarea = '<div class="painel"><h3>Qualidade por microárea</h3>' + microareaHtml + "</div>";
+
+    document.getElementById("graficosGerais").innerHTML = painelSexo + painelFaixa + painelMicroarea;
   }
 
-  function renderConsolidadoCondicoes() {
-    const bloco = document.getElementById("blocoAtendimento");
-    if (!condicoesLinhas.length) { bloco.classList.add("hidden"); return; }
-    bloco.classList.remove("hidden");
-    const porFaixa = new Map(), porSexo = new Map();
-    condicoesLinhas.forEach((l) => {
-      const f = faixaEtaria(l["Idade"]);
-      porFaixa.set(f, (porFaixa.get(f) || 0) + 1);
-      const s = l["Sexo"] || "—";
-      porSexo.set(s, (porSexo.get(s) || 0) + 1);
-    });
-    const ORDEM_FAIXA = ["0-4", "5-9", "10-14", "15-19", "20-39", "40-59", "60+"];
-    document.getElementById("painelConsolidado").innerHTML =
-      '<div class="paineis-grid">' +
-      '<div class="painel"><h3>Por faixa etária</h3><table><tbody>' +
-      ORDEM_FAIXA.filter((f) => porFaixa.has(f)).map((f) => "<tr><td>" + f + '</td><td class="n">' + porFaixa.get(f) + "</td></tr>").join("") +
-      "</tbody></table></div>" +
-      '<div class="painel"><h3>Por sexo</h3><table><tbody>' +
-      [...porSexo.entries()].map(([s, n]) => "<tr><td>" + escapeHtml(s) + '</td><td class="n">' + n + "</td></tr>").join("") +
-      "</tbody></table></div></div>";
+  function renderPillStripPendencias() {
+    const counts = contarPendencias();
+    const codigos = ORDEM_PENDENCIAS.filter((c) => counts[c]);
+    const total = indicadores.length;
+    const el = document.getElementById("pillStripPendencias");
+    if (!codigos.length) {
+      el.innerHTML = '<div class="bloco-vazio"><b>Nenhuma pendência encontrada</b><br>Todos os cidadãos vinculados passaram nas regras verificadas.</div>';
+      return;
+    }
+    el.innerHTML = codigos.map((cod) => {
+      const info = PENDENCIA_CATALOG[cod];
+      const cor = info.sev === "erro" ? "var(--red)" : "var(--amber)";
+      const bg = info.sev === "erro" ? "var(--red-bg)" : "var(--amber-bg)";
+      return '<a class="pill-card" href="javascript:void(0)" data-pill="' + cod + '">' +
+        '<div class="pill-icone" style="background:' + bg + ";color:" + cor + '">' + (PILL_ICONES[cod] || "•") + "</div>" +
+        '<div class="pill-info"><div class="pill-titulo">' + escapeHtml(info.texto) + '</div>' +
+        '<div class="pill-valor">' + counts[cod] + '</div>' +
+        '<div class="pill-pct">' + fmtPct(counts[cod], total) + "% dos vinculados</div></div></a>";
+    }).join("");
+    el.querySelectorAll("[data-pill]").forEach((a) => a.addEventListener("click", () => showTabela({ pendencia: a.dataset.pill })));
   }
 
   // -------- aba: pendências cadastrais --------
@@ -684,10 +746,9 @@
     indicadores = calcularIndicadores();
     duplicidades = calcularDuplicidades();
     renderAvisoEscopo();
-    renderOrigem();
-    renderResumo();
-    renderPaineisGerais();
-    renderConsolidadoCondicoes();
+    renderKpis();
+    renderGraficosGerais();
+    renderPillStripPendencias();
     renderPendencias();
     renderDuplicidades();
     renderTerritorio();
@@ -749,13 +810,46 @@
       return '<div class="probitem probitem-' + info.sev + '">' + escapeHtml(info.texto) + "</div>";
     }).join("") + "</div>";
   }
+  function situacaoDotHtml(i) {
+    if (!i.pendencias.length) return '<span class="situacao-dot dot-ok" title="Sem pendências"></span>';
+    const pior = i.pendencias.some((p) => PENDENCIA_CATALOG[p].sev === "erro") ? "dot-erro" : "dot-aviso";
+    return '<span class="situacao-dot ' + pior + '" title="' + i.pendencias.length + ' pendência(s)"></span>';
+  }
+
+  // -------- ordenação da tabela (clique no cabeçalho) --------
+  let ordenacaoAtual = { campo: null, dir: 1 };
+  function ordenar(lista) {
+    if (!ordenacaoAtual.campo) return lista;
+    const campo = ordenacaoAtual.campo, dir = ordenacaoAtual.dir;
+    const copia = lista.slice();
+    copia.sort((a, b) => {
+      let va, vb;
+      if (campo === "pendencias") { va = a.pendencias.length; vb = b.pendencias.length; }
+      else if (campo === "ultimaAtualizacao") { va = parseDataBr(a.ultimaAtualizacao) || new Date(0); vb = parseDataBr(b.ultimaAtualizacao) || new Date(0); }
+      else { va = (a[campo] || "").toString().toLowerCase(); vb = (b[campo] || "").toString().toLowerCase(); }
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+    return copia;
+  }
+  document.querySelectorAll("th.sortavel").forEach((th) => {
+    th.addEventListener("click", () => {
+      const campo = th.dataset.sort;
+      ordenacaoAtual = ordenacaoAtual.campo === campo ? { campo, dir: -ordenacaoAtual.dir } : { campo, dir: 1 };
+      document.querySelectorAll("th.sortavel .seta").forEach((s) => { s.textContent = ""; });
+      th.querySelector(".seta").textContent = ordenacaoAtual.dir === 1 ? "▲" : "▼";
+      renderTabela();
+    });
+  });
 
   function renderTabela() {
-    const lista = filtrados();
+    const lista = ordenar(filtrados());
     const MAX = 800;
     document.getElementById("sidebarCount").textContent = lista.length.toLocaleString("pt-BR");
     document.getElementById("tabelaBody").innerHTML = lista.slice(0, MAX).map((i) => (
-      "<tr><td>" + escapeHtml(i.nome) + "</td>" +
+      "<tr><td>" + situacaoDotHtml(i) + "</td>" +
+      "<td>" + escapeHtml(i.nome) + "</td>" +
       "<td>" + escapeHtml(i.microarea) + "</td>" +
       "<td>" + escapeHtml(i.origem) + "</td>" +
       "<td>" + escapeHtml(i.ultimaAtualizacao) + (i.desatualizado ? ' <span class="badge sev-aviso">+1 ano</span>' : "") + "</td>" +

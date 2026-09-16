@@ -87,14 +87,12 @@
 
       <!-- ---------- aba: visão geral ---------- -->
       <div class="tab-panel active" id="tabGeral">
-        <div class="cards-grid" id="cardsOrigem"></div>
-        <div class="stat-row" id="statsRow"></div>
-        <div id="paineisBasicos"></div>
+        <div class="kpi-grid" id="kpiGrid"></div>
 
-        <div id="blocoAtendimento" class="hidden" style="margin-top:10px;">
-          <div class="group-label">Consolidado (condições de saúde)</div>
-          <div id="painelConsolidado"></div>
-        </div>
+        <div class="paineis-grid" id="graficosGerais"></div>
+
+        <div class="group-label" style="margin-top:24px;">Principais pendências para ação</div>
+        <div class="pill-strip" id="pillStripPendencias"></div>
       </div>
 
       <!-- ---------- aba: pendências cadastrais ---------- -->
@@ -133,68 +131,59 @@
 
   <!-- ===================== TABELA (drilldown) ===================== -->
   <section id="viewTabela" class="view-light hidden">
-    <div class="drill-layout">
+    <div class="wrap-wide">
 
-      <aside class="sidebar">
-        <div class="sidebar-block">
-          <div class="sidebar-title">Resultado</div>
-          <div class="sidebar-stat" id="sidebarCount">—</div>
-          <div class="sidebar-stat-label">cidadão(s)</div>
+      <div class="filtro-toolbar">
+        <div class="campo">
+          <label for="fMicroarea">Microárea</label>
+          <select id="fMicroarea"><option value="">Todas</option></select>
         </div>
+        <div class="campo">
+          <label for="fOrigem">Origem</label>
+          <select id="fOrigem">
+            <option value="">Todas</option>
+            <option value="CDS">CDS</option>
+            <option value="PEC">PEC</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label for="fSexo">Sexo</label>
+          <select id="fSexo"><option value="">Todos</option></select>
+        </div>
+        <div class="campo">
+          <label for="fPendencia">Tipo de pendência</label>
+          <select id="fPendencia"><option value="">Todas</option></select>
+        </div>
+        <div class="campo campo-busca">
+          <label for="fBusca">Buscar (nome)</label>
+          <input id="fBusca" placeholder="Ex.: Maria...">
+        </div>
+        <div class="campo campo-checkbox">
+          <input type="checkbox" id="fSoComPendencia">
+          <label for="fSoComPendencia">Só com pendência</label>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn btn-primary" id="btnExportarPdf">⬇ Exportar PDF</button>
+      </div>
 
-        <div class="sidebar-block">
-          <div class="sidebar-title">Filtros</div>
-          <div class="field">
-            <label for="fMicroarea">Microárea</label>
-            <select id="fMicroarea"><option value="">Todas</option></select>
-          </div>
-          <div class="field">
-            <label for="fOrigem">Origem</label>
-            <select id="fOrigem">
-              <option value="">Todas</option>
-              <option value="CDS">CDS</option>
-              <option value="PEC">PEC</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="fSexo">Sexo</label>
-            <select id="fSexo"><option value="">Todos</option></select>
-          </div>
-          <div class="field">
-            <label for="fPendencia">Tipo de pendência</label>
-            <select id="fPendencia"><option value="">Todas</option></select>
-          </div>
-          <div class="field">
-            <label for="fBusca">Buscar (nome)</label>
-            <input id="fBusca" placeholder="Ex.: Maria...">
-          </div>
-          <div class="field">
-            <label for="fSoComPendencia">
-              <input type="checkbox" id="fSoComPendencia"> Só com pendência
-            </label>
-          </div>
-        </div>
-
-        <div class="sidebar-block">
-          <div class="sidebar-title">Exportar</div>
-          <button class="btn btn-primary" id="btnExportarPdf" style="width:100%;justify-content:center;">⬇ Exportar PDF</button>
-        </div>
-      </aside>
-
-      <main class="drill-main">
-        <div class="msg" id="filterMsg"></div>
-        <div class="tbl-wrap">
-          <table class="preview">
-            <thead>
-              <tr>
-                <th>Nome</th><th>Microárea</th><th>Origem</th><th>Última atualização</th>
-                <th>Endereço</th><th>Documento</th><th>Pendências</th>
-              </tr>
-            </thead>
-            <tbody id="tabelaBody"></tbody>
-          </table>
-        </div>
-      </main>
+      <div class="filtro-resultado"><b id="sidebarCount">—</b> cidadão(s) encontrado(s)</div>
+      <div class="msg" id="filterMsg"></div>
+      <div class="tbl-wrap">
+        <table class="preview">
+          <thead>
+            <tr>
+              <th></th>
+              <th class="sortavel" data-sort="nome">Nome <span class="seta"></span></th>
+              <th class="sortavel" data-sort="microarea">Microárea <span class="seta"></span></th>
+              <th>Origem</th>
+              <th class="sortavel" data-sort="ultimaAtualizacao">Última atualização <span class="seta"></span></th>
+              <th>Endereço</th><th>Documento</th>
+              <th class="sortavel" data-sort="pendencias">Pendências <span class="seta"></span></th>
+            </tr>
+          </thead>
+          <tbody id="tabelaBody"></tbody>
+        </table>
+      </div>
 
     </div>
   </section>

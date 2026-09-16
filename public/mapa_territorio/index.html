@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa do Território</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/5.0.8/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+
+<div id="appShell" class="hidden">
+
+  <nav class="topbar">
+    <div class="topbar-wrap">
+      <button class="back-btn" id="btnVoltar">← Início</button>
+      <div class="topbar-brand">Mapa do Território</div>
+      <div class="topbar-user">
+        <span id="topbarUsername"></span>
+        <button class="btn btn-ghost-dark" id="btnLogout">Sair</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===================== UPLOAD ===================== -->
+  <section id="viewUpload" class="view-dark hidden">
+    <div class="wrap-narrow">
+      <div class="eyebrow">e-SUS PEC · Território</div>
+      <h1>Mapa do Território</h1>
+      <p class="lead">Importa o(s) relatório(s) de <b>Acompanhamento do Território</b> do e-SUS PEC e organiza quantas <b>pessoas</b> e <b>famílias</b> existem em cada <b>bairro</b> e <b>logradouro</b>. Pode enviar vários arquivos (um por microárea). Dá pra unificar variações de nome da mesma rua (ex.: digitação diferente) num relatório consolidado, anotar observações por rua e imprimir tudo no final. Nada é enviado a nenhum servidor — a análise acontece no seu navegador.</p>
+
+      <div class="group-label">Arquivo(s) de Território</div>
+      <div class="drop" id="dropTerr">
+        <input type="file" id="inputTerr" accept=".csv" multiple>
+        <div class="icon">📄</div>
+        <div>Clique ou arraste o(s) arquivo(s) .csv aqui</div>
+        <div class="fname" id="fnameTerr"></div>
+      </div>
+
+      <button class="btn btn-primary" id="btnGerarPainel" style="margin-top:22px;">Gerar mapa →</button>
+
+      <div class="msg" id="msgUpload"></div>
+    </div>
+  </section>
+
+  <!-- ===================== DASHBOARD ===================== -->
+  <section id="viewDashboard" class="view-dark hidden">
+    <div class="wrap-wide">
+
+      <div class="eyebrow">e-SUS PEC · Território</div>
+      <h1 style="margin:0 0 16px;font-size:22px;">Mapa do Território</h1>
+
+      <button class="btn btn-ghost-dark" id="btnToggleArquivos" style="margin-bottom:14px;">
+        📁 Arquivos importados (<span id="qtdArquivosImportados">0</span>) <span id="setaArquivos">▸</span>
+      </button>
+      <div id="blocoArquivosImportados" class="hidden">
+        <div class="fontes-list" id="fontesResumo"></div>
+        <button class="add-file-inicial btn btn-ghost-dark" id="dropTerrDashboard" style="margin-bottom:10px;">
+          <input type="file" id="inputTerrDashboard" accept=".csv" multiple class="hidden">
+          + Adicionar mais arquivos de território
+        </button>
+      </div>
+
+      <div class="kpi-grid" id="kpiGrid"></div>
+
+      <nav class="tabs-nav" id="tabsNav">
+        <button class="tab-btn active" data-tab="relatorio">Relatório por Bairro</button>
+        <button class="tab-btn" data-tab="unificar">Unificar Logradouros <span class="count" id="countMesclas">0</span></button>
+      </nav>
+
+      <!-- ---------- aba: relatório ---------- -->
+      <div class="tab-panel active" id="tabRelatorio">
+        <div class="filtro-toolbar">
+          <div class="campo">
+            <label for="fMicroarea">Microárea</label>
+            <select id="fMicroarea"><option value="">Todas</option></select>
+          </div>
+          <div class="campo">
+            <label for="fBairro">Bairro</label>
+            <select id="fBairro"><option value="">Todos</option></select>
+          </div>
+          <div class="campo campo-busca">
+            <label for="fBusca">Buscar logradouro</label>
+            <input id="fBusca" placeholder="Ex.: Rua das Dores...">
+          </div>
+          <div class="spacer"></div>
+          <button class="btn btn-primary" id="btnImprimir">🖨️ Imprimir relatório</button>
+        </div>
+
+        <div class="filtro-resultado"><b id="resultadoContagem">—</b></div>
+        <div id="listaBairros"></div>
+      </div>
+
+      <!-- ---------- aba: unificar logradouros ---------- -->
+      <div class="tab-panel" id="tabUnificar">
+        <p class="lead" style="margin:0 0 18px;font-size:13px;">Selecione 2 ou mais variações do nome de uma rua (ex.: digitação diferente da mesma via) e dê um nome final — o relatório passa a somar tudo sob esse nome. Só afeta a exibição/relatório aqui, não altera os arquivos originais nem o e-SUS.</p>
+
+        <div class="mescla-form">
+          <div class="campo" style="flex:2 1 320px;">
+            <label>Nome final (consolidado)</label>
+            <input id="mesclaNomeFinal" placeholder="Ex.: RUA LAGOINHA">
+          </div>
+          <button class="btn btn-primary" id="btnMesclar">Unificar selecionados</button>
+        </div>
+
+        <div class="group-label">Logradouros encontrados</div>
+        <div class="mescla-lista" id="mesclaLista"></div>
+
+        <div class="group-label">Grupos já unificados</div>
+        <div id="gruposMesclados"></div>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+
+<script src="js/session.js"></script>
+<script src="js/parserCsvGenerico.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const ICONS = { laboratorio: "🧪", oftalmo: "👁", esus_pec: "🏥", qualidade_bpa: "📊", correcao_bpa: "🛠", bolsa_familia: "👪", siaps_indicadores: "📈", datasus_sia: "💰", acompanhamento_pec: "🏘" };
+  const ICONS = { laboratorio: "🧪", oftalmo: "👁", esus_pec: "🏥", qualidade_bpa: "📊", correcao_bpa: "🛠", bolsa_familia: "👪", siaps_indicadores: "📈", datasus_sia: "💰", acompanhamento_pec: "🏘", mapa_territorio: "🗺️" };
   // texto da tag de status pros módulos disponíveis - substitui o "Disponível"
   // genérico por uma etiqueta específica do que aquele módulo faz.
   const STATUS_TAGS = {
@@ -12,6 +12,7 @@
     correcao_bpa: "FATURAMENTO",
     datasus_sia: "FATURAMENTO",
     acompanhamento_pec: "ACOMPANHAMENTO",
+    mapa_territorio: "TERRITÓRIO",
   };
   // módulos que não são páginas internas nossas, e sim links pra fora - mesmo
   // cartão/mesma regra de acesso (status live + grant), só o destino muda.

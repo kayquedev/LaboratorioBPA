@@ -24,6 +24,7 @@ app.use("/correcao_bpa", requireModulePage("correcao_bpa"), express.static(path.
 app.use("/bolsa_familia", requireModulePage("bolsa_familia"), express.static(path.join(PUBLIC_DIR, "bolsa_familia")));
 app.use("/datasus_sia", requireModulePage("datasus_sia"), express.static(path.join(PUBLIC_DIR, "datasus_sia")));
 app.use("/acompanhamento_pec", requireModulePage("acompanhamento_pec"), express.static(path.join(PUBLIC_DIR, "acompanhamento_pec")));
+app.use("/mapa_territorio", requireModulePage("mapa_territorio"), express.static(path.join(PUBLIC_DIR, "mapa_territorio")));
 
 app.use(express.static(PUBLIC_DIR));
 

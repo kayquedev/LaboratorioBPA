@@ -329,6 +329,10 @@ table.preview td.num{ font-variant-numeric: tabular-nums; }
 .microarea-quali-nome{ flex:1; color:var(--text); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .microarea-quali-pct{ font-variant-numeric: tabular-nums; color:var(--text-dim); font-weight:600; flex:none; }
 
+/* ---------- lista larga (domicílios sem morador) ---------- */
+.dom-vazio-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 2px 24px; margin-top:8px; }
+.dom-vazio-item{ font-size:12.5px; color:var(--text); padding:6px 0; border-bottom:1px solid var(--card-border); }
+
 /* ---------- pendências em destaque (tiras clicáveis) ---------- */
 .pill-strip{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:24px; }
 .pill-card{

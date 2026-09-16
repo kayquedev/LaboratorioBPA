@@ -211,7 +211,7 @@
   const viewUpload = document.getElementById("viewUpload");
   const viewDashboard = document.getElementById("viewDashboard");
   const viewTabela = document.getElementById("viewTabela");
-  const btnVoltar = document.getElementById("btnVoltarDashboard");
+  const btnVoltar = document.getElementById("btnVoltar");
   const msgUpload = document.getElementById("msgUpload");
 
   let arquivoVinc = null;
@@ -709,14 +709,15 @@
 
     const MAX_VAZIOS = 100;
     const painelVazios = vazios.length
-      ? '<div class="painel"><h3>Domicílios sem morador (' + vazios.length + ')</h3><table><tbody>' +
+      ? '<div class="painel" style="grid-column:1/-1;"><h3>Domicílios sem morador (' + vazios.length + ')</h3>' +
+        '<div class="dom-vazio-grid">' +
         vazios.slice(0, MAX_VAZIOS).map((e) =>
-          "<tr><td>" + escapeHtml(enderecoLegivel(e.linha)) +
+          '<div class="dom-vazio-item">' + escapeHtml(enderecoLegivel(e.linha)) +
           (e.linha.__microareaArquivo ? ' <span class="sub-nome">Microárea ' + escapeHtml(e.linha.__microareaArquivo) + "</span>" : "") +
-          "</td></tr>"
-        ).join("") +
-        "</tbody></table>" + (vazios.length > MAX_VAZIOS ? '<p class="vazio">+ ' + (vazios.length - MAX_VAZIOS) + ' outro(s) — use "Exportar domicílios sem morador" na aba Exportações pra ver todos.</p>' : "") + "</div>"
-      : '<div class="painel"><h3>Domicílios sem morador</h3><p class="vazio">Nenhum domicílio vazio encontrado' + (filtro ? " nesta microárea." : ".") + "</p></div>";
+          "</div>"
+        ).join("") + "</div>" +
+        (vazios.length > MAX_VAZIOS ? '<p class="vazio">+ ' + (vazios.length - MAX_VAZIOS) + ' outro(s) — use "Exportar domicílios sem morador" na aba Exportações pra ver todos.</p>' : "") + "</div>"
+      : '<div class="painel" style="grid-column:1/-1;"><h3>Domicílios sem morador</h3><p class="vazio">Nenhum domicílio vazio encontrado' + (filtro ? " nesta microárea." : ".") + "</p></div>";
     document.getElementById("paineisTerritorio").innerHTML = '<div class="paineis-grid">' + painelVazios + "</div>";
   }
 
@@ -972,19 +973,24 @@
   document.getElementById("btnExportarPdf").addEventListener("click", () => exportarPdf(filtrados()));
 
   // -------- navegação --------
+  // botão único no topo: dentro da tabela ele volta pro resumo (sem perigo,
+  // mesmos dados); em qualquer outra tela ele sai do módulo pro início do
+  // portal, e aí sim confirma antes - já que sair descarta o painel gerado.
+  function atualizarBotaoVoltar() {
+    btnVoltar.textContent = viewTabela.classList.contains("hidden") ? "← Início" : "← Resumo";
+  }
   function showDashboard() {
     viewUpload.classList.add("hidden");
     viewTabela.classList.add("hidden");
     viewDashboard.classList.remove("hidden");
-    btnVoltar.classList.add("hidden");
     document.querySelectorAll(".tab-btn").forEach((b, idx) => b.classList.toggle("active", idx === 0));
     document.querySelectorAll(".tab-panel").forEach((p, idx) => p.classList.toggle("active", idx === 0));
+    atualizarBotaoVoltar();
   }
   function showTabela(preset) {
     viewUpload.classList.add("hidden");
     viewDashboard.classList.add("hidden");
     viewTabela.classList.remove("hidden");
-    btnVoltar.classList.remove("hidden");
     popularFiltros();
     if (preset) {
       fMicroarea.value = ""; fOrigem.value = ""; fSexo.value = ""; fBusca.value = "";
@@ -992,9 +998,16 @@
       fSoComPendencia.checked = !!preset.pendencia;
     }
     renderTabela();
+    atualizarBotaoVoltar();
   }
   document.getElementById("btnVerTabela").addEventListener("click", () => showTabela());
-  btnVoltar.addEventListener("click", showDashboard);
+  btnVoltar.addEventListener("click", () => {
+    if (!viewTabela.classList.contains("hidden")) { showDashboard(); return; }
+    if (window.confirm("Sair do Acompanhamento Cidadãos PEC? Os dados carregados nesta sessão serão perdidos.")) {
+      window.location.href = "/";
+    }
+  });
+  atualizarBotaoVoltar();
 
   viewUpload.classList.remove("hidden");
 })();

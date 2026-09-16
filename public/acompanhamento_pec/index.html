@@ -68,14 +68,16 @@
       <div class="eyebrow">e-SUS PEC · Território</div>
       <h1 style="margin:0 0 16px;font-size:22px;">Acompanhamento de cadastros</h1>
 
-      <div class="aviso-dado-ausente hidden" id="avisoDadosAusentes"></div>
-
-      <div class="group-label">Arquivos importados</div>
-      <div class="fontes-list" id="fontesResumo"></div>
-      <button class="add-file-inicial btn btn-ghost-dark" id="dropTerrDashboard" style="margin-bottom:10px;">
-        <input type="file" id="inputTerrDashboard" accept=".csv" multiple class="hidden">
-        + Adicionar arquivos de território
+      <button class="btn btn-ghost-dark" id="btnToggleArquivos" style="margin-bottom:14px;">
+        📁 Arquivos importados (<span id="qtdArquivosImportados">0</span>) <span id="setaArquivos">▸</span>
       </button>
+      <div id="blocoArquivosImportados" class="hidden">
+        <div class="fontes-list" id="fontesResumo"></div>
+        <button class="add-file-inicial btn btn-ghost-dark" id="dropTerrDashboard" style="margin-bottom:10px;">
+          <input type="file" id="inputTerrDashboard" accept=".csv" multiple class="hidden">
+          + Adicionar arquivos de território
+        </button>
+      </div>
 
       <nav class="tabs-nav" id="tabsNav">
         <button class="tab-btn active" data-tab="geral">Visão Geral</button>
@@ -115,6 +117,12 @@
 
       <!-- ---------- aba: território ---------- -->
       <div class="tab-panel" id="tabTerritorio">
+        <div class="filtro-toolbar">
+          <div class="campo">
+            <label for="fMicroareaTerritorio">Microárea</label>
+            <select id="fMicroareaTerritorio"><option value="">Todas</option></select>
+          </div>
+        </div>
         <div class="cards-grid" id="cardsTerritorio"></div>
         <div class="paineis-grid" id="paineisTerritorio"></div>
       </div>

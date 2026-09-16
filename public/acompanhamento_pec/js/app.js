@@ -88,8 +88,11 @@
   }
 
   // -------- território: domicílios, famílias, multi-domicílio --------
+  // a microárea entra na chave porque cada arquivo de território é uma
+  // microárea; sem isso, dois endereços incompletos ("-") de microáreas
+  // diferentes caem na mesma chave e o domicílio de uma "engole" o da outra.
   function chaveEndereco(l) {
-    return [l["TIPO DE LOGRADOURO"], l["LOGRADOURO"], l["NÚMERO"], l["COMPLEMENTO"], normalizarDocumento(l["CEP"])]
+    return [l.__microareaArquivo, l["TIPO DE LOGRADOURO"], l["LOGRADOURO"], l["NÚMERO"], l["COMPLEMENTO"], normalizarDocumento(l["CEP"])]
       .map((v) => (v || "").trim().toUpperCase()).join("|");
   }
   function enderecoLegivel(l) {
@@ -171,9 +174,12 @@
     SEM_ATENDIMENTO: { sev: "erro", texto: "Sem nenhum atendimento registrado", fonte: "Condições de Saúde",
       explicacao: "Nenhum atendimento médico, de enfermagem, odontológico ou visita domiciliar encontrado no acompanhamento de condições de saúde.",
       resolver: "Verifique se o cidadão ainda reside na área; se sim, programe busca ativa." },
-    SEM_FCI_APROXIMADO: { sev: "aviso", texto: "Sem FCI (aproximado)", fonte: "Condições de Saúde",
-      explicacao: "O cidadão está vinculado, mas não aparece no relatório de Condições de Saúde — indício de que a Ficha de Cadastro Individual pode estar ausente. Este módulo não lê a FCI completa, só relatórios agregados do e-SUS, então é uma aproximação.",
-      resolver: "Confira diretamente no e-SUS PEC se existe FCI cadastrada para este cidadão." },
+    SEM_FCI: { sev: "aviso", texto: "Sem FCI", fonte: "Vinculados",
+      explicacao: "O cadastro tem origem PEC — feito direto no sistema (por exemplo, num atendimento), sem passar pelo preenchimento da Ficha de Cadastro Individual (FCI).",
+      resolver: "Complete a Ficha de Cadastro Individual (FCI) do cidadão." },
+    SEM_MONITORAMENTO: { sev: "erro", texto: "Sem acompanhamento de condições de saúde", fonte: "Condições de Saúde",
+      explicacao: "O cidadão está vinculado mas não aparece no relatório de Condições de Saúde — indício de que faz muito tempo que não passa por nenhum atendimento.",
+      resolver: "Avalie se esse cidadão precisa de atendimento, confira o cadastro dele e programe acompanhamento/consulta o quanto antes." },
     SEM_VINCULO_DOMICILIAR: { sev: "aviso", texto: "Sem vínculo domiciliar ativo", fonte: "Território",
       explicacao: "O cadastro está ativo mas não foi encontrado em nenhuma ficha de família/domicílio do território carregado.",
       resolver: "Verifique se o cidadão ainda reside na área e se o domicílio dele está mapeado no território." },
@@ -187,7 +193,7 @@
   const ORDEM_PENDENCIAS = [
     "SEM_CPF_SEM_CNS", "SOMENTE_CNS", "CNS_PROVISORIO", "MICROAREA_INCONSISTENTE",
     "SEM_ENDERECO", "ENDERECO_INCOMPLETO", "FICHA_DESATUALIZADA",
-    "SEM_ATENDIMENTO", "SEM_FCI_APROXIMADO",
+    "SEM_ATENDIMENTO", "SEM_MONITORAMENTO", "SEM_FCI",
     "SEM_VINCULO_DOMICILIAR", "MULTI_DOMICILIO", "SEM_RESPONSAVEL_FAMILIAR",
   ];
 
@@ -346,7 +352,12 @@
       const microareaRuim = microareaInconsistente(v["Microárea"]);
       const desatualizada = fichaDesatualizada(v["Última atualização cadastral"]);
 
-      let semAtendimento = false, semFci = false;
+      // "sem FCI" de verdade é origem PEC (cadastro feito direto no sistema,
+      // sem a Ficha de Cadastro Individual) - não tem relação com aparecer ou
+      // não no relatório de Condições de Saúde.
+      const semFci = (v["Origem"] || "").trim().toUpperCase() === "PEC";
+
+      let semAtendimento = false, semMonitoramento = false;
       if (mapasCond) {
         if (matchCond) {
           const camposAtend = [
@@ -355,7 +366,9 @@
           ];
           semAtendimento = camposAtend.every((campo) => !matchCond[campo] || matchCond[campo] === "-");
         } else {
-          semFci = true; // nem aparece no relatorio de condicoes de saude
+          // não aparece no relatório de condições de saúde: não indica ausência de
+          // FCI, indica que faz muito tempo que o cidadão não passa por atendimento.
+          semMonitoramento = true;
         }
       }
 
@@ -381,7 +394,8 @@
       else if (enderecoIncompleto) pendencias.push("ENDERECO_INCOMPLETO");
       if (desatualizada) pendencias.push("FICHA_DESATUALIZADA");
       if (semAtendimento) pendencias.push("SEM_ATENDIMENTO");
-      if (semFci) pendencias.push("SEM_FCI_APROXIMADO");
+      if (semMonitoramento) pendencias.push("SEM_MONITORAMENTO");
+      if (semFci) pendencias.push("SEM_FCI");
       if (semVinculoDomiciliar) pendencias.push("SEM_VINCULO_DOMICILIAR");
       if (multiDomicilio) pendencias.push("MULTI_DOMICILIO");
       if (semResponsavelFamiliar) pendencias.push("SEM_RESPONSAVEL_FAMILIAR");
@@ -445,7 +459,7 @@
   const PILL_ICONES = {
     SEM_CPF_SEM_CNS: "🪪", SOMENTE_CNS: "🆔", CNS_PROVISORIO: "🆔",
     MICROAREA_INCONSISTENTE: "📍", SEM_ENDERECO: "🏠", ENDERECO_INCOMPLETO: "🏠",
-    FICHA_DESATUALIZADA: "📅", SEM_ATENDIMENTO: "🩺", SEM_FCI_APROXIMADO: "📋",
+    FICHA_DESATUALIZADA: "📅", SEM_ATENDIMENTO: "🩺", SEM_MONITORAMENTO: "🕒", SEM_FCI: "📋",
     SEM_VINCULO_DOMICILIAR: "🔗", MULTI_DOMICILIO: "🏘️", SEM_RESPONSAVEL_FAMILIAR: "👪",
   };
 
@@ -646,29 +660,63 @@
   }
 
   // -------- aba: território --------
+  const fMicroareaTerritorio = document.getElementById("fMicroareaTerritorio");
+  fMicroareaTerritorio.addEventListener("input", renderTerritorio);
+
+  function popularFiltroTerritorio() {
+    const atual = fMicroareaTerritorio.value;
+    const microareas = [...new Set(territorioLinhas.map((l) => l.__microareaArquivo).filter(Boolean))].sort();
+    fMicroareaTerritorio.innerHTML = '<option value="">Todas</option>' +
+      microareas.map((m) => '<option value="' + escapeHtml(m) + '">Microárea ' + escapeHtml(m) + "</option>").join("");
+    fMicroareaTerritorio.value = microareas.indexOf(atual) !== -1 ? atual : "";
+  }
+
   function renderTerritorio() {
     const btnTab = document.getElementById("tabBtnTerritorio");
     if (!analiseTerritorioAtual) { btnTab.classList.add("hidden"); return; }
     btnTab.classList.remove("hidden");
+    popularFiltroTerritorio();
+
     const t = analiseTerritorioAtual;
+    const filtro = fMicroareaTerritorio.value;
+    const noFiltro = (linha) => !filtro || (linha.__microareaArquivo || "") === filtro;
+
+    const enderecos = [...t.porEndereco.entries()].filter(([, arr]) => noFiltro(arr[0]));
+    const vazios = t.enderecosVazios.filter((e) => noFiltro(e.linha));
+
+    let totalMoradores = 0;
+    const familias = new Set();
+    enderecos.forEach(([chave, arr]) => {
+      const moradores = arr.filter((l) => l["NOME CIDADÃO"] && l["NOME CIDADÃO"] !== "-");
+      totalMoradores += moradores.length;
+      moradores.forEach((l) => {
+        const respDoc = normalizarDocumento(l["CPF/CNS RESPONSÁVEL FAMILIAR"]) || chave;
+        familias.add(chave + "|" + respDoc);
+      });
+    });
 
     document.getElementById("cardsTerritorio").innerHTML = [
-      cardHtml({ valor: String(t.totalEnderecos), titulo: "Domicílios mapeados", desc: "Endereços distintos encontrados no(s) arquivo(s) de território carregado(s)." }),
+      cardHtml({ valor: String(enderecos.length), titulo: "Domicílios mapeados", desc: "Endereços distintos encontrados no(s) arquivo(s) de território carregado(s)." }),
       cardHtml({
-        valor: String(t.enderecosVazios.length), titulo: "Domicílios sem morador",
-        cor: t.enderecosVazios.length ? "var(--amber)" : "var(--teal)",
+        valor: String(vazios.length), titulo: "Domicílios sem morador",
+        cor: vazios.length ? "var(--amber)" : "var(--teal)",
         desc: "Endereço mapeado no território mas sem nenhum cidadão vinculado a ele.",
-        badge: '<span class="badge ' + (t.enderecosVazios.length ? "sev-aviso" : "b-ok") + ' pct-badge">' + fmtPct(t.enderecosVazios.length, t.totalEnderecos) + "%</span>",
+        badge: '<span class="badge ' + (vazios.length ? "sev-aviso" : "b-ok") + ' pct-badge">' + fmtPct(vazios.length, enderecos.length) + "%</span>",
       }),
-      cardHtml({ valor: String(t.totalFamilias), titulo: "Famílias mapeadas", desc: "Agrupadas pelo responsável familiar dentro de cada domicílio." }),
-      cardHtml({ valor: t.totalFamilias ? (t.totalMoradores / t.totalFamilias).toFixed(1) : "—", titulo: "Média de moradores por família", desc: "Total de moradores dividido pelo total de famílias mapeadas." }),
+      cardHtml({ valor: String(familias.size), titulo: "Famílias mapeadas", desc: "Agrupadas pelo responsável familiar dentro de cada domicílio." }),
+      cardHtml({ valor: familias.size ? (totalMoradores / familias.size).toFixed(1) : "—", titulo: "Média de moradores por família", desc: "Total de moradores dividido pelo total de famílias mapeadas." }),
     ].join("");
 
-    const painelVazios = t.enderecosVazios.length
-      ? '<div class="painel"><h3>Domicílios sem morador</h3><table><tbody>' +
-        t.enderecosVazios.slice(0, 20).map((e) => "<tr><td>" + escapeHtml(enderecoLegivel(e.linha)) + "</td></tr>").join("") +
-        "</tbody></table>" + (t.enderecosVazios.length > 20 ? '<p class="vazio">+ ' + (t.enderecosVazios.length - 20) + " outro(s).</p>" : "") + "</div>"
-      : '<div class="painel"><h3>Domicílios sem morador</h3><p class="vazio">Nenhum domicílio vazio encontrado.</p></div>';
+    const MAX_VAZIOS = 100;
+    const painelVazios = vazios.length
+      ? '<div class="painel"><h3>Domicílios sem morador (' + vazios.length + ')</h3><table><tbody>' +
+        vazios.slice(0, MAX_VAZIOS).map((e) =>
+          "<tr><td>" + escapeHtml(enderecoLegivel(e.linha)) +
+          (e.linha.__microareaArquivo ? ' <span class="sub-nome">Microárea ' + escapeHtml(e.linha.__microareaArquivo) + "</span>" : "") +
+          "</td></tr>"
+        ).join("") +
+        "</tbody></table>" + (vazios.length > MAX_VAZIOS ? '<p class="vazio">+ ' + (vazios.length - MAX_VAZIOS) + ' outro(s) — use "Exportar domicílios sem morador" na aba Exportações pra ver todos.</p>' : "") + "</div>"
+      : '<div class="painel"><h3>Domicílios sem morador</h3><p class="vazio">Nenhum domicílio vazio encontrado' + (filtro ? " nesta microárea." : ".") + "</p></div>";
     document.getElementById("paineisTerritorio").innerHTML = '<div class="paineis-grid">' + painelVazios + "</div>";
   }
 
@@ -705,12 +753,18 @@
       ["Nome", "Microárea", "Origem", "Sexo", "Idade", "Última atualização", "Endereço", "Documento", "Pendências"],
       indicadores.map((i) => [i.nome, i.microarea, i.origem, i.sexo, i.idade, i.ultimaAtualizacao, i.semEndereco ? "Sem endereço" : i.endereco, i.cpf ? "CPF" : i.cns ? "CNS" : "—", textoPendencias(i)]));
   }
+  function exportarDomiciliosVaziosCsv() {
+    if (!analiseTerritorioAtual) return;
+    baixarCsv("domicilios_sem_morador.csv", ["Endereço", "Microárea"],
+      analiseTerritorioAtual.enderecosVazios.map((e) => [enderecoLegivel(e.linha), e.linha.__microareaArquivo || "—"]));
+  }
 
   function renderExportacoes() {
     const itens = [
       { titulo: "Pendências cadastrais (.csv)", desc: "Lista nominal de todos os cidadãos com pelo menos uma pendência, com o tipo de cada uma.", onClick: exportarPendenciasCsv, disabled: !indicadores.some((i) => i.pendencias.length) },
       { titulo: "Possíveis duplicidades (.csv)", desc: "Lista dos grupos de duplicidade encontrados (nome+nascimento e documento repetido).", onClick: exportarDuplicidadesCsv, disabled: !duplicidades.length },
       { titulo: "Cidadãos vinculados — completo (.csv)", desc: "Todos os vinculados importados, com as pendências calculadas.", onClick: exportarVinculadosCsv },
+      { titulo: "Domicílios sem morador (.csv)", desc: "Todos os endereços mapeados no território sem nenhum cidadão vinculado.", onClick: exportarDomiciliosVaziosCsv, disabled: !analiseTerritorioAtual || !analiseTerritorioAtual.enderecosVazios.length },
       { titulo: "Relatório em PDF", desc: "Gera o PDF consolidado com todos os cidadãos vinculados carregados.", onClick: () => exportarPdf(indicadores) },
     ];
     document.getElementById("exportacoesGrid").innerHTML = itens.map((it, idx) =>
@@ -731,21 +785,21 @@
       linhas.push('<div class="fonte-row"><div class="fonte-info"><span class="fonte-nome">' + escapeHtml(f.name) + '</span><span class="fonte-count">território · ' + qtd + " registro(s)</span></div></div>");
     });
     document.getElementById("fontesResumo").innerHTML = linhas.join("");
+    document.getElementById("qtdArquivosImportados").textContent =
+      String(1 + (arquivoCond ? 1 : 0) + arquivosTerr.length);
   }
 
-  function renderAvisoEscopo() {
-    const el = document.getElementById("avisoDadosAusentes");
-    el.classList.remove("hidden");
-    el.innerHTML = "<b>Fora do escopo deste módulo</b> — dependem de outro export do e-SUS que este módulo não lê: " +
-      "óbito inconsistente (saída de cadastro), \"Individual incompleto\" (campos clínicos/sociais completos da FCI), " +
-      "inconsistência / completude / geolocalização do domicílio, e duplicidade por nome da mãe.";
-  }
+  const btnToggleArquivos = document.getElementById("btnToggleArquivos");
+  const blocoArquivosImportados = document.getElementById("blocoArquivosImportados");
+  btnToggleArquivos.addEventListener("click", () => {
+    const escondido = blocoArquivosImportados.classList.toggle("hidden");
+    document.getElementById("setaArquivos").textContent = escondido ? "▸" : "▾";
+  });
 
   function renderDashboard() {
     analiseTerritorioAtual = territorioLinhas.length ? analisarTerritorio(territorioLinhas) : null;
     indicadores = calcularIndicadores();
     duplicidades = calcularDuplicidades();
-    renderAvisoEscopo();
     renderKpis();
     renderGraficosGerais();
     renderPillStripPendencias();

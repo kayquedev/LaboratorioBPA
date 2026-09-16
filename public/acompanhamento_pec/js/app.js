@@ -661,7 +661,13 @@
 
   // -------- aba: território --------
   const fMicroareaTerritorio = document.getElementById("fMicroareaTerritorio");
+  const fBuscaVazios = document.getElementById("fBuscaVazios");
   fMicroareaTerritorio.addEventListener("input", renderTerritorio);
+  fBuscaVazios.addEventListener("input", renderTerritorio);
+
+  // marcação de domicílio sem morador já verificado em campo - só dura a sessão
+  // (não é salvo em lugar nenhum), serve pra não perder o lugar numa lista longa.
+  let vaziosVerificados = new Set();
 
   function popularFiltroTerritorio() {
     const atual = fMicroareaTerritorio.value;
@@ -696,29 +702,71 @@
     });
 
     document.getElementById("cardsTerritorio").innerHTML = [
-      cardHtml({ valor: String(enderecos.length), titulo: "Domicílios mapeados", desc: "Endereços distintos encontrados no(s) arquivo(s) de território carregado(s)." }),
-      cardHtml({
-        valor: String(vazios.length), titulo: "Domicílios sem morador",
-        cor: vazios.length ? "var(--amber)" : "var(--teal)",
-        desc: "Endereço mapeado no território mas sem nenhum cidadão vinculado a ele.",
-        badge: '<span class="badge ' + (vazios.length ? "sev-aviso" : "b-ok") + ' pct-badge">' + fmtPct(vazios.length, enderecos.length) + "%</span>",
-      }),
-      cardHtml({ valor: String(familias.size), titulo: "Famílias mapeadas", desc: "Agrupadas pelo responsável familiar dentro de cada domicílio." }),
-      cardHtml({ valor: familias.size ? (totalMoradores / familias.size).toFixed(1) : "—", titulo: "Média de moradores por família", desc: "Total de moradores dividido pelo total de famílias mapeadas." }),
+      kpiCardHtml("var(--blue-link)", "var(--blue-bg)", "🏙️", "Domicílios mapeados", String(enderecos.length),
+        "Endereços únicos registrados no território."),
+      kpiCardHtml("var(--amber)", "var(--amber-bg)", "🏚️", "Domicílios sem morador", String(vazios.length),
+        fmtPct(vazios.length, enderecos.length) + "% dos domicílios · endereço sem cidadão vinculado."),
+      kpiCardHtml("var(--teal)", "var(--teal-bg)", "👨‍👧", "Famílias mapeadas", String(familias.size),
+        "Grupos familiares agrupados por domicílio."),
+      kpiCardHtml("var(--violet)", "var(--violet-bg)", "📊", "Média de moradores por família",
+        familias.size ? (totalMoradores / familias.size).toFixed(1) : "—",
+        "Total de moradores dividido pelo total de famílias mapeadas."),
     ].join("");
 
-    const MAX_VAZIOS = 100;
-    const painelVazios = vazios.length
-      ? '<div class="painel" style="grid-column:1/-1;"><h3>Domicílios sem morador (' + vazios.length + ')</h3>' +
-        '<div class="dom-vazio-grid">' +
-        vazios.slice(0, MAX_VAZIOS).map((e) =>
-          '<div class="dom-vazio-item">' + escapeHtml(enderecoLegivel(e.linha)) +
-          (e.linha.__microareaArquivo ? ' <span class="sub-nome">Microárea ' + escapeHtml(e.linha.__microareaArquivo) + "</span>" : "") +
-          "</div>"
-        ).join("") + "</div>" +
-        (vazios.length > MAX_VAZIOS ? '<p class="vazio">+ ' + (vazios.length - MAX_VAZIOS) + ' outro(s) — use "Exportar domicílios sem morador" na aba Exportações pra ver todos.</p>' : "") + "</div>"
-      : '<div class="painel" style="grid-column:1/-1;"><h3>Domicílios sem morador</h3><p class="vazio">Nenhum domicílio vazio encontrado' + (filtro ? " nesta microárea." : ".") + "</p></div>";
-    document.getElementById("paineisTerritorio").innerHTML = '<div class="paineis-grid">' + painelVazios + "</div>";
+    // distribuição por microárea - sempre com o total geral (não respeita o
+    // filtro acima), clicar numa barra aplica o filtro daquela microárea
+    const porMicroareaTodas = new Map();
+    t.porEndereco.forEach((arr, chave) => {
+      const ma = arr[0].__microareaArquivo || "—";
+      porMicroareaTodas.set(ma, (porMicroareaTodas.get(ma) || 0) + 1);
+    });
+    const entradasMa = [...porMicroareaTodas.entries()].sort((a, b) => b[1] - a[1]);
+    const maxMa = Math.max(1, ...entradasMa.map(([, n]) => n));
+    const hbarEl = document.getElementById("hbarMicroarea");
+    hbarEl.innerHTML = entradasMa.length
+      ? entradasMa.map(([ma, n]) => (
+          '<a class="hbar-row" href="javascript:void(0)" data-hbar-microarea="' + escapeHtml(ma) + '">' +
+          '<span class="hbar-label">' + escapeHtml(ma) + '</span>' +
+          '<span class="hbar-track"><span class="hbar-fill" style="width:' + Math.round((n / maxMa) * 100) + '%"></span></span>' +
+          '<span class="hbar-valor">' + n + "</span></a>"
+        )).join("")
+      : '<p class="vazio">Sem dados.</p>';
+    hbarEl.querySelectorAll("[data-hbar-microarea]").forEach((a) => {
+      a.addEventListener("click", () => { fMicroareaTerritorio.value = a.dataset.hbarMicroarea; renderTerritorio(); });
+    });
+
+    renderListaVazios(vazios, filtro);
+  }
+
+  function renderListaVazios(vazios, filtro) {
+    const busca = fBuscaVazios.value.trim().toLowerCase();
+    const filtrados = busca ? vazios.filter((e) => enderecoLegivel(e.linha).toLowerCase().indexOf(busca) !== -1) : vazios;
+    document.getElementById("tituloListaVazios").textContent = "Domicílios sem morador (" + filtrados.length + ") — ações pendentes";
+
+    const el = document.getElementById("listaDomiciliosVazios");
+    if (!filtrados.length) {
+      el.innerHTML = '<p class="vazio">Nenhum domicílio vazio encontrado' + (busca ? " para essa busca." : filtro ? " nesta microárea." : ".") + "</p>";
+      return;
+    }
+    const MAX_VAZIOS = 150;
+    el.innerHTML = filtrados.slice(0, MAX_VAZIOS).map((e) => {
+      const verificado = vaziosVerificados.has(e.chave);
+      return '<div class="dom-vazio-row' + (verificado ? " verificado" : "") + '">' +
+        '<div class="icone">🏠</div>' +
+        '<div class="info"><div class="endereco">' + escapeHtml(enderecoLegivel(e.linha)) + "</div>" +
+        '<div class="microarea">Microárea ' + escapeHtml(e.linha.__microareaArquivo || "—") + "</div></div>" +
+        '<button class="btn btn-ghost-dark" data-verificar="' + escapeHtml(e.chave) + '">' + (verificado ? "✓ Verificado" : "Marcar verificado") + "</button>" +
+        "</div>";
+    }).join("") + (filtrados.length > MAX_VAZIOS
+      ? '<p class="vazio">+ ' + (filtrados.length - MAX_VAZIOS) + ' outro(s) — use "Exportar domicílios sem morador" na aba Exportações pra ver todos.</p>'
+      : "");
+    el.querySelectorAll("[data-verificar]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const chave = btn.dataset.verificar;
+        if (vaziosVerificados.has(chave)) vaziosVerificados.delete(chave); else vaziosVerificados.add(chave);
+        renderListaVazios(vazios, filtro);
+      });
+    });
   }
 
   // -------- aba: exportações --------

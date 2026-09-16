@@ -121,9 +121,23 @@
             <label for="fMicroareaTerritorio">Microárea</label>
             <select id="fMicroareaTerritorio"><option value="">Todas</option></select>
           </div>
+          <div class="campo campo-busca">
+            <label for="fBuscaVazios">Buscar domicílio sem morador</label>
+            <input id="fBuscaVazios" placeholder="Endereço...">
+          </div>
         </div>
-        <div class="cards-grid" id="cardsTerritorio"></div>
-        <div class="paineis-grid" id="paineisTerritorio"></div>
+
+        <div class="kpi-grid" id="cardsTerritorio"></div>
+
+        <div class="painel" style="margin-bottom:20px;">
+          <h3>Distribuição de domicílios por microárea</h3>
+          <div class="hbar-list" id="hbarMicroarea"></div>
+        </div>
+
+        <div class="painel">
+          <h3 id="tituloListaVazios">Domicílios sem morador</h3>
+          <div class="dom-vazio-list" id="listaDomiciliosVazios"></div>
+        </div>
       </div>
 
       <!-- ---------- aba: exportações ---------- -->

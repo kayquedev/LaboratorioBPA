@@ -12,12 +12,15 @@
 
   <nav class="topbar">
     <div class="topbar-wrap">
-      <button class="back-btn hidden" id="btnBack" title="Início">← Início</button>
-      <div class="topbar-brand" id="topbarTitle">Qualidade BPA</div>
+      <button class="back-btn" id="btnVoltarInicio">← Início</button>
+      <div class="topbar-titlewrap">
+        <div class="topbar-title" id="topbarTitulo">Qualidade BPA</div>
+        <div class="topbar-sub" id="topbarSubtitulo">Monitore a produção, identifique inconsistências e garanta um faturamento seguro.</div>
+      </div>
+      <div class="topbar-competencia hidden" id="topbarCompetencia"></div>
       <div class="topbar-actions hidden" id="topbarActions">
         <input type="file" id="addFileInput" accept=".txt" multiple class="hidden">
         <button class="btn btn-ghost-dark" id="btnAddFile">+ Adicionar arquivo</button>
-        <button class="btn btn-ghost-dark" id="btnExport">⬇ Exportar CSV</button>
         <button class="btn btn-ghost-dark" id="btnReimport">↻ Novo arquivo</button>
       </div>
       <div class="topbar-user">
@@ -27,12 +30,12 @@
     </div>
   </nav>
 
-  <!-- ===================== UPLOAD ===================== -->
+  <!-- ===================== GATE: IMPORTAÇÃO ===================== -->
   <section id="viewUpload" class="view-dark">
     <div class="wrap-narrow">
       <div class="eyebrow">SUS · SIA · BPA Magnético</div>
       <h1>Qualidade BPA</h1>
-      <p class="lead">Suba um arquivo BPA já gerado (linhas tipo 02 / BPA-C e/ou 03 / BPA-I) pra ver estatísticas de produção por SIGTAP e conferir possíveis problemas de qualidade — tudo processado aqui no navegador, o arquivo não é enviado ao servidor. Depois de carregar o primeiro, dá pra adicionar mais arquivos (ex: um do laboratório terceirizado) e analisar tudo junto.</p>
+      <p class="lead">Suba um arquivo BPA já gerado (linhas tipo 02 / BPA-C e/ou 03 / BPA-I) pra ver estatísticas de produção por SIGTAP, conferir problemas de qualidade e corrigir pendências — tudo processado aqui no navegador, o arquivo não é enviado ao servidor. Depois de carregar o primeiro, dá pra adicionar mais arquivos e analisar tudo junto.</p>
 
       <label class="drop" id="drop">
         <input type="file" id="fileInput" accept=".txt" multiple>
@@ -41,175 +44,71 @@
         <div class="fname" id="fname"></div>
       </label>
 
-      <input type="file" id="addFileInputInicial" accept=".txt" multiple class="hidden">
-      <button class="btn btn-ghost-dark add-file-inicial" id="btnAddFileInicial">+ Adicionar mais arquivos BPA</button>
-
       <div class="msg" id="uploadMsg"></div>
+    </div>
+  </section>
 
-      <div class="estab-form-block">
-        <div class="sidebar-title">Estabelecimentos (CNES) cadastrados</div>
-        <p class="lead" style="margin:0 0 14px;font-size:12.5px;">A tabela SIGTAP não traz o nome dos estabelecimentos — cadastre aqui o nome de cada CNES que aparece nos seus arquivos. Fica salvo neste navegador e é reaproveitado sempre que você importar um arquivo novo.</p>
-        <div class="estab-form-row">
-          <input id="estabCnesInput" placeholder="CNES (7 dígitos)" maxlength="7">
-          <input id="estabNomeInput" placeholder="Nome do estabelecimento">
-          <button class="btn btn-ghost-dark" id="btnSalvarEstab">Salvar</button>
+  <!-- ===================== MÓDULO (sidebar + telas) ===================== -->
+  <div id="viewDashboard" class="app-shell-body hidden">
+
+    <aside class="app-sidebar">
+      <div class="app-sidebar-logo">
+        <span class="app-sidebar-logo-icon">🩺</span>
+        <div>
+          <div class="app-sidebar-logo-title">BPA</div>
+          <div class="app-sidebar-logo-sub">QUALIDADE DA PRODUÇÃO</div>
         </div>
-        <div class="fontes-list" id="estabFormList"></div>
       </div>
-    </div>
-  </section>
-
-  <!-- ===================== DASHBOARD ===================== -->
-  <section id="viewDashboard" class="view-dark hidden">
-    <div class="wrap-wide">
-
-      <div class="alert-banner" id="headerAlert"></div>
-
-      <div class="group-label">Setores com produção esperada</div>
-      <p class="lead" id="setoresResumo" style="font-size:13px;margin:0 0 30px;"></p>
-
-      <div class="group-label">Arquivos importados</div>
-      <div class="fontes-list" id="fontesList"></div>
-      <button class="btn btn-ghost-dark" id="btnAddFileList" style="margin-bottom:26px;">+ Adicionar arquivo</button>
-
-      <div class="group-label">Estabelecimentos em produção (CNES)</div>
-      <div class="fontes-list" id="estabList"></div>
-
-      <div class="stat-row" id="summaryRow"></div>
-
-      <div class="group-label">Faturamento (R$)</div>
-      <div class="cards-grid" id="cardsFaturamento"></div>
-
-      <div class="group-label">Qualidade dos dados</div>
-      <div class="cards-grid" id="cardsQualidade"></div>
-
-      <div class="group-label">Explorar produção</div>
-      <div class="cards-grid" id="cardsExplorar"></div>
-
-      <div class="group-label">Painéis</div>
-      <div class="paineis-grid" id="paineisGrid"></div>
-
-      <div class="group-label" id="glossarioLabel" style="margin-top:26px;">O que significam os avisos e erros encontrados</div>
-      <div class="glossario" id="glossarioBox"></div>
-
-      <div class="group-label hidden" id="glossarioTotaisLabel" style="margin-top:22px;">Valor estimado das pendências</div>
-      <div class="cards-grid" id="cardsGlossarioTotais"></div>
-
-      <div class="estab-form-block">
-        <div class="sidebar-title">Corrigir pendências</div>
-        <p class="lead" id="correcaoResumoTexto" style="margin:0 0 14px;font-size:12.5px;"></p>
-        <button class="btn" id="btnIrCorrigir" style="background:var(--teal);color:#04241c;">Corrigir pendências →</button>
+      <nav class="app-nav" id="appNav">
+        <button class="app-nav-item active" data-tela="geral"><span class="app-nav-icon">🏠</span><span>Visão Geral</span></button>
+        <button class="app-nav-item" data-tela="producao"><span class="app-nav-icon">📈</span><span>Produção</span></button>
+        <button class="app-nav-item" data-tela="registros"><span class="app-nav-icon">📋</span><span>Registros nominais</span></button>
+        <button class="app-nav-item" data-tela="pendencias"><span class="app-nav-icon">⚠️</span><span>Pendências</span></button>
+        <button class="app-nav-item" data-tela="faturamento"><span class="app-nav-icon">💰</span><span>Faturamento</span></button>
+        <button class="app-nav-item" data-tela="qualidade"><span class="app-nav-icon">✅</span><span>Qualidade</span></button>
+        <button class="app-nav-item" data-tela="paineis"><span class="app-nav-icon">📊</span><span>Painéis</span></button>
+        <button class="app-nav-item" data-tela="alertas"><span class="app-nav-icon">🔔</span><span>Alertas</span></button>
+        <button class="app-nav-item" data-tela="configuracoes"><span class="app-nav-icon">⚙️</span><span>Configurações</span></button>
+      </nav>
+      <div class="app-sidebar-footer">
+        <div class="app-sidebar-footer-brand">SUS · Sistema BPA</div>
+        <div class="app-sidebar-footer-sub">Kode · Qualidade de Dados</div>
       </div>
+    </aside>
 
-    </div>
-  </section>
-
-  <!-- ===================== DRILLDOWN ===================== -->
-  <section id="viewDrilldown" class="view-light hidden">
-    <div class="drill-layout">
-
-      <aside class="sidebar">
-        <div class="sidebar-block">
-          <div class="sidebar-title">Resultado</div>
-          <div class="sidebar-stat" id="sidebarCount">—</div>
-          <div class="sidebar-stat-label">registro(s)</div>
-
-          <div class="sidebar-stat sidebar-stat-money" id="sidebarValorTotal">—</div>
-          <div class="sidebar-stat-label">valor total estimado</div>
-
-          <div class="sidebar-stat sidebar-stat-money" id="sidebarValorPagar">—</div>
-          <div class="sidebar-stat-label" id="sidebarValorPagarLabel">valor total a pagar</div>
-        </div>
-
-        <div class="sidebar-block">
-          <div class="sidebar-title">Filtros</div>
-          <div class="field">
-            <label for="fTipo">Tipo</label>
-            <select id="fTipo">
-              <option value="">Todos</option>
-              <option value="02">02 · BPA-C</option>
-              <option value="03">03 · BPA-I</option>
-            </select>
-          </div>
-          <div class="field hidden" id="campoOrigem">
-            <label for="fOrigem">Origem (arquivo)</label>
-            <select id="fOrigem">
-              <option value="">Todas</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="fCbo">CBO</label>
-            <select id="fCbo">
-              <option value="">Todos</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="fSigtap">SIGTAP</label>
-            <select id="fSigtap">
-              <option value="">Todos</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="fIbge">Município (IBGE) — BPA-I</label>
-            <select id="fIbge">
-              <option value="">Todos</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="fCep">CEP — BPA-I</label>
-            <input id="fCep" placeholder="Ex.: 35300000">
-          </div>
-          <div class="field">
-            <label for="fProblema">Tipo de erro/aviso</label>
-            <select id="fProblema">
-              <option value="">Todos</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="fSoProblemas">
-              <input type="checkbox" id="fSoProblemas"> Só com problema
-            </label>
-          </div>
-          <div class="field">
-            <label for="fSoNaoLocalizado">
-              <input type="checkbox" id="fSoNaoLocalizado"> Só SIGTAP não localizado
-            </label>
-          </div>
-        </div>
-
-        <div class="sidebar-block" id="legendaBlock">
-          <div class="sidebar-title">Legenda</div>
-          <div class="legenda-item"><span class="badge sev-erro">Erro</span> impede envio ao SIA</div>
-          <div class="legenda-item"><span class="badge sev-aviso">Aviso</span> revisar antes de enviar</div>
-        </div>
-      </aside>
-
-      <main class="drill-main">
-        <div class="search-row">
-          <input id="fBusca" placeholder="Buscar por paciente ou código SIGTAP...">
-        </div>
-        <div class="msg" id="filterMsg"></div>
-        <div class="tbl-wrap">
-          <table class="preview">
-            <thead>
-              <tr>
-                <th>Tipo</th><th>Origem</th><th>Folha</th><th>Seq.</th><th>CBO</th><th>SIGTAP</th>
-                <th>Data</th><th>Qtd.</th><th>Valor (R$)</th><th>Paciente</th><th>IBGE</th><th>CEP</th><th>Situação</th><th>O que é / Como resolver</th>
-              </tr>
-            </thead>
-            <tbody id="registrosBody"></tbody>
-          </table>
-        </div>
-      </main>
-
-    </div>
-  </section>
+    <main class="app-main">
+      <!-- cada <div class="tela"> abaixo é preenchido inteiramente via innerHTML
+           pelo respectivo js/tela-*.js, quando QBPA.telas.<nome>.render() roda -->
+      <div id="tela-geral" class="tela"></div>
+      <div id="tela-producao" class="tela hidden"></div>
+      <div id="tela-registros" class="tela hidden"></div>
+      <div id="tela-pendencias" class="tela hidden"></div>
+      <div id="tela-faturamento" class="tela hidden"></div>
+      <div id="tela-qualidade" class="tela hidden"></div>
+      <div id="tela-paineis" class="tela hidden"></div>
+      <div id="tela-alertas" class="tela hidden"></div>
+      <div id="tela-configuracoes" class="tela hidden"></div>
+      <div id="tela-arquivo-corrigido" class="tela hidden"></div>
+    </main>
+  </div>
 
 </div>
 
 <script src="js/session.js"></script>
 <script src="js/parser.js"></script>
 <script src="js/lookup.js"></script>
+<script src="js/writer.js"></script>
+<script src="js/state.js"></script>
+<script src="js/tela-visaogeral.js"></script>
+<script src="js/tela-producao.js"></script>
+<script src="js/tela-registros.js"></script>
+<script src="js/tela-pendencias.js"></script>
+<script src="js/tela-faturamento.js"></script>
+<script src="js/tela-qualidade.js"></script>
+<script src="js/tela-paineis.js"></script>
+<script src="js/tela-alertas.js"></script>
+<script src="js/tela-configuracoes.js"></script>
+<script src="js/tela-arquivocorrigido.js"></script>
 <script src="js/app.js"></script>
 
 </body>

@@ -64,23 +64,6 @@
   <section id="viewDashboard" class="view-dark hidden">
     <div class="dash-shell">
 
-      <aside class="side-nav">
-        <div class="side-logo">
-          <span class="side-logo-icon">🏘</span>
-          <div>
-            <div class="side-logo-title">e-SUS PEC</div>
-            <div class="side-logo-sub">TERRITÓRIO</div>
-          </div>
-        </div>
-        <nav class="side-nav-list">
-          <button class="tab-btn side-nav-item active" data-tab="geral"><span class="side-nav-icon">🏠</span> Visão Geral</button>
-          <button class="tab-btn side-nav-item" data-tab="pendencias"><span class="side-nav-icon">📋</span> Pendências Cadastrais <span class="count" id="countPendenciasSide">0</span></button>
-          <button class="tab-btn side-nav-item" data-tab="duplicidades"><span class="side-nav-icon">👥</span> Duplicidades <span class="count" id="countDuplicidadesSide">0</span></button>
-          <button class="tab-btn side-nav-item hidden" data-tab="territorio" id="tabBtnTerritorioSide"><span class="side-nav-icon">🗺️</span> Território</button>
-          <button class="tab-btn side-nav-item" data-tab="exportacoes"><span class="side-nav-icon">⬇️</span> Exportações</button>
-        </nav>
-      </aside>
-
       <div class="dash-content">
       <div class="wrap-wide">
 
@@ -100,7 +83,7 @@
 
       <nav class="tabs-nav" id="tabsNav">
         <button class="tab-btn active" data-tab="geral">Visão Geral</button>
-        <button class="tab-btn" data-tab="pendencias">Pendências Cadastrais <span class="count" id="countPendencias">0</span></button>
+        <button class="tab-btn" data-tab="pendencias"><span aria-hidden="true">📋</span> Pendências Cadastrais <span class="count" id="countPendencias">0</span></button>
         <button class="tab-btn" data-tab="duplicidades">Duplicidades <span class="count" id="countDuplicidades">0</span></button>
         <button class="tab-btn hidden" data-tab="territorio" id="tabBtnTerritorio">Território</button>
         <button class="tab-btn" data-tab="exportacoes">Exportações</button>
@@ -114,6 +97,10 @@
 
         <div class="group-label" style="margin-top:24px;">Principais pendências para ação</div>
         <div class="pill-strip" id="pillStripPendencias"></div>
+
+        <div style="text-align:center;margin-top:30px;">
+          <button class="btn btn-primary btn-cta-grande" id="btnVerTabela">Ver todos os cidadãos →</button>
+        </div>
       </div>
 
       <!-- ---------- aba: pendências cadastrais ---------- -->
@@ -154,6 +141,12 @@
           <div class="hbar-list" id="hbarMicroarea"></div>
         </div>
 
+        <div class="painel" style="margin-bottom:20px;">
+          <h3 id="tituloListaImoveis">Imóveis mapeados</h3>
+          <div class="dom-vazio-list" id="listaImoveis"></div>
+          <button class="btn btn-ghost-dark hidden" id="btnVerTodosImoveis" style="margin-top:12px;">Ver todos os imóveis →</button>
+        </div>
+
         <div class="painel">
           <h3 id="tituloListaVazios">Domicílios sem morador</h3>
           <div class="dom-vazio-list" id="listaDomiciliosVazios"></div>
@@ -165,9 +158,70 @@
         <div class="exportacoes-grid" id="exportacoesGrid"></div>
       </div>
 
-      <button class="btn btn-ghost-dark" id="btnVerTabela" style="margin-top:26px;">Ver todos os cidadãos →</button>
-
       </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== IMÓVEIS DO TERRITÓRIO ===================== -->
+  <section id="viewImoveis" class="view-light hidden">
+    <div class="wrap-wide">
+      <div class="page-heading">
+        <div>
+          <div class="eyebrow">Território</div>
+          <h1>Todos os imóveis</h1>
+          <p>Consulte os imóveis mapeados usando um ou mais filtros.</p>
+        </div>
+      </div>
+
+      <div class="filtro-toolbar filtro-imoveis">
+        <div class="campo">
+          <label for="fImovelMicroarea">Microárea</label>
+          <select id="fImovelMicroarea"><option value="">Todas</option></select>
+        </div>
+        <div class="campo">
+          <label for="fImovelLogradouro">Logradouro</label>
+          <input id="fImovelLogradouro" placeholder="Ex.: Rua das Flores">
+        </div>
+        <div class="campo campo-curto">
+          <label for="fImovelNumero">Número</label>
+          <input id="fImovelNumero" placeholder="Ex.: 120">
+        </div>
+        <div class="campo">
+          <label for="fImovelBairro">Bairro</label>
+          <input id="fImovelBairro" placeholder="Ex.: Centro">
+        </div>
+        <div class="campo">
+          <label for="fImovelComplemento">Complemento</label>
+          <input id="fImovelComplemento" placeholder="Ex.: Casa 2">
+        </div>
+        <div class="campo campo-curto">
+          <label for="fImovelCep">CEP</label>
+          <input id="fImovelCep" inputmode="numeric" placeholder="00000-000">
+        </div>
+        <div class="spacer"></div>
+        <button class="btn btn-ghost-dark" id="btnLimparFiltrosImoveis">Limpar filtros</button>
+        <button class="btn btn-ghost-dark" id="btnExportarImoveisCsv">⬇ Exportar CSV</button>
+        <button class="btn btn-primary" id="btnExportarImoveisPdf">⬇ Imprimir em PDF</button>
+      </div>
+
+      <div class="filtro-resultado"><b id="imoveisCount">—</b> imóvel(is) encontrado(s)</div>
+      <div class="msg" id="imoveisMsg"></div>
+      <div class="tbl-wrap">
+        <table class="preview">
+          <thead>
+            <tr>
+              <th>Microárea</th>
+              <th>Logradouro</th>
+              <th>Número</th>
+              <th>Bairro</th>
+              <th>Complemento</th>
+              <th>CEP</th>
+              <th>Moradores</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaImoveisBody"></tbody>
+        </table>
       </div>
     </div>
   </section>

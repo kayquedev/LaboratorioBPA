@@ -178,7 +178,7 @@
       explicacao: "O cadastro tem origem PEC — feito direto no sistema (por exemplo, num atendimento), sem passar pelo preenchimento da Ficha de Cadastro Individual (FCI).",
       resolver: "Complete a Ficha de Cadastro Individual (FCI) do cidadão." },
     SEM_MONITORAMENTO: { sev: "erro", texto: "Sem acompanhamento de condições de saúde", fonte: "Condições de Saúde",
-      explicacao: "O cidadão está vinculado mas não aparece no relatório de Condições de Saúde — indício de que faz muito tempo que não passa por nenhum atendimento.",
+      explicacao: "O cidadão está vinculado, mas não aparece no relatório de Condições de Saúde — indício de que não passa por nenhum atendimento de nível superior.",
       resolver: "Avalie se esse cidadão precisa de atendimento, confira o cadastro dele e programe acompanhamento/consulta o quanto antes." },
     SEM_VINCULO_DOMICILIAR: { sev: "aviso", texto: "Sem vínculo domiciliar ativo", fonte: "Território",
       explicacao: "O cadastro está ativo mas não foi encontrado em nenhuma ficha de família/domicílio do território carregado.",
@@ -211,6 +211,7 @@
   const viewUpload = document.getElementById("viewUpload");
   const viewDashboard = document.getElementById("viewDashboard");
   const viewTabela = document.getElementById("viewTabela");
+  const viewImoveis = document.getElementById("viewImoveis");
   const btnVoltar = document.getElementById("btnVoltar");
   const msgUpload = document.getElementById("msgUpload");
 
@@ -444,9 +445,12 @@
   // -------- dashboard: cards genéricos --------
   function cardHtml(opts) {
     const badge = opts.badge || "";
+    const titulo = opts.icone
+      ? '<span class="titulo-com-icone"><span class="titulo-icone">' + opts.icone + "</span><span>" + opts.titulo + "</span></span>"
+      : opts.titulo;
     const inner = '<div class="ind-card-top">' + badge + "</div>" +
       '<div class="valor" style="' + (opts.cor ? "color:" + opts.cor : "") + '">' + opts.valor + "</div>" +
-      '<div class="titulo">' + opts.titulo + "</div>" +
+      '<div class="titulo">' + titulo + "</div>" +
       '<div class="desc">' + (opts.desc || "") + "</div>" +
       (opts.link ? '<div class="link">' + opts.link + " →</div>" : "");
     if (opts.onClick) return '<a class="ind-card" href="javascript:void(0)" data-card="' + opts.id + '">' + inner + "</a>";
@@ -587,19 +591,24 @@
     return counts;
   }
 
+  function explicacaoPendenciaHtml(cod, explicacao) {
+    const texto = escapeHtml(explicacao);
+    if (cod !== "SEM_MONITORAMENTO") return texto;
+    return texto.replace("de nível superior", "<strong>de nível superior</strong>");
+  }
+
   function renderPendencias() {
     const counts = contarPendencias();
     const codigos = ORDEM_PENDENCIAS.filter((c) => counts[c]);
     const total = indicadores.length;
     const qtdPendencias = String(indicadores.filter((i) => i.pendencias.length).length);
     document.getElementById("countPendencias").textContent = qtdPendencias;
-    document.getElementById("countPendenciasSide").textContent = qtdPendencias;
 
     document.getElementById("cardsPendencias").innerHTML = codigos.map((cod) => {
       const info = PENDENCIA_CATALOG[cod];
       return cardHtml({
         id: cod, onClick: true,
-        valor: String(counts[cod]), titulo: info.texto, desc: "Fonte: " + info.fonte,
+        valor: String(counts[cod]), titulo: info.texto, icone: PILL_ICONES[cod] || "⚠️", desc: "Fonte: " + info.fonte,
         cor: info.sev === "erro" ? "var(--red)" : "var(--amber)",
         badge: '<span class="badge ' + (info.sev === "erro" ? "sev-erro" : "sev-aviso") + ' pct-badge">' + fmtPct(counts[cod], total) + "%</span>",
         link: "Ver cidadãos",
@@ -611,10 +620,10 @@
 
     document.getElementById("glossarioPendencias").innerHTML = codigos.map((cod) => {
       const info = PENDENCIA_CATALOG[cod];
-      return '<a class="gloss-item" href="javascript:void(0)" data-gloss="' + cod + '"><span class="badge ' + (info.sev === "erro" ? "sev-erro" : "sev-aviso") + '">' + (info.sev === "erro" ? "Crítico" : "Atenção") + '</span>' +
+      return '<a class="gloss-item" href="javascript:void(0)" data-gloss="' + cod + '"><span class="gloss-alerta" title="Pendência cadastral" aria-label="Pendência cadastral">⚠️</span>' +
         '<div class="gloss-body">' +
         '<div class="gloss-titulo">' + escapeHtml(info.texto) + ' <span class="gloss-count">— ' + counts[cod] + " ocorrência(s) · fonte: " + escapeHtml(info.fonte) + "</span></div>" +
-        '<div class="gloss-explicacao">' + escapeHtml(info.explicacao) + "</div>" +
+        '<div class="gloss-explicacao">' + explicacaoPendenciaHtml(cod, info.explicacao) + "</div>" +
         '<div class="gloss-resolver"><b>Como resolver:</b> ' + escapeHtml(info.resolver) + "</div>" +
         "</div></a>";
     }).join("");
@@ -626,7 +635,6 @@
   // -------- aba: duplicidades --------
   function renderDuplicidades() {
     document.getElementById("countDuplicidades").textContent = String(duplicidades.length);
-    document.getElementById("countDuplicidadesSide").textContent = String(duplicidades.length);
     const criticas = duplicidades.filter((g) => DUPLICIDADE_CATALOG[g.tipo].prioridade === "critica").length;
     const medias = duplicidades.length - criticas;
     document.getElementById("cardsDuplicidades").innerHTML = [
@@ -665,6 +673,14 @@
   // -------- aba: território --------
   const fMicroareaTerritorio = document.getElementById("fMicroareaTerritorio");
   const fBuscaVazios = document.getElementById("fBuscaVazios");
+  const btnVerTodosImoveis = document.getElementById("btnVerTodosImoveis");
+  const fImovelMicroarea = document.getElementById("fImovelMicroarea");
+  const fImovelLogradouro = document.getElementById("fImovelLogradouro");
+  const fImovelNumero = document.getElementById("fImovelNumero");
+  const fImovelBairro = document.getElementById("fImovelBairro");
+  const fImovelComplemento = document.getElementById("fImovelComplemento");
+  const fImovelCep = document.getElementById("fImovelCep");
+  const filtrosImoveis = [fImovelMicroarea, fImovelLogradouro, fImovelNumero, fImovelBairro, fImovelComplemento, fImovelCep];
   fMicroareaTerritorio.addEventListener("input", renderTerritorio);
   fBuscaVazios.addEventListener("input", renderTerritorio);
 
@@ -682,10 +698,8 @@
 
   function renderTerritorio() {
     const btnTab = document.getElementById("tabBtnTerritorio");
-    const btnTabSide = document.getElementById("tabBtnTerritorioSide");
-    if (!analiseTerritorioAtual) { btnTab.classList.add("hidden"); btnTabSide.classList.add("hidden"); return; }
+    if (!analiseTerritorioAtual) { btnTab.classList.add("hidden"); return; }
     btnTab.classList.remove("hidden");
-    btnTabSide.classList.remove("hidden");
     popularFiltroTerritorio();
 
     const t = analiseTerritorioAtual;
@@ -740,7 +754,54 @@
       a.addEventListener("click", () => { fMicroareaTerritorio.value = a.dataset.hbarMicroarea; renderTerritorio(); });
     });
 
+    renderListaImoveis(enderecos);
     renderListaVazios(vazios, filtro);
+  }
+
+  function grupoParaImovel(grupo) {
+    const chave = grupo[0];
+    const arr = grupo[1];
+    const linha = arr[0];
+    const tipo = linha["TIPO DE LOGRADOURO"] && linha["TIPO DE LOGRADOURO"] !== "-" ? linha["TIPO DE LOGRADOURO"] : "";
+    const nomeLogradouro = linha["LOGRADOURO"] && linha["LOGRADOURO"] !== "-" ? linha["LOGRADOURO"] : "";
+    return {
+      chave,
+      linha,
+      microarea: linha.__microareaArquivo || "—",
+      logradouro: [tipo, nomeLogradouro].filter(Boolean).join(" ") || "—",
+      numero: linha["NÚMERO"] && linha["NÚMERO"] !== "-" ? linha["NÚMERO"] : "s/n",
+      bairro: linha["BAIRRO"] && linha["BAIRRO"] !== "-" ? linha["BAIRRO"] : "—",
+      complemento: linha["COMPLEMENTO"] && linha["COMPLEMENTO"] !== "-" ? linha["COMPLEMENTO"] : "—",
+      cep: linha["CEP"] && linha["CEP"] !== "-" ? linha["CEP"] : "—",
+      moradores: arr.filter((l) => l["NOME CIDADÃO"] && l["NOME CIDADÃO"] !== "-").length,
+    };
+  }
+
+  function todosImoveis() {
+    if (!analiseTerritorioAtual) return [];
+    return [...analiseTerritorioAtual.porEndereco.entries()].map(grupoParaImovel);
+  }
+
+  function renderListaImoveis(enderecos) {
+    const imoveis = enderecos.map(grupoParaImovel);
+    const limite = 20;
+    document.getElementById("tituloListaImoveis").textContent = imoveis.length > limite
+      ? "Imóveis mapeados — exibindo 20 de " + imoveis.length
+      : "Imóveis mapeados (" + imoveis.length + ")";
+    const el = document.getElementById("listaImoveis");
+    if (!imoveis.length) {
+      el.innerHTML = '<p class="vazio">Nenhum imóvel encontrado nesta microárea.</p>';
+      btnVerTodosImoveis.classList.add("hidden");
+      return;
+    }
+    el.innerHTML = imoveis.slice(0, limite).map((imovel) => (
+      '<div class="dom-vazio-row imovel-row">' +
+      '<div class="icone">🏘️</div>' +
+      '<div class="info"><div class="endereco">' + escapeHtml(enderecoLegivel(imovel.linha)) + "</div>" +
+      '<div class="microarea">Microárea ' + escapeHtml(imovel.microarea) + " · " + imovel.moradores + " morador(es) · CEP " + escapeHtml(imovel.cep) + "</div></div>" +
+      "</div>"
+    )).join("");
+    btnVerTodosImoveis.classList.toggle("hidden", imoveis.length <= limite);
   }
 
   function renderListaVazios(vazios, filtro) {
@@ -773,6 +834,88 @@
       });
     });
   }
+
+  function popularFiltrosImoveis() {
+    const atual = fImovelMicroarea.value;
+    const microareas = [...new Set(todosImoveis().map((i) => i.microarea).filter((m) => m !== "—"))].sort();
+    fImovelMicroarea.innerHTML = '<option value="">Todas</option>' +
+      microareas.map((m) => '<option value="' + escapeHtml(m) + '">Microárea ' + escapeHtml(m) + "</option>").join("");
+    fImovelMicroarea.value = microareas.indexOf(atual) !== -1 ? atual : "";
+  }
+
+  function contemTexto(valor, filtro) {
+    return !filtro || normalizarNome(valor).indexOf(normalizarNome(filtro)) !== -1;
+  }
+
+  function imoveisFiltrados() {
+    const microarea = fImovelMicroarea.value;
+    const numero = fImovelNumero.value.trim();
+    const cep = normalizarDocumento(fImovelCep.value);
+    return todosImoveis().filter((i) => {
+      if (microarea && i.microarea !== microarea) return false;
+      if (!contemTexto(i.logradouro, fImovelLogradouro.value)) return false;
+      if (numero && normalizarNome(i.numero) !== normalizarNome(numero)) return false;
+      if (!contemTexto(i.bairro, fImovelBairro.value)) return false;
+      if (!contemTexto(i.complemento, fImovelComplemento.value)) return false;
+      if (cep && normalizarDocumento(i.cep).indexOf(cep) === -1) return false;
+      return true;
+    });
+  }
+
+  function renderTabelaImoveis() {
+    const lista = imoveisFiltrados();
+    document.getElementById("imoveisCount").textContent = lista.length.toLocaleString("pt-BR");
+    document.getElementById("tabelaImoveisBody").innerHTML = lista.map((i) => (
+      "<tr><td>" + escapeHtml(i.microarea) + "</td>" +
+      "<td>" + escapeHtml(i.logradouro) + "</td>" +
+      "<td>" + escapeHtml(i.numero) + "</td>" +
+      "<td>" + escapeHtml(i.bairro) + "</td>" +
+      "<td>" + escapeHtml(i.complemento) + "</td>" +
+      "<td>" + escapeHtml(i.cep) + "</td>" +
+      "<td>" + i.moradores + "</td></tr>"
+    )).join("");
+    const msg = document.getElementById("imoveisMsg");
+    clearMsg(msg);
+    if (!lista.length) setMsg(msg, "warn", "Nenhum imóvel corresponde aos filtros aplicados.");
+  }
+
+  function linhaExportacaoImovel(i) {
+    return [i.microarea, i.logradouro, i.numero, i.bairro, i.complemento, i.cep, i.moradores];
+  }
+
+  function exportarImoveisCsv() {
+    baixarCsv("imoveis_territorio.csv",
+      ["Microárea", "Logradouro", "Número", "Bairro", "Complemento", "CEP", "Moradores"],
+      imoveisFiltrados().map(linhaExportacaoImovel));
+  }
+
+  function exportarImoveisPdf() {
+    const lista = imoveisFiltrados();
+    const doc = new window.jspdf.jsPDF({ orientation: "landscape" });
+    doc.setFontSize(14);
+    doc.text("Imóveis do território", 14, 14);
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text("Gerado em " + new Date().toLocaleString("pt-BR") + " · " + lista.length + " imóvel(is)", 14, 20);
+    doc.autoTable({
+      startY: 25,
+      head: [["Microárea", "Logradouro", "Número", "Bairro", "Complemento", "CEP", "Moradores"]],
+      body: lista.map(linhaExportacaoImovel),
+      theme: "grid",
+      styles: { fontSize: 7.5, cellPadding: 1.8, lineWidth: 0.1, lineColor: [200, 200, 200] },
+      headStyles: { fillColor: [15, 23, 42] },
+      columnStyles: { 1: { cellWidth: 58 }, 4: { cellWidth: 40 } },
+    });
+    doc.save("imoveis_territorio.pdf");
+  }
+
+  filtrosImoveis.forEach((el) => el.addEventListener("input", renderTabelaImoveis));
+  document.getElementById("btnLimparFiltrosImoveis").addEventListener("click", () => {
+    filtrosImoveis.forEach((el) => { el.value = ""; });
+    renderTabelaImoveis();
+  });
+  document.getElementById("btnExportarImoveisCsv").addEventListener("click", exportarImoveisCsv);
+  document.getElementById("btnExportarImoveisPdf").addEventListener("click", exportarImoveisPdf);
 
   // -------- aba: exportações --------
   function baixarCsv(nomeArquivo, cabecalho, linhas) {
@@ -869,8 +1012,6 @@
     btn.addEventListener("click", () => {
       if (btn.classList.contains("hidden")) return;
       const alvoTab = btn.dataset.tab;
-      // a mesma aba aparece duas vezes (barra horizontal + navegação lateral) -
-      // sincroniza os dois botões pelo data-tab, não pelo elemento clicado.
       document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === alvoTab));
       const alvo = "tab" + alvoTab.charAt(0).toUpperCase() + alvoTab.slice(1);
       document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("active", p.id === alvo));
@@ -896,7 +1037,7 @@
     const codigos = ORDEM_PENDENCIAS.filter((c) => counts[c]);
     fPendencia.innerHTML = '<option value="">Todas</option>' + codigos.map((cod) => {
       const info = PENDENCIA_CATALOG[cod];
-      return '<option value="' + cod + '">' + (info.sev === "erro" ? "Crítico" : "Atenção") + " · " + escapeHtml(info.texto) + " (" + counts[cod] + ")</option>";
+      return '<option value="' + cod + '">' + escapeHtml(info.texto) + " (" + counts[cod] + ")</option>";
     }).join("");
   }
 
@@ -1033,19 +1174,24 @@
   // mesmos dados); em qualquer outra tela ele sai do módulo pro início do
   // portal, e aí sim confirma antes - já que sair descarta o painel gerado.
   function atualizarBotaoVoltar() {
-    btnVoltar.textContent = viewTabela.classList.contains("hidden") ? "← Início" : "← Resumo";
+    const emDetalhe = !viewTabela.classList.contains("hidden") || !viewImoveis.classList.contains("hidden");
+    btnVoltar.textContent = emDetalhe ? "← Resumo" : "← Início";
   }
-  function showDashboard() {
+  function showDashboard(tabInicial) {
+    const tab = tabInicial || "geral";
     viewUpload.classList.add("hidden");
     viewTabela.classList.add("hidden");
+    viewImoveis.classList.add("hidden");
     viewDashboard.classList.remove("hidden");
-    document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === "geral"));
-    document.querySelectorAll(".tab-panel").forEach((p, idx) => p.classList.toggle("active", idx === 0));
+    document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+    const alvo = "tab" + tab.charAt(0).toUpperCase() + tab.slice(1);
+    document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("active", p.id === alvo));
     atualizarBotaoVoltar();
   }
   function showTabela(preset) {
     viewUpload.classList.add("hidden");
     viewDashboard.classList.add("hidden");
+    viewImoveis.classList.add("hidden");
     viewTabela.classList.remove("hidden");
     popularFiltros();
     if (preset) {
@@ -1056,8 +1202,20 @@
     renderTabela();
     atualizarBotaoVoltar();
   }
+  function showImoveis() {
+    viewUpload.classList.add("hidden");
+    viewDashboard.classList.add("hidden");
+    viewTabela.classList.add("hidden");
+    viewImoveis.classList.remove("hidden");
+    popularFiltrosImoveis();
+    fImovelMicroarea.value = fMicroareaTerritorio.value;
+    renderTabelaImoveis();
+    atualizarBotaoVoltar();
+  }
   document.getElementById("btnVerTabela").addEventListener("click", () => showTabela());
+  btnVerTodosImoveis.addEventListener("click", showImoveis);
   btnVoltar.addEventListener("click", () => {
+    if (!viewImoveis.classList.contains("hidden")) { showDashboard("territorio"); return; }
     if (!viewTabela.classList.contains("hidden")) { showDashboard(); return; }
     if (window.confirm("Sair do Acompanhamento Cidadãos PEC? Os dados carregados nesta sessão serão perdidos.")) {
       window.location.href = "/";

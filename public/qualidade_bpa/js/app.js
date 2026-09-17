@@ -47,8 +47,11 @@
     topbarSubtitulo.textContent = "";
   }
 
+  let telaAtual = "geral";
+
   function ativarTela(nome) {
     if (TELAS.indexOf(nome) === -1) nome = "geral";
+    telaAtual = nome;
     document.querySelectorAll(".app-nav-item").forEach((el) => el.classList.toggle("active", el.dataset.tela === nome));
     document.querySelectorAll(".tela").forEach((el) => el.classList.toggle("hidden", el.id !== "tela-" + nome));
     const meta = TELA_META[nome];
@@ -79,7 +82,16 @@
     btn.addEventListener("click", () => { location.hash = "#" + btn.dataset.tela; });
   });
 
+  // "Início" tem duas camadas: de qualquer tela do módulo, o botão só volta
+  // pra tela inicial (Visão Geral) — sem confirmação, já que os dados não se
+  // perdem. Só quando já se está na tela inicial (ou ainda no gate de
+  // importação, antes de qualquer tela existir) é que clicar de novo
+  // pergunta se quer mesmo sair do módulo.
   btnVoltarInicio.addEventListener("click", () => {
+    if (QBPA.parsed && telaAtual !== "geral") {
+      location.hash = "#geral";
+      return;
+    }
     if (window.confirm("Sair do Qualidade BPA? Os dados carregados nesta sessão serão perdidos.")) {
       window.location.href = "/";
     }

@@ -77,6 +77,11 @@ a{ color: inherit; }
 
 .app-main{ flex:1; min-width:0; }
 .tela{ padding: 26px 28px 60px; max-width: 1400px; margin: 0 auto; }
+/* Registros nominais precisa de mais espaço horizontal pra tabela (muitas
+   colunas) do que as demais telas — usa quase a largura toda da janela em
+   vez do max-width padrão de 1400px, e estreita um pouco a coluna de
+   filtros pra sobrar mais espaço pros resultados. */
+.tela.tela-larga{ max-width: none; width: 100%; padding-left: 28px; padding-right: 28px; }
 .tela-header{ margin-bottom: 20px; }
 .tela-header h1{ margin:0 0 4px; font-size: 21px; }
 .tela-header p{ margin:0; font-size: 13px; color: var(--text-dim); }
@@ -212,6 +217,7 @@ a.ind-card:hover, .ind-card.clicavel:hover{ transform: translateY(-2px); border-
   display:grid; grid-template-columns: 240px 1fr; gap: 18px; align-items:start;
 }
 @media (max-width: 900px){ .drill-layout{ grid-template-columns: 1fr; } }
+.tela-larga .drill-layout{ grid-template-columns: 210px 1fr; }
 
 .sidebar{ display:flex; flex-direction:column; gap: 14px; position: sticky; top: 78px; max-height: calc(100vh - 100px); overflow:auto; }
 @media (max-width: 900px){ .sidebar{ position: static; max-height: none; } }

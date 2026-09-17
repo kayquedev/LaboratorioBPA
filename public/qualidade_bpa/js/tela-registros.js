@@ -366,6 +366,7 @@
 
   function render() {
     const el = document.getElementById("tela-registros");
+    el.classList.add("tela-larga");
     const parsed = QBPA.parsed;
     const utils = QBPA.utils;
     const escapeHtml = utils.escapeHtml;

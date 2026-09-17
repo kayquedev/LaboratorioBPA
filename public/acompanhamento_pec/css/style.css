@@ -28,6 +28,13 @@
   --light-text-dim: #64748b;
 
   --sans: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  --side-bg: #0f2247;
+  --side-border: rgba(255,255,255,.08);
+  --side-text: rgba(255,255,255,.68);
+  --side-text-dim: rgba(255,255,255,.4);
+  --side-active-bg: rgba(255,255,255,.10);
+  --side-hover-bg: rgba(255,255,255,.06);
 }
 *{ box-sizing: border-box; }
 body{ margin:0; font-family: var(--sans); background: var(--bg); color: var(--text); }
@@ -61,6 +68,39 @@ a{ color: inherit; }
 .view-dark{ min-height: calc(100vh - 54px); }
 .wrap-narrow{ max-width: 640px; margin: 0 auto; padding: 60px 24px; }
 .wrap-wide{ max-width: 1220px; margin: 0 auto; padding: 28px 24px 60px; }
+
+/* ---------- navegação lateral do dashboard ---------- */
+.dash-shell{ display:flex; align-items:flex-start; min-height: calc(100vh - 54px); }
+.dash-content{ flex:1; min-width:0; }
+.side-nav{
+  width: 236px; flex-shrink:0; align-self: stretch;
+  background: var(--side-bg); border-right: 1px solid var(--side-border);
+  padding: 20px 14px; display:flex; flex-direction:column; gap: 18px;
+  position: sticky; top: 54px; height: calc(100vh - 54px); overflow-y:auto;
+}
+.side-logo{ display:flex; align-items:center; gap:10px; padding: 0 8px; }
+.side-logo-icon{ font-size:20px; }
+.side-logo-title{ font-size:14px; font-weight:800; color:#fff; line-height:1.2; }
+.side-logo-sub{ font-size:10px; font-weight:700; letter-spacing:.08em; color: var(--side-text-dim); }
+.side-nav-list{ display:flex; flex-direction:column; gap:2px; }
+.side-nav .side-nav-item{
+  display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+  background:none; border:none; border-bottom:none; border-radius:8px; margin-right:0; padding:10px 10px;
+  font-size:13px; font-weight:600; color: var(--side-text); cursor:pointer;
+  font-family: var(--sans);
+}
+.side-nav .side-nav-item:hover{ background: var(--side-hover-bg); color:#fff; }
+.side-nav .side-nav-item.active{ background: var(--side-active-bg); color:#fff; border-color: transparent; }
+.side-nav-icon{ font-size:15px; width:18px; text-align:center; flex-shrink:0; }
+.side-nav .side-nav-item .count{
+  margin-left:auto; font-size:10.5px; font-weight:700; background: rgba(255,255,255,.12); color:#fff;
+  border-radius:99px; padding:1px 7px;
+}
+@media (max-width: 900px){
+  .dash-shell{ flex-direction:column; }
+  .side-nav{ width:100%; position:static; height:auto; flex-direction:row; flex-wrap:wrap; }
+  .side-nav-list{ flex-direction:row; flex-wrap:wrap; }
+}
 
 .eyebrow{ font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--blue-link); font-weight:700; margin-bottom: 8px; }
 .wrap-narrow h1{ margin: 0 0 10px; font-size: 26px; }

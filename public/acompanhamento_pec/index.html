@@ -62,7 +62,27 @@
 
   <!-- ===================== DASHBOARD ===================== -->
   <section id="viewDashboard" class="view-dark hidden">
-    <div class="wrap-wide">
+    <div class="dash-shell">
+
+      <aside class="side-nav">
+        <div class="side-logo">
+          <span class="side-logo-icon">🏘</span>
+          <div>
+            <div class="side-logo-title">e-SUS PEC</div>
+            <div class="side-logo-sub">TERRITÓRIO</div>
+          </div>
+        </div>
+        <nav class="side-nav-list">
+          <button class="tab-btn side-nav-item active" data-tab="geral"><span class="side-nav-icon">🏠</span> Visão Geral</button>
+          <button class="tab-btn side-nav-item" data-tab="pendencias"><span class="side-nav-icon">📋</span> Pendências Cadastrais <span class="count" id="countPendenciasSide">0</span></button>
+          <button class="tab-btn side-nav-item" data-tab="duplicidades"><span class="side-nav-icon">👥</span> Duplicidades <span class="count" id="countDuplicidadesSide">0</span></button>
+          <button class="tab-btn side-nav-item hidden" data-tab="territorio" id="tabBtnTerritorioSide"><span class="side-nav-icon">🗺️</span> Território</button>
+          <button class="tab-btn side-nav-item" data-tab="exportacoes"><span class="side-nav-icon">⬇️</span> Exportações</button>
+        </nav>
+      </aside>
+
+      <div class="dash-content">
+      <div class="wrap-wide">
 
       <div class="eyebrow">e-SUS PEC · Território</div>
       <h1 style="margin:0 0 16px;font-size:22px;">Acompanhamento de cadastros</h1>
@@ -147,6 +167,8 @@
 
       <button class="btn btn-ghost-dark" id="btnVerTabela" style="margin-top:26px;">Ver todos os cidadãos →</button>
 
+      </div>
+      </div>
     </div>
   </section>
 

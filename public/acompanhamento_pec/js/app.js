@@ -591,7 +591,9 @@
     const counts = contarPendencias();
     const codigos = ORDEM_PENDENCIAS.filter((c) => counts[c]);
     const total = indicadores.length;
-    document.getElementById("countPendencias").textContent = String(indicadores.filter((i) => i.pendencias.length).length);
+    const qtdPendencias = String(indicadores.filter((i) => i.pendencias.length).length);
+    document.getElementById("countPendencias").textContent = qtdPendencias;
+    document.getElementById("countPendenciasSide").textContent = qtdPendencias;
 
     document.getElementById("cardsPendencias").innerHTML = codigos.map((cod) => {
       const info = PENDENCIA_CATALOG[cod];
@@ -624,6 +626,7 @@
   // -------- aba: duplicidades --------
   function renderDuplicidades() {
     document.getElementById("countDuplicidades").textContent = String(duplicidades.length);
+    document.getElementById("countDuplicidadesSide").textContent = String(duplicidades.length);
     const criticas = duplicidades.filter((g) => DUPLICIDADE_CATALOG[g.tipo].prioridade === "critica").length;
     const medias = duplicidades.length - criticas;
     document.getElementById("cardsDuplicidades").innerHTML = [
@@ -679,8 +682,10 @@
 
   function renderTerritorio() {
     const btnTab = document.getElementById("tabBtnTerritorio");
-    if (!analiseTerritorioAtual) { btnTab.classList.add("hidden"); return; }
+    const btnTabSide = document.getElementById("tabBtnTerritorioSide");
+    if (!analiseTerritorioAtual) { btnTab.classList.add("hidden"); btnTabSide.classList.add("hidden"); return; }
     btnTab.classList.remove("hidden");
+    btnTabSide.classList.remove("hidden");
     popularFiltroTerritorio();
 
     const t = analiseTerritorioAtual;
@@ -863,8 +868,11 @@
   document.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       if (btn.classList.contains("hidden")) return;
-      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
-      const alvo = "tab" + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1);
+      const alvoTab = btn.dataset.tab;
+      // a mesma aba aparece duas vezes (barra horizontal + navegação lateral) -
+      // sincroniza os dois botões pelo data-tab, não pelo elemento clicado.
+      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === alvoTab));
+      const alvo = "tab" + alvoTab.charAt(0).toUpperCase() + alvoTab.slice(1);
       document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("active", p.id === alvo));
     });
   });
@@ -1031,7 +1039,7 @@
     viewUpload.classList.add("hidden");
     viewTabela.classList.add("hidden");
     viewDashboard.classList.remove("hidden");
-    document.querySelectorAll(".tab-btn").forEach((b, idx) => b.classList.toggle("active", idx === 0));
+    document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === "geral"));
     document.querySelectorAll(".tab-panel").forEach((p, idx) => p.classList.toggle("active", idx === 0));
     atualizarBotaoVoltar();
   }

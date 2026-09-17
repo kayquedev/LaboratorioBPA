@@ -150,6 +150,16 @@
             </select>
           </div>
           <div class="field">
+            <label for="fIbge">Município (IBGE) — BPA-I</label>
+            <select id="fIbge">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="fCep">CEP — BPA-I</label>
+            <input id="fCep" placeholder="Ex.: 35300000">
+          </div>
+          <div class="field">
             <label for="fProblema">Tipo de erro/aviso</label>
             <select id="fProblema">
               <option value="">Todos</option>
@@ -184,7 +194,7 @@
             <thead>
               <tr>
                 <th>Tipo</th><th>Origem</th><th>Folha</th><th>Seq.</th><th>CBO</th><th>SIGTAP</th>
-                <th>Data</th><th>Qtd.</th><th>Valor (R$)</th><th>Paciente</th><th>Situação</th><th>O que é / Como resolver</th>
+                <th>Data</th><th>Qtd.</th><th>Valor (R$)</th><th>Paciente</th><th>IBGE</th><th>CEP</th><th>Situação</th><th>O que é / Como resolver</th>
               </tr>
             </thead>
             <tbody id="registrosBody"></tbody>

@@ -15,8 +15,12 @@
   //   Servico+Classificacao (6 digitos) aceitos por procedimento (rl_procedimento_servico).
   // servico_classificacao.json: { srv: {"126":"..."}, clf: {"126004":"..."}, det: {"009":"Exige CPF/CNS"} }
   // proc_detalhe.json: { "0301100209": ["009"] } - detalhes (tb_detalhe) por procedimento
+  // proc_cbo.json: { "0301010072": ["225125","221805", ...] } - CBOs (6 díg.)
+  //   habilitados pra executar o procedimento (rl_procedimento_ocupacao), usado
+  //   na crítica 004 do BPA Magnético ("PROCED. NAO PERMITIDO P/CBO").
   let procServico = {};
   let procDetalhe = {};
+  let procCbo = {};
   let servicoClassif = { srv: {}, clf: {}, det: {} };
   const ready = Promise.all([
     fetch("data/cbo.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
@@ -24,11 +28,13 @@
     fetch("data/proc_servico.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
     fetch("data/servico_classificacao.json").then((r) => (r.ok ? r.json() : null)).catch(() => null),
     fetch("data/proc_detalhe.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
-  ]).then(([cboData, sigtapData, procServicoData, servicoClassifData, procDetalheData]) => {
+    fetch("data/proc_cbo.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
+  ]).then(([cboData, sigtapData, procServicoData, servicoClassifData, procDetalheData, procCboData]) => {
     cbo = cboData;
     sigtap = sigtapData;
     procServico = procServicoData || {};
     procDetalhe = procDetalheData || {};
+    procCbo = procCboData || {};
     if (servicoClassifData && servicoClassifData.clf) servicoClassif = servicoClassifData;
   });
 
@@ -40,6 +46,7 @@
   function nomeClassificacao(srvClf) { return servicoClassif.clf[srvClf] || ""; }
   function detalhesDoProcedimento(codigo) { return procDetalhe[codigo] || null; }
   function nomeDetalhe(cod) { return (servicoClassif.det && servicoClassif.det[cod]) || ""; }
+  function cbosDoProcedimento(codigo) { return procCbo[codigo] || null; }
   // detalhe 009 "Exige CPF/CNS" ou 058 "Obrigatório CPF" (crítica 025 do BPAMAG)
   function procExigeIdentificacao(codigo) {
     const d = procDetalhe[codigo];
@@ -50,5 +57,6 @@
     ready, nomeCbo, nomeSigtap, sigtapInfo,
     servicosDoProcedimento, nomeServico, nomeClassificacao,
     detalhesDoProcedimento, nomeDetalhe, procExigeIdentificacao,
+    cbosDoProcedimento,
   };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -1,8 +1,9 @@
 /*
  * Gera os JSONs de referência SIGTAP usados pelos módulos Qualidade BPA e
- * Correção BPA (críticas 050 Serviço/Classificação e 025 "procedimento exige
- * CPF/CNS" do BPA Magnético), a partir das tabelas SIGTAP em dados/
- * (largura fixa, ISO-8859-1). Copia a saída para os dois módulos.
+ * Correção BPA (críticas 004 CBO não permitido, 050 Serviço/Classificação e
+ * 025 "procedimento exige CPF/CNS" do BPA Magnético), a partir das tabelas
+ * SIGTAP em dados/ (largura fixa, ISO-8859-1). Copia a saída para os dois
+ * módulos.
  *
  *   node scripts/build-qualidade-servico-json.js
  *
@@ -15,6 +16,8 @@
  *       "det": { "009": "Exige CPF/CNS", "048": "Exige CID", ... } }
  *   proc_detalhe.json
  *     { "0301100209": ["009"], ... }               // detalhes (tb_detalhe) por procedimento
+ *   proc_cbo.json
+ *     { "0301010072": ["225125","221805", ...] }   // CBOs (6 díg.) habilitados pra executar o procedimento
  */
 const fs = require("fs");
 const path = require("path");
@@ -71,14 +74,27 @@ for (const l of readLatin1("rl_procedimento_detalhe.txt")) {
 }
 for (const k of Object.keys(procDetalhe)) procDetalhe[k] = [...new Set(procDetalhe[k])].sort();
 
+// rl_procedimento_ocupacao: CO_PROCEDIMENTO(10) CO_OCUPACAO/CBO(6) DT_COMPETENCIA(6)
+// (crítica 004 do BPA Magnético — "PROCED. NAO PERMITIDO P/CBO")
+const procCbo = {};
+for (const l of readLatin1("rl_procedimento_ocupacao.txt")) {
+  const proc = l.slice(0, 10);
+  const cbo = l.slice(10, 16);
+  if (!/^\d{10}$/.test(proc) || !/^[0-9A-Z]{6}$/.test(cbo)) continue;
+  (procCbo[proc] = procCbo[proc] || []).push(cbo);
+}
+for (const k of Object.keys(procCbo)) procCbo[k] = [...new Set(procCbo[k])].sort();
+
 for (const OUT of OUTS) {
   fs.mkdirSync(OUT, { recursive: true });
   fs.writeFileSync(path.join(OUT, "proc_servico.json"), JSON.stringify(procServico));
   fs.writeFileSync(path.join(OUT, "servico_classificacao.json"), JSON.stringify({ srv, clf, det }));
   fs.writeFileSync(path.join(OUT, "proc_detalhe.json"), JSON.stringify(procDetalhe));
+  fs.writeFileSync(path.join(OUT, "proc_cbo.json"), JSON.stringify(procCbo));
 }
 
 const com009 = Object.values(procDetalhe).filter((a) => a.indexOf("009") !== -1).length;
 console.log("proc_servico.json     :", Object.keys(procServico).length, "procedimentos");
 console.log("servico_classificacao :", Object.keys(srv).length, "serviços /", Object.keys(clf).length, "classificações /", Object.keys(det).length, "detalhes");
 console.log("proc_detalhe.json     :", Object.keys(procDetalhe).length, "procedimentos (", com009, "com 009 Exige CPF/CNS )");
+console.log("proc_cbo.json         :", Object.keys(procCbo).length, "procedimentos com CBO(s) habilitado(s)");

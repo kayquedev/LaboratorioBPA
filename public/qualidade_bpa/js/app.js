@@ -110,6 +110,9 @@
     CBO_INVALIDO: { sev: "erro", texto: "CBO inválido",
       explicacao: "O código CBO do profissional não tem 6 dígitos numéricos.",
       resolver: "Verifique o CBO cadastrado para o profissional responsável e corrija no sistema de origem." },
+    CBO_NAO_PERMITIDO: { sev: "erro", texto: "Procedimento não permitido para o CBO",
+      explicacao: "A tabela SIGTAP (rl_procedimento_ocupacao) não habilita esse CBO a executar este procedimento. O BPA Magnético recusa a linha (crítica 004 — proced. não permitido p/CBO).",
+      resolver: "Confira o CBO do profissional que executou o procedimento, ou se o código SIGTAP lançado é mesmo o que esse profissional realizou." },
     COMPETENCIA_DIVERGENTE: { sev: "erro", texto: "Competência diverge do cabeçalho",
       explicacao: "A competência da linha é diferente da competência declarada no cabeçalho do arquivo.",
       resolver: "Confira se a linha pertence a este arquivo/competência, ou se o cabeçalho foi gerado errado." },
@@ -418,6 +421,16 @@
       if (sigtapValido && !dvSigtapOk) codigos.push("SIGTAP_DV_INVALIDO");
       const info = sigtapValido && lookup ? lookup.sigtapInfo(r.sigtap) : null;
       if (sigtapValido && dvSigtapOk && !info) codigos.push("SIGTAP_NAO_ENCONTRADO");
+
+      // CBO x procedimento (rl_procedimento_ocupacao) — crítica 004. Só checa
+      // quando os dois códigos já têm formato válido, senão CBO_INVALIDO /
+      // SIGTAP_INVALIDO já cobrem o problema real.
+      if (sigtapValido && /^\d{6}$/.test(r.cbo) && lookup && lookup.cbosDoProcedimento) {
+        const cbosPermitidos = lookup.cbosDoProcedimento(r.sigtap);
+        if (cbosPermitidos && cbosPermitidos.length && cbosPermitidos.indexOf(r.cbo) === -1) {
+          codigos.push("CBO_NAO_PERMITIDO");
+        }
+      }
       if (info) {
         const registroEsperado = r.tipo === "02" ? "01" : r.tipo === "03" ? "02" : null;
         if (registroEsperado && info.registros.length && info.registros.indexOf(registroEsperado) === -1) {
@@ -879,6 +892,8 @@
   const fOrigem = document.getElementById("fOrigem");
   const fCbo = document.getElementById("fCbo");
   const fSigtap = document.getElementById("fSigtap");
+  const fIbge = document.getElementById("fIbge");
+  const fCep = document.getElementById("fCep");
   const fBusca = document.getElementById("fBusca");
   const fProblema = document.getElementById("fProblema");
   const fSoProblemas = document.getElementById("fSoProblemas");
@@ -915,6 +930,18 @@
     fSigtap.value = sigtaps.indexOf(atualSigtap) !== -1 ? atualSigtap : "";
   }
 
+  // município (IBGE) só existe no BPA-I (tipo 03) — dropdown porque o número
+  // de municípios distintos num arquivo costuma ser pequeno (ao contrário do
+  // CEP, que é texto livre por ter cardinalidade alta demais pra um select).
+  function populateIbgeFilter() {
+    const ibges = [...new Set(parsed.registros.filter((r) => r.tipo === "03").map((r) => (r.municipioIbge || "").trim()).filter(Boolean))].sort();
+    const atual = fIbge.value;
+    fIbge.innerHTML = '<option value="">Todos</option>' + ibges.map((c) =>
+      '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + "</option>"
+    ).join("");
+    fIbge.value = ibges.indexOf(atual) !== -1 ? atual : "";
+  }
+
   function populateProblemaFilter() {
     const counts = {};
     parsed.registros.forEach((r) => r.problemas.forEach((p) => { counts[p.cod] = (counts[p.cod] || 0) + 1; }));
@@ -932,6 +959,8 @@
     const origem = fOrigem.value;
     const cbo = fCbo.value;
     const sigtap = fSigtap.value;
+    const ibge = fIbge.value;
+    const cep = fCep.value.trim();
     const problema = fProblema.value;
     const busca = fBusca.value.trim().toLowerCase();
     const soProblemas = fSoProblemas.checked;
@@ -942,6 +971,8 @@
       if (origem && r.origem !== origem) return false;
       if (cbo && r.cbo !== cbo) return false;
       if (sigtap && r.sigtap !== sigtap) return false;
+      if (ibge && (r.municipioIbge || "").trim() !== ibge) return false;
+      if (cep && (r.cep || "").indexOf(cep) === -1) return false;
       if (problema && !r.problemas.some((p) => p.cod === problema)) return false;
       if (soProblemas && r.problemas.length === 0) return false;
       if (soNaoLocalizado && r.sigtapEncontrado) return false;
@@ -999,6 +1030,8 @@
       '<td class="num">' + r.quantidade + "</td>" +
       '<td class="num">' + (r.sigtapEncontrado ? fmtMoeda(r.valorEstimado) : "—") + "</td>" +
       "<td>" + (r.tipo === "03" ? escapeHtml(r.nomePaciente) : "—") + "</td>" +
+      "<td>" + (r.tipo === "03" ? escapeHtml(r.municipioIbge) : "—") + "</td>" +
+      "<td>" + (r.tipo === "03" ? escapeHtml(r.cep) : "—") + "</td>" +
       "<td>" + situacaoHtml(r) + "</td>" +
       "<td>" + problemasDetalheHtml(r) + "</td></tr>"
     ).join("");
@@ -1007,17 +1040,19 @@
     if (regs.length === 0) setMsg(filterMsg, "warn", "Nenhum registro corresponde aos filtros aplicados.");
     else if (regs.length > MAX) setMsg(filterMsg, "warn", regs.length + " registros encontrados — mostrando os primeiros " + MAX + ".");
   }
-  [fTipo, fOrigem, fCbo, fSigtap, fProblema, fBusca, fSoProblemas, fSoNaoLocalizado].forEach((el) => el.addEventListener("input", renderDrilldown));
+  [fTipo, fOrigem, fCbo, fSigtap, fIbge, fCep, fProblema, fBusca, fSoProblemas, fSoNaoLocalizado].forEach((el) => el.addEventListener("input", renderDrilldown));
 
   function exportCsv() {
     const regs = filteredRegistros();
-    const header = ["tipo", "origem", "folha", "seq", "cbo", "cbo_nome", "sigtap", "sigtap_nome", "data_atendimento", "quantidade", "valor_estimado_rs", "paciente", "situacao", "o_que_e_como_resolver"];
+    const header = ["tipo", "origem", "folha", "seq", "cbo", "cbo_nome", "sigtap", "sigtap_nome", "data_atendimento", "quantidade", "valor_estimado_rs", "paciente", "ibge", "cep", "situacao", "o_que_e_como_resolver"];
     const linhas = regs.map((r) => [
       r.tipo, r.origem, r.folha, r.seq, r.cbo, cboNome(r.cbo), r.sigtap, sigtapNome(r.sigtap),
       r.tipo === "03" ? r.dataAtendimento : "",
       r.quantidade,
       r.valorEstimado.toFixed(2).replace(".", ","),
       r.tipo === "03" ? r.nomePaciente : "",
+      r.tipo === "03" ? r.municipioIbge : "",
+      r.tipo === "03" ? r.cep : "",
       r.problemas.length ? r.problemas.map((p) => p.texto).join(" | ") : "OK",
       r.problemas.length ? r.problemas.map((p) => p.texto + ": " + p.explicacao + " Como resolver: " + p.resolver).join(" | ") : "",
     ]);
@@ -1056,6 +1091,7 @@
   function showDashboard() {
     populateOrigemFilter();
     populateCboSigtapFilters();
+    populateIbgeFilter();
     populateProblemaFilter();
     renderAlert();
     renderSetores();
@@ -1079,6 +1115,8 @@
     fOrigem.value = preset.origem || "";
     fCbo.value = preset.cbo || "";
     fSigtap.value = preset.sigtap || "";
+    fIbge.value = preset.ibge || "";
+    fCep.value = preset.cep || "";
     fProblema.value = preset.problema || "";
     fBusca.value = "";
     fSoProblemas.checked = !!preset.soProblemas;

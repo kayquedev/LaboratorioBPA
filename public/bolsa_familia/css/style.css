@@ -68,6 +68,19 @@ a{ color: inherit; }
 .drop .icon{ font-size: 28px; margin-bottom:8px; }
 .drop .fname{ font-weight:600; color: var(--teal); margin-top:8px; font-size: 13.5px; }
 
+.file-list{ display:flex; flex-direction:column; gap:6px; margin-top:10px; }
+.file-chip{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px;
+  padding: 8px 12px; font-size: 13px; color: var(--text);
+}
+.file-chip-name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.file-chip-remove{
+  appearance:none; border:none; background:transparent; color: var(--text-dim);
+  font-size: 16px; line-height:1; cursor:pointer; flex:none; padding: 0 2px;
+}
+.file-chip-remove:hover{ color: var(--red); }
+
 .add-file-inicial{ display:block; margin: 14px auto 0; }
 
 .msg{ border-radius: 9px; padding: 10px 14px; font-size: 13.5px; margin-top: 14px; display:none; }

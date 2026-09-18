@@ -109,35 +109,54 @@
     return { unicos, duplicados };
   }
 
-  // -------- upload dos 2 arquivos --------
-  let arquivoBf = null;
-  let arquivoEsus = null;
+  // -------- upload dos 2 tipos de arquivo (cada um aceita vários) --------
+  let arquivosBf = [];
+  let arquivosEsus = [];
 
-  function wireUpload(dropId, inputId, fnameId, accept, onSelect) {
+  function wireMultiUpload(dropId, inputId, listId, arquivos) {
     const drop = document.getElementById(dropId);
     const input = document.getElementById(inputId);
-    const fname = document.getElementById(fnameId);
+    const listEl = document.getElementById(listId);
+
+    function render() {
+      listEl.innerHTML = arquivos.map((f, i) =>
+        '<div class="file-chip"><span class="file-chip-name">' + escapeHtml(f.name) + '</span>' +
+        '<button type="button" class="file-chip-remove" data-idx="' + i + '" title="Remover">×</button></div>'
+      ).join("");
+      listEl.querySelectorAll(".file-chip-remove").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          arquivos.splice(Number(btn.dataset.idx), 1);
+          render();
+          tentarProcessar();
+        });
+      });
+    }
+
+    function addFiles(novos) {
+      novos.forEach((f) => {
+        if (!arquivos.some((x) => x.name === f.name && x.size === f.size)) arquivos.push(f);
+      });
+      render();
+      tentarProcessar();
+    }
+
     drop.addEventListener("click", () => input.click());
     ["dragover", "dragleave", "drop"].forEach((ev) => {
       drop.addEventListener(ev, (e) => {
         e.preventDefault();
         drop.classList.toggle("drag", ev === "dragover");
-        if (ev === "drop" && e.dataTransfer.files[0]) {
-          input.files = e.dataTransfer.files;
-          onSelect(e.dataTransfer.files[0]);
-          fname.textContent = e.dataTransfer.files[0].name;
-        }
+        if (ev === "drop" && e.dataTransfer.files.length) addFiles([...e.dataTransfer.files]);
       });
     });
     input.addEventListener("change", () => {
-      if (!input.files[0]) return;
-      onSelect(input.files[0]);
-      fname.textContent = input.files[0].name;
+      if (!input.files.length) return;
+      addFiles([...input.files]);
+      input.value = "";
     });
   }
 
-  wireUpload("dropBf", "inputBf", "fnameBf", ".html,.htm", (f) => { arquivoBf = f; tentarProcessar(); });
-  wireUpload("dropEsus", "inputEsus", "fnameEsus", ".csv", (f) => { arquivoEsus = f; tentarProcessar(); });
+  wireMultiUpload("dropBf", "inputBf", "filesBf", arquivosBf);
+  wireMultiUpload("dropEsus", "inputEsus", "filesEsus", arquivosEsus);
 
   function lerArrayBuffer(file) {
     return new Promise((resolve, reject) => {
@@ -152,27 +171,37 @@
   let duplicadosUnificados = 0;
 
   function tentarProcessar() {
-    if (!arquivoBf || !arquivoEsus) return;
+    if (!arquivosBf.length || !arquivosEsus.length) return;
     clearMsg(msgUpload);
-    Promise.all([lerArrayBuffer(arquivoBf), lerArrayBuffer(arquivoEsus)])
-      .then(([bufBf, bufEsus]) => {
-        const textoBf = bf.decodeArrayBuffer(bufBf);
-        const listaBruta = bf.parseHtml(textoBf);
+    Promise.all([
+      Promise.all(arquivosBf.map(lerArrayBuffer)),
+      Promise.all(arquivosEsus.map(lerArrayBuffer)),
+    ])
+      .then(([buffersBf, buffersEsus]) => {
+        let listaBruta = [];
+        buffersBf.forEach((buf) => {
+          const texto = bf.decodeArrayBuffer(buf);
+          listaBruta = listaBruta.concat(bf.parseHtml(texto));
+        });
         if (!listaBruta.length) {
-          setMsg(msgUpload, "error", "Não encontrei nenhum beneficiário no arquivo do Bolsa Família — confirme se é o export \"Mapa de Acompanhamento\" correto.");
+          setMsg(msgUpload, "error", "Não encontrei nenhum beneficiário nos arquivos do Bolsa Família — confirme se são exports \"Mapa de Acompanhamento\" corretos.");
           return;
         }
         const { unicos: lista, duplicados } = unificarDuplicados(listaBruta);
         duplicadosUnificados = duplicados;
 
-        const textoEsus = esus.decodeArrayBuffer(bufEsus);
-        const resultado = esus.parseCsv(textoEsus);
-        if (resultado.erro) {
-          setMsg(msgUpload, "error", resultado.erro);
-          return;
+        let registros = [];
+        for (let i = 0; i < buffersEsus.length; i++) {
+          const texto = esus.decodeArrayBuffer(buffersEsus[i]);
+          const resultado = esus.parseCsv(texto);
+          if (resultado.erro) {
+            setMsg(msgUpload, "error", resultado.erro + " (arquivo: " + arquivosEsus[i].name + ")");
+            return;
+          }
+          registros = registros.concat(resultado.registros);
         }
 
-        const mapa = construirMapaMicroarea(resultado.registros);
+        const mapa = construirMapaMicroarea(registros);
         lista.forEach((b) => {
           const r = microareaFinal(b.nome, b.dataNascimento, mapa);
           b.microarea = r.microarea;

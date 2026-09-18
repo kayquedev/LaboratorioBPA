@@ -30,23 +30,23 @@
     <div class="wrap-narrow">
       <div class="eyebrow">Bolsa Família × e-SUS PEC</div>
       <h1>Beneficiários por Microárea</h1>
-      <p class="lead">Suba o "Mapa de Acompanhamento" do Bolsa Família (.html) e o export "Acompanhamento de cidadãos vinculados" do e-SUS PEC (.csv). O cruzamento é feito por <b>nome completo + data de nascimento</b> — CPF/CNS/NIS podem faltar em qualquer um dos dois arquivos, então nome + nascimento é a chave mais confiável disponível nos dois. Beneficiários sem correspondência aparecem como <b>FA</b> (fora de área / sem cadastro na Atenção Primária). Nada é enviado a nenhum servidor — o cruzamento inteiro acontece no seu navegador.</p>
+      <p class="lead">Suba um ou mais arquivos do "Mapa de Acompanhamento" do Bolsa Família (.html) e um ou mais arquivos do export "Acompanhamento de cidadãos vinculados" do e-SUS PEC (.csv). O cruzamento é feito por <b>nome completo + data de nascimento</b> — CPF/CNS/NIS podem faltar em qualquer um dos dois arquivos, então nome + nascimento é a chave mais confiável disponível nos dois. Beneficiários sem correspondência aparecem como <b>FA</b> (fora de área / sem cadastro na Atenção Primária). Nada é enviado a nenhum servidor — o cruzamento inteiro acontece no seu navegador.</p>
 
       <div class="group-label">Arquivo 1 — Mapa de Acompanhamento (Bolsa Família)</div>
       <div class="drop" id="dropBf">
-        <input type="file" id="inputBf" accept=".html,.htm">
+        <input type="file" id="inputBf" accept=".html,.htm" multiple>
         <div class="icon">📄</div>
-        <div>Clique ou arraste o arquivo .html aqui</div>
-        <div class="fname" id="fnameBf"></div>
+        <div>Clique ou arraste um ou mais arquivos .html aqui</div>
       </div>
+      <div class="file-list" id="filesBf"></div>
 
       <div class="group-label" style="margin-top:22px;">Arquivo 2 — Cidadãos vinculados (e-SUS PEC)</div>
       <div class="drop" id="dropEsus">
-        <input type="file" id="inputEsus" accept=".csv">
+        <input type="file" id="inputEsus" accept=".csv" multiple>
         <div class="icon">📄</div>
-        <div>Clique ou arraste o arquivo .csv aqui</div>
-        <div class="fname" id="fnameEsus"></div>
+        <div>Clique ou arraste um ou mais arquivos .csv aqui</div>
       </div>
+      <div class="file-list" id="filesEsus"></div>
 
       <div class="msg" id="msgUpload"></div>
     </div>

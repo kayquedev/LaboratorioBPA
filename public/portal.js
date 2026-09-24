@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const ICONS = { laboratorio: "🧪", oftalmo: "👁", esus_pec: "🏥", qualidade_bpa: "📊", correcao_bpa: "🛠", bolsa_familia: "👪", siaps_indicadores: "📈", datasus_sia: "💰", acompanhamento_pec: "🏘", mapa_territorio: "🗺️" };
+  const ICONS = { laboratorio: "🧪", oftalmo: "👁", esus_pec: "🏥", qualidade_bpa: "📊", correcao_bpa: "🛠", bolsa_familia: "👪", siaps_indicadores: "📈", datasus_sia: "💰", acompanhamento_pec: "🏘", mapa_territorio: "🗺️", declaracao_endereco: "📄" };
   // texto da tag de status pros módulos disponíveis - substitui o "Disponível"
   // genérico por uma etiqueta específica do que aquele módulo faz.
   const STATUS_TAGS = {
@@ -13,10 +13,14 @@
     datasus_sia: "FATURAMENTO",
     acompanhamento_pec: "ACOMPANHAMENTO",
     mapa_territorio: "TERRITÓRIO",
+    declaracao_endereco: "DECLARAÇÃO",
   };
   // módulos que não são páginas internas nossas, e sim links pra fora - mesmo
   // cartão/mesma regra de acesso (status live + grant), só o destino muda.
-  const EXTERNAL_URLS = { siaps_indicadores: "https://siaps.kayque.site/" };
+  const EXTERNAL_URLS = {
+    siaps_indicadores: "https://siaps.kayque.site/",
+    declaracao_endereco: "https://github.com/kayquedev/ext-declaracao-esuspec",
+  };
 
   const loginView = document.getElementById("loginView");
   const modulesView = document.getElementById("modulesView");

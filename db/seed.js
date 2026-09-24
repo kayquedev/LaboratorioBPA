@@ -16,6 +16,7 @@ const MODULES = [
   { slug: "mapa_territorio", name: "Mapa do Território", description: "Organiza o relatório de Acompanhamento do Território do e-SUS PEC por bairro e logradouro, com contagem de pessoas e famílias, unificação de ruas com nome divergente e impressão do relatório consolidado.", status: "live", sort_order: 8 },
   { slug: "oftalmo", name: "Oftalmo", description: "Gere o arquivo BPA para exportar para o SIA, através da importação da planilha dos dados dos pacientes.", status: "soon", sort_order: 9 },
   { slug: "esus_pec", name: "ESUS PEC", description: "Gerador de BPA a partir da produção registrada no ESUS PEC.", status: "soon", sort_order: 10 },
+  { slug: "declaracao_endereco", name: "Gerador Declaração de Endereço (CadÚnico)", description: "Extensão de navegador que gera a Declaração de Endereço a partir dos dados do imóvel/família no e-SUS PEC — em PDF ou já formatada para colar direto na aba Orientações do prontuário.", status: "live", sort_order: 11 },
 ];
 
 async function main() {

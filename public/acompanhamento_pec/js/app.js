@@ -212,6 +212,7 @@
   const viewDashboard = document.getElementById("viewDashboard");
   const viewTabela = document.getElementById("viewTabela");
   const viewImoveis = document.getElementById("viewImoveis");
+  const viewVazios = document.getElementById("viewVazios");
   const btnVoltar = document.getElementById("btnVoltar");
   const msgUpload = document.getElementById("msgUpload");
 
@@ -263,6 +264,8 @@
   wireUpload("dropCond", "inputCond", "fnameCond", false, (files) => { arquivoCond = files[0]; clearMsg(msgUpload); });
   wireUpload("dropTerr", "inputTerr", "fnameTerr", true, (files) => { arquivosTerr = arquivosTerr.concat(files); clearMsg(msgUpload); });
   wireUpload("dropTerrDashboard", "inputTerrDashboard", null, true, (files) => { arquivosTerr = arquivosTerr.concat(files); processar(); });
+  wireUpload("dropVincDashboard", "inputVincDashboard", null, false, (files) => { arquivoVinc = files[0]; processar(); });
+  wireUpload("dropCondDashboard", "inputCondDashboard", null, false, (files) => { arquivoCond = files[0]; processar(); });
 
   btnGerarPainel.addEventListener("click", () => {
     if (!arquivoVinc) {
@@ -674,6 +677,7 @@
   const fMicroareaTerritorio = document.getElementById("fMicroareaTerritorio");
   const fBuscaVazios = document.getElementById("fBuscaVazios");
   const btnVerTodosImoveis = document.getElementById("btnVerTodosImoveis");
+  const btnVerTodosVazios = document.getElementById("btnVerTodosVazios");
   const fImovelMicroarea = document.getElementById("fImovelMicroarea");
   const fImovelLogradouro = document.getElementById("fImovelLogradouro");
   const fImovelNumero = document.getElementById("fImovelNumero");
@@ -681,6 +685,8 @@
   const fImovelComplemento = document.getElementById("fImovelComplemento");
   const fImovelCep = document.getElementById("fImovelCep");
   const filtrosImoveis = [fImovelMicroarea, fImovelLogradouro, fImovelNumero, fImovelBairro, fImovelComplemento, fImovelCep];
+  const fVazioMicroarea = document.getElementById("fVazioMicroarea");
+  const fVazioBusca = document.getElementById("fVazioBusca");
   fMicroareaTerritorio.addEventListener("input", renderTerritorio);
   fBuscaVazios.addEventListener("input", renderTerritorio);
 
@@ -784,9 +790,9 @@
 
   function renderListaImoveis(enderecos) {
     const imoveis = enderecos.map(grupoParaImovel);
-    const limite = 20;
+    const limite = 10;
     document.getElementById("tituloListaImoveis").textContent = imoveis.length > limite
-      ? "Imóveis mapeados — exibindo 20 de " + imoveis.length
+      ? "Imóveis mapeados — exibindo " + limite + " de " + imoveis.length
       : "Imóveis mapeados (" + imoveis.length + ")";
     const el = document.getElementById("listaImoveis");
     if (!imoveis.length) {
@@ -804,33 +810,38 @@
     btnVerTodosImoveis.classList.toggle("hidden", imoveis.length <= limite);
   }
 
+  function linhaDomicilioVazioHtml(e) {
+    const verificado = vaziosVerificados.has(e.chave);
+    return '<div class="dom-vazio-row' + (verificado ? " verificado" : "") + '">' +
+      '<div class="icone">🏠</div>' +
+      '<div class="info"><div class="endereco">' + escapeHtml(enderecoLegivel(e.linha)) + "</div>" +
+      '<div class="microarea">Microárea ' + escapeHtml(e.linha.__microareaArquivo || "—") + "</div></div>" +
+      '<button class="btn btn-ghost-dark" data-verificar="' + escapeHtml(e.chave) + '">' + (verificado ? "✓ Verificado" : "Marcar verificado") + "</button>" +
+      "</div>";
+  }
+
   function renderListaVazios(vazios, filtro) {
     const busca = fBuscaVazios.value.trim().toLowerCase();
     const filtrados = busca ? vazios.filter((e) => enderecoLegivel(e.linha).toLowerCase().indexOf(busca) !== -1) : vazios;
-    document.getElementById("tituloListaVazios").textContent = "Domicílios sem morador (" + filtrados.length + ") — ações pendentes";
+    const limite = 10;
+    document.getElementById("tituloListaVazios").textContent = filtrados.length > limite
+      ? "Domicílios sem morador — exibindo " + limite + " de " + filtrados.length + " — ações pendentes"
+      : "Domicílios sem morador (" + filtrados.length + ") — ações pendentes";
 
     const el = document.getElementById("listaDomiciliosVazios");
     if (!filtrados.length) {
       el.innerHTML = '<p class="vazio">Nenhum domicílio vazio encontrado' + (busca ? " para essa busca." : filtro ? " nesta microárea." : ".") + "</p>";
+      btnVerTodosVazios.classList.add("hidden");
       return;
     }
-    const MAX_VAZIOS = 150;
-    el.innerHTML = filtrados.slice(0, MAX_VAZIOS).map((e) => {
-      const verificado = vaziosVerificados.has(e.chave);
-      return '<div class="dom-vazio-row' + (verificado ? " verificado" : "") + '">' +
-        '<div class="icone">🏠</div>' +
-        '<div class="info"><div class="endereco">' + escapeHtml(enderecoLegivel(e.linha)) + "</div>" +
-        '<div class="microarea">Microárea ' + escapeHtml(e.linha.__microareaArquivo || "—") + "</div></div>" +
-        '<button class="btn btn-ghost-dark" data-verificar="' + escapeHtml(e.chave) + '">' + (verificado ? "✓ Verificado" : "Marcar verificado") + "</button>" +
-        "</div>";
-    }).join("") + (filtrados.length > MAX_VAZIOS
-      ? '<p class="vazio">+ ' + (filtrados.length - MAX_VAZIOS) + ' outro(s) — use "Exportar domicílios sem morador" na aba Exportações pra ver todos.</p>'
-      : "");
+    el.innerHTML = filtrados.slice(0, limite).map(linhaDomicilioVazioHtml).join("");
+    btnVerTodosVazios.classList.toggle("hidden", filtrados.length <= limite);
     el.querySelectorAll("[data-verificar]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const chave = btn.dataset.verificar;
         if (vaziosVerificados.has(chave)) vaziosVerificados.delete(chave); else vaziosVerificados.add(chave);
         renderListaVazios(vazios, filtro);
+        if (!viewVazios.classList.contains("hidden")) renderListaTodosVazios();
       });
     });
   }
@@ -916,6 +927,55 @@
   });
   document.getElementById("btnExportarImoveisCsv").addEventListener("click", exportarImoveisCsv);
   document.getElementById("btnExportarImoveisPdf").addEventListener("click", exportarImoveisPdf);
+
+  // -------- tela cheia: todos os domicílios sem morador --------
+  function todosVaziosDominio() {
+    return analiseTerritorioAtual ? analiseTerritorioAtual.enderecosVazios : [];
+  }
+
+  function popularFiltroVazios() {
+    const atual = fVazioMicroarea.value;
+    const microareas = [...new Set(todosVaziosDominio().map((e) => e.linha.__microareaArquivo).filter(Boolean))].sort();
+    fVazioMicroarea.innerHTML = '<option value="">Todas</option>' +
+      microareas.map((m) => '<option value="' + escapeHtml(m) + '">Microárea ' + escapeHtml(m) + "</option>").join("");
+    fVazioMicroarea.value = microareas.indexOf(atual) !== -1 ? atual : "";
+  }
+
+  function vaziosFiltradosCompleto() {
+    const microarea = fVazioMicroarea.value;
+    return todosVaziosDominio().filter((e) => {
+      if (microarea && (e.linha.__microareaArquivo || "") !== microarea) return false;
+      if (!contemTexto(enderecoLegivel(e.linha), fVazioBusca.value)) return false;
+      return true;
+    });
+  }
+
+  function renderListaTodosVazios() {
+    const lista = vaziosFiltradosCompleto();
+    document.getElementById("vaziosCount").textContent = lista.length.toLocaleString("pt-BR");
+    const el = document.getElementById("listaTodosVazios");
+    el.innerHTML = lista.length
+      ? lista.map(linhaDomicilioVazioHtml).join("")
+      : '<p class="vazio">Nenhum domicílio sem morador corresponde aos filtros aplicados.</p>';
+    el.querySelectorAll("[data-verificar]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const chave = btn.dataset.verificar;
+        if (vaziosVerificados.has(chave)) vaziosVerificados.delete(chave); else vaziosVerificados.add(chave);
+        renderListaTodosVazios();
+      });
+    });
+  }
+
+  function linhaExportacaoVazio(e) {
+    return [enderecoLegivel(e.linha), e.linha.__microareaArquivo || "—"];
+  }
+  function exportarVaziosCsvFiltrado() {
+    baixarCsv("domicilios_sem_morador.csv", ["Endereço", "Microárea"], vaziosFiltradosCompleto().map(linhaExportacaoVazio));
+  }
+
+  fVazioMicroarea.addEventListener("input", renderListaTodosVazios);
+  fVazioBusca.addEventListener("input", renderListaTodosVazios);
+  document.getElementById("btnExportarVaziosCsv").addEventListener("click", exportarVaziosCsvFiltrado);
 
   // -------- aba: exportações --------
   function baixarCsv(nomeArquivo, cabecalho, linhas) {
@@ -1174,7 +1234,7 @@
   // mesmos dados); em qualquer outra tela ele sai do módulo pro início do
   // portal, e aí sim confirma antes - já que sair descarta o painel gerado.
   function atualizarBotaoVoltar() {
-    const emDetalhe = !viewTabela.classList.contains("hidden") || !viewImoveis.classList.contains("hidden");
+    const emDetalhe = !viewTabela.classList.contains("hidden") || !viewImoveis.classList.contains("hidden") || !viewVazios.classList.contains("hidden");
     btnVoltar.textContent = emDetalhe ? "← Resumo" : "← Início";
   }
   function showDashboard(tabInicial) {
@@ -1182,6 +1242,7 @@
     viewUpload.classList.add("hidden");
     viewTabela.classList.add("hidden");
     viewImoveis.classList.add("hidden");
+    viewVazios.classList.add("hidden");
     viewDashboard.classList.remove("hidden");
     document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
     const alvo = "tab" + tab.charAt(0).toUpperCase() + tab.slice(1);
@@ -1192,6 +1253,7 @@
     viewUpload.classList.add("hidden");
     viewDashboard.classList.add("hidden");
     viewImoveis.classList.add("hidden");
+    viewVazios.classList.add("hidden");
     viewTabela.classList.remove("hidden");
     popularFiltros();
     if (preset) {
@@ -1206,16 +1268,31 @@
     viewUpload.classList.add("hidden");
     viewDashboard.classList.add("hidden");
     viewTabela.classList.add("hidden");
+    viewVazios.classList.add("hidden");
     viewImoveis.classList.remove("hidden");
     popularFiltrosImoveis();
     fImovelMicroarea.value = fMicroareaTerritorio.value;
     renderTabelaImoveis();
     atualizarBotaoVoltar();
   }
+  function showVazios() {
+    viewUpload.classList.add("hidden");
+    viewDashboard.classList.add("hidden");
+    viewTabela.classList.add("hidden");
+    viewImoveis.classList.add("hidden");
+    viewVazios.classList.remove("hidden");
+    popularFiltroVazios();
+    fVazioMicroarea.value = fMicroareaTerritorio.value;
+    fVazioBusca.value = fBuscaVazios.value;
+    renderListaTodosVazios();
+    atualizarBotaoVoltar();
+  }
   document.getElementById("btnVerTabela").addEventListener("click", () => showTabela());
   btnVerTodosImoveis.addEventListener("click", showImoveis);
+  btnVerTodosVazios.addEventListener("click", showVazios);
   btnVoltar.addEventListener("click", () => {
     if (!viewImoveis.classList.contains("hidden")) { showDashboard("territorio"); return; }
+    if (!viewVazios.classList.contains("hidden")) { showDashboard("territorio"); return; }
     if (!viewTabela.classList.contains("hidden")) { showDashboard(); return; }
     if (window.confirm("Sair do Acompanhamento Cidadãos PEC? Os dados carregados nesta sessão serão perdidos.")) {
       window.location.href = "/";

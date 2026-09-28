@@ -75,6 +75,14 @@
       </button>
       <div id="blocoArquivosImportados" class="hidden">
         <div class="fontes-list" id="fontesResumo"></div>
+        <button class="add-file-inicial btn btn-ghost-dark" id="dropVincDashboard" style="margin-bottom:10px;">
+          <input type="file" id="inputVincDashboard" accept=".csv" class="hidden">
+          🔁 Substituir arquivo de cidadãos vinculados
+        </button>
+        <button class="add-file-inicial btn btn-ghost-dark" id="dropCondDashboard" style="margin-bottom:10px;">
+          <input type="file" id="inputCondDashboard" accept=".csv" class="hidden">
+          + Adicionar/substituir arquivo de condições de saúde
+        </button>
         <button class="add-file-inicial btn btn-ghost-dark" id="dropTerrDashboard" style="margin-bottom:10px;">
           <input type="file" id="inputTerrDashboard" accept=".csv" multiple class="hidden">
           + Adicionar arquivos de território
@@ -150,6 +158,7 @@
         <div class="painel">
           <h3 id="tituloListaVazios">Domicílios sem morador</h3>
           <div class="dom-vazio-list" id="listaDomiciliosVazios"></div>
+          <button class="btn btn-ghost-dark hidden" id="btnVerTodosVazios" style="margin-top:12px;">Ver todos os domicílios sem morador →</button>
         </div>
       </div>
 
@@ -223,6 +232,35 @@
           <tbody id="tabelaImoveisBody"></tbody>
         </table>
       </div>
+    </div>
+  </section>
+
+  <!-- ===================== DOMICÍLIOS SEM MORADOR (território) ===================== -->
+  <section id="viewVazios" class="view-light hidden">
+    <div class="wrap-wide">
+      <div class="page-heading">
+        <div>
+          <div class="eyebrow">Território</div>
+          <h1>Domicílios sem morador</h1>
+          <p>Endereços mapeados no território sem nenhum cidadão vinculado.</p>
+        </div>
+      </div>
+
+      <div class="filtro-toolbar filtro-imoveis">
+        <div class="campo">
+          <label for="fVazioMicroarea">Microárea</label>
+          <select id="fVazioMicroarea"><option value="">Todas</option></select>
+        </div>
+        <div class="campo campo-busca">
+          <label for="fVazioBusca">Buscar endereço</label>
+          <input id="fVazioBusca" placeholder="Endereço...">
+        </div>
+        <div class="spacer"></div>
+        <button class="btn btn-ghost-dark" id="btnExportarVaziosCsv">⬇ Exportar CSV</button>
+      </div>
+
+      <div class="filtro-resultado"><b id="vaziosCount">—</b> domicílio(s) encontrado(s)</div>
+      <div class="dom-vazio-list" id="listaTodosVazios"></div>
     </div>
   </section>
 

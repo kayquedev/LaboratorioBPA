@@ -150,7 +150,7 @@
 
   // -------- catálogo de pendências (regras sobre o cadastro do cidadão) --------
   const PENDENCIA_CATALOG = {
-    SEM_CPF_SEM_CNS: { sev: "erro", texto: "Sem CPF e sem CNS", fonte: "Condições de Saúde",
+    SEM_CPF_SEM_CNS: { sev: "erro", texto: "Sem CPF e sem CNS", fonte: "Condições de Saúde / Vinculados",
       explicacao: "Nenhum documento (CPF ou CNS) está registrado para este cidadão.",
       resolver: "Providencie o CNS (cartão SUS) ou o CPF do cidadão — sem documento o cadastro não pode ser vinculado corretamente." },
     SOMENTE_CNS: { sev: "aviso", texto: "Somente CNS (sem CPF)", fonte: "Condições de Saúde / Vinculados",
@@ -337,7 +337,7 @@
       if (matchCond) { cpf = normalizarDocumento(matchCond["CPF"]); cns = normalizarDocumento(matchCond["CNS"]); }
 
       const somenteCns = !cpf && !!cns;
-      const semCpfSemCns = !!matchCond && !cpf && !cns;
+      const semCpfSemCns = !cpf && !cns;
       const cnsProvisorio = !!cns && cns[0] !== "7";
 
       const endereco = (v["Endereço"] || "").trim();

@@ -177,10 +177,10 @@
     SEM_FCI: { sev: "aviso", texto: "Sem FCI", fonte: "Vinculados",
       explicacao: "O cadastro tem origem PEC — feito direto no sistema (por exemplo, num atendimento), sem passar pelo preenchimento da Ficha de Cadastro Individual (FCI).",
       resolver: "Complete a Ficha de Cadastro Individual (FCI) do cidadão." },
-    SEM_MONITORAMENTO: { sev: "erro", texto: "Sem acompanhamento de condições de saúde", fonte: "Condições de Saúde",
+    SEM_MONITORAMENTO: { sev: "erro", texto: "Sem atendimento de nível superior +2 anos", fonte: "Condições de Saúde",
       explicacao: "O cidadão está vinculado, mas não aparece no relatório de Condições de Saúde — indício de que não passa por nenhum atendimento de nível superior.",
       resolver: "Avalie se esse cidadão precisa de atendimento, confira o cadastro dele e programe acompanhamento/consulta o quanto antes." },
-    SEM_VINCULO_DOMICILIAR: { sev: "aviso", texto: "Sem vínculo domiciliar ativo", fonte: "Território",
+    SEM_VINCULO_DOMICILIAR: { sev: "aviso", texto: "Sem vínculo domiciliar/familiar", fonte: "Território",
       explicacao: "O cadastro está ativo mas não foi encontrado em nenhuma ficha de família/domicílio do território carregado.",
       resolver: "Verifique se o cidadão ainda reside na área e se o domicílio dele está mapeado no território." },
     MULTI_DOMICILIO: { sev: "erro", texto: "Vinculado a mais de 1 domicílio", fonte: "Território",
@@ -1225,6 +1225,33 @@
         );
       },
     });
+
+    // Seção "Como resolver pendências" ao final do PDF
+    doc.addPage();
+    doc.setFontSize(14);
+    doc.setTextColor(15, 23, 42);
+    doc.text("Como resolver as pendências", 14, 18);
+
+    const guiaPendencias = [
+      ["Somente CNS (sem CPF)", "Solicitar o cidadão o CPF e adicionar no cadastro no eSUS PEC"],
+      ["CNS provisório", "Alterar no cadastro do cidadão no eSUS PEC e inserir CNS com início 7"],
+      ["Sem endereço cadastrado", "Cidadão no cadastro sem informação de endereço"],
+      ["Endereço incompleto", "Cidadão no cadastro sem informação de endereço completo"],
+      ["Ficha desatualizada (1+ ano)", "Atualizar a ficha individual do cidadão no eSUS PEC"],
+      ["Sem FCI", "Cidadão não possui ficha de cadastro individual, deve atualizar o cadastro para criar"],
+      ["Sem vínculo domiciliar/familiar", 'Cidadão não está vinculado a nenhuma "casa/residência"'],
+    ];
+
+    doc.autoTable({
+      startY: 26,
+      head: [["Pendência", "Como resolver"]],
+      body: guiaPendencias,
+      theme: "grid",
+      styles: { fontSize: 9, cellPadding: 3, lineWidth: 0.1, lineColor: [200, 200, 200] },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
+      columnStyles: { 0: { cellWidth: 65, fontStyle: "bold" }, 1: { cellWidth: 200 } },
+    });
+
     doc.save(nomeArquivoPdf());
   }
   document.getElementById("btnExportarPdf").addEventListener("click", () => exportarPdf(filtrados()));

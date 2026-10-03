@@ -1170,10 +1170,9 @@
       "<tr><td>" + situacaoDotHtml(i) + "</td>" +
       "<td>" + escapeHtml(i.nome) + "</td>" +
       "<td>" + escapeHtml(i.microarea) + "</td>" +
-      "<td>" + escapeHtml(i.origem) + "</td>" +
-      "<td>" + escapeHtml(i.ultimaAtualizacao) + (i.desatualizado ? ' <span class="badge sev-aviso">+1 ano</span>' : "") + "</td>" +
+      "<td>" + (i.cpf || i.cns || "—") + "</td>" +
       "<td>" + (i.semEndereco ? '<span class="badge sev-erro">Sem endereço</span>' : escapeHtml(i.endereco)) + "</td>" +
-      "<td>" + (i.cpf ? "CPF" : i.cns ? "CNS" : "—") + "</td>" +
+      "<td>" + escapeHtml(i.ultimaAtualizacao) + (i.desatualizado ? ' <span class="badge sev-aviso">+1 ano</span>' : "") + "</td>" +
       "<td>" + pendenciasDetalheHtml(i) + "</td>" +
       "</tr>"
     )).join("");
@@ -1187,12 +1186,11 @@
   // -------- exportação PDF --------
   const COLUNAS_PDF = [
     { titulo: "Nome", get: (i) => i.nome },
-    { titulo: "Microárea", get: (i) => i.microarea },
-    { titulo: "Origem", get: (i) => i.origem },
-    { titulo: "Última atualização", get: (i) => i.ultimaAtualizacao + (i.desatualizado ? " (+1 ano)" : "") },
+    { titulo: "Micro", get: (i) => i.microarea },
+    { titulo: "CPF/CNS", get: (i) => (i.cpf || i.cns || "—") },
     { titulo: "Endereço", get: (i) => (i.semEndereco ? "Sem endereço" : i.endereco) },
-    { titulo: "Documento", get: (i) => (i.cpf ? "CPF" : i.cns ? "CNS" : "—") },
-    { titulo: "Pendências", get: (i) => textoPendencias(i) },
+    { titulo: "Última atualização", get: (i) => i.ultimaAtualizacao + (i.desatualizado ? " (+1 ano)" : "") },
+    { titulo: "Pendência", get: (i) => textoPendencias(i) },
   ];
 
   function nomeArquivoPdf() {

@@ -1217,9 +1217,9 @@
       head: [COLUNAS_PDF.map((c) => c.titulo)],
       body: lista.map((i) => COLUNAS_PDF.map((c) => c.get(i) || "")),
       theme: "grid",
-      styles: { fontSize: 6.5, cellPadding: 1.5, lineWidth: 0.1, lineColor: [200, 200, 200] },
+      styles: { fontSize: 13, cellPadding: 1.5, lineWidth: 0.1, lineColor: [200, 200, 200] },
       headStyles: { fillColor: [15, 23, 42] },
-      columnStyles: idxEndereco === -1 ? {} : { [idxEndereco]: { cellWidth: 45, fontSize: 5.5 } },
+      columnStyles: idxEndereco === -1 ? {} : { [idxEndereco]: { cellWidth: 45, fontSize: 9 } },
       didDrawPage: () => {
         const pageCount = doc.internal.getNumberOfPages();
         doc.setFontSize(8);

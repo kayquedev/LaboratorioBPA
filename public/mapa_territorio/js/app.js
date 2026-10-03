@@ -386,7 +386,7 @@
       head: [["Bairro", "Logradouro", "Famílias", "Pessoas", "Observação"]],
       body: corpo,
       theme: "grid",
-      styles: { fontSize: 8, cellPadding: 2.5, lineWidth: 0.1, lineColor: [200, 200, 200] },
+      styles: { fontSize: 13, cellPadding: 2.5, lineWidth: 0.1, lineColor: [200, 200, 200] },
       headStyles: { fillColor: [15, 23, 42] },
       didDrawPage: () => {
         const pageCount = doc.internal.getNumberOfPages();

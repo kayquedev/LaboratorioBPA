@@ -903,9 +903,9 @@
   function exportarImoveisPdf() {
     const lista = imoveisFiltrados();
     const doc = new window.jspdf.jsPDF({ orientation: "landscape" });
-    doc.setFontSize(14);
+    doc.setFontSize(11);
     doc.text("Imóveis do território", 14, 14);
-    doc.setFontSize(9);
+    doc.setFontSize(11);
     doc.setTextColor(100);
     doc.text("Gerado em " + new Date().toLocaleString("pt-BR") + " · " + lista.length + " imóvel(is)", 14, 20);
     doc.autoTable({
@@ -913,7 +913,7 @@
       head: [["Microárea", "Logradouro", "Número", "Bairro", "Complemento", "CEP", "Moradores"]],
       body: lista.map(linhaExportacaoImovel),
       theme: "grid",
-      styles: { fontSize: 7.5, cellPadding: 1.8, lineWidth: 0.1, lineColor: [200, 200, 200] },
+      styles: { fontSize: 11, cellPadding: 1.8, lineWidth: 0.1, lineColor: [200, 200, 200] },
       headStyles: { fillColor: [15, 23, 42] },
       columnStyles: { 1: { cellWidth: 58 }, 4: { cellWidth: 40 } },
     });
@@ -1204,9 +1204,9 @@
     const dataHora = new Date().toLocaleString("pt-BR");
     const usuario = document.getElementById("topbarUsername").textContent || "";
 
-    doc.setFontSize(13);
+    doc.setFontSize(11);
     doc.text("Acompanhamento Cidadãos PEC", 14, 14);
-    doc.setFontSize(9);
+    doc.setFontSize(11);
     doc.setTextColor(100);
     doc.text("Gerado em " + dataHora + " por " + usuario + " · " + lista.length + " cidadão(s)", 14, 20);
 
@@ -1217,12 +1217,12 @@
       head: [COLUNAS_PDF.map((c) => c.titulo)],
       body: lista.map((i) => COLUNAS_PDF.map((c) => c.get(i) || "")),
       theme: "grid",
-      styles: { fontSize: 13, cellPadding: 1.5, lineWidth: 0.1, lineColor: [200, 200, 200] },
+      styles: { fontSize: 11, cellPadding: 1.5, lineWidth: 0.1, lineColor: [200, 200, 200] },
       headStyles: { fillColor: [15, 23, 42] },
-      columnStyles: idxEndereco === -1 ? {} : { [idxEndereco]: { cellWidth: 45, fontSize: 9 } },
+      columnStyles: idxEndereco === -1 ? {} : { [idxEndereco]: { cellWidth: 45, fontSize: 11 } },
       didDrawPage: () => {
         const pageCount = doc.internal.getNumberOfPages();
-        doc.setFontSize(8);
+        doc.setFontSize(11);
         doc.setTextColor(120);
         doc.text(
           "Página " + doc.internal.getCurrentPageInfo().pageNumber + " de " + pageCount,
@@ -1234,7 +1234,7 @@
 
     // Seção "Como resolver pendências" ao final do PDF
     doc.addPage();
-    doc.setFontSize(14);
+    doc.setFontSize(11);
     doc.setTextColor(15, 23, 42);
     doc.text("Como resolver as pendências", 14, 18);
 
@@ -1254,7 +1254,7 @@
       head: [["Pendência", "Como resolver"]],
       body: guiaPendencias,
       theme: "grid",
-      styles: { fontSize: 9, cellPadding: 3, lineWidth: 0.1, lineColor: [200, 200, 200] },
+      styles: { fontSize: 11, cellPadding: 3, lineWidth: 0.1, lineColor: [200, 200, 200] },
       headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
       columnStyles: { 0: { cellWidth: 65, fontStyle: "bold" }, 1: { cellWidth: 200 } },
     });

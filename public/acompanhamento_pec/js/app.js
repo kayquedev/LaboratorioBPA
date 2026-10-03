@@ -1083,6 +1083,7 @@
   const fOrigem = document.getElementById("fOrigem");
   const fSexo = document.getElementById("fSexo");
   const fPendencia = document.getElementById("fPendencia");
+  const fExceto = document.getElementById("fExceto");
   const fBusca = document.getElementById("fBusca");
   const fSoComPendencia = document.getElementById("fSoComPendencia");
   const filterMsg = document.getElementById("filterMsg");
@@ -1099,16 +1100,22 @@
       const info = PENDENCIA_CATALOG[cod];
       return '<option value="' + cod + '">' + escapeHtml(info.texto) + " (" + counts[cod] + ")</option>";
     }).join("");
+    fExceto.innerHTML = codigos.map((cod) => {
+      const info = PENDENCIA_CATALOG[cod];
+      return '<option value="' + cod + '">' + escapeHtml(info.texto) + "</option>";
+    }).join("");
   }
 
   function filtrados() {
     const microarea = fMicroarea.value, origem = fOrigem.value, sexo = fSexo.value, pendencia = fPendencia.value;
     const busca = fBusca.value.trim().toLowerCase();
+    const exceto = [...fExceto.selectedOptions].map((o) => o.value);
     return indicadores.filter((i) => {
       if (microarea && i.microarea !== microarea) return false;
       if (origem && (i.origem || "").toUpperCase() !== origem) return false;
       if (sexo && i.sexo !== sexo) return false;
       if (pendencia && i.pendencias.indexOf(pendencia) === -1) return false;
+      if (exceto.length && i.pendencias.some((p) => exceto.indexOf(p) !== -1)) return false;
       if (fSoComPendencia.checked && !i.pendencias.length) return false;
       if (busca && i.nome.toLowerCase().indexOf(busca) === -1) return false;
       return true;
@@ -1175,6 +1182,7 @@
     else if (lista.length > MAX) setMsg(filterMsg, "warn", lista.length + " encontrados — mostrando os primeiros " + MAX + ".");
   }
   [fMicroarea, fOrigem, fSexo, fPendencia, fBusca, fSoComPendencia].forEach((el) => el.addEventListener("input", renderTabela));
+  fExceto.addEventListener("change", renderTabela);
 
   // -------- exportação PDF --------
   const COLUNAS_PDF = [
@@ -1240,6 +1248,7 @@
       ["Ficha desatualizada (1+ ano)", "Atualizar a ficha individual do cidadão no eSUS PEC"],
       ["Sem FCI", "Cidadão não possui ficha de cadastro individual, deve atualizar o cadastro para criar"],
       ["Sem vínculo domiciliar/familiar", 'Cidadão não está vinculado a nenhuma "casa/residência"'],
+      ["Sem atendimento de nível superior +2 anos", "Cidadão não possui atendimento de nível superior, pode necessitar de contato com a equipe, ou até mesmo esteja vinculado a unidade mas atualmente não reside"],
     ];
 
     doc.autoTable({
@@ -1287,6 +1296,7 @@
       fMicroarea.value = ""; fOrigem.value = ""; fSexo.value = ""; fBusca.value = "";
       fPendencia.value = preset.pendencia || "";
       fSoComPendencia.checked = !!preset.pendencia;
+      [...fExceto.options].forEach((o) => { o.selected = false; });
     }
     renderTabela();
     atualizarBotaoVoltar();

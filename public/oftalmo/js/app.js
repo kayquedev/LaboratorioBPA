@@ -342,6 +342,10 @@
         procHtml += '<div class="proc-actions">' +
                     '<button class="btn btn-ghost-dark btn-xs btn-add-proc" data-type="consulta" data-pidx="' + realIdx + '">+ Consulta</button>' +
                     '<button class="btn btn-ghost-dark btn-xs btn-add-proc" data-type="oculos" data-pidx="' + realIdx + '">+ Óculos</button>' +
+                    '<button class="btn btn-ghost-dark btn-xs btn-add-proc" data-type="retina" data-pidx="' + realIdx + '">+ Retina</button>' +
+                    '<button class="btn btn-ghost-dark btn-xs btn-add-proc" data-type="cores" data-pidx="' + realIdx + '">+ Cores</button>' +
+                    '<button class="btn btn-ghost-dark btn-xs btn-add-proc" data-type="ortoptico" data-pidx="' + realIdx + '">+ Ortopt.</button>' +
+                    '<button class="btn btn-ghost-dark btn-xs btn-add-proc" data-type="tonometria" data-pidx="' + realIdx + '">+ Tonometria</button>' +
                     '</div>';
       } else {
         procHtml = '<span style="color:var(--text-muted);font-size:.8rem;">Não compareceu</span>';
@@ -434,6 +438,18 @@
       if (sigtapOculos.length !== 10) { alert("Configure o SIGTAP de Óculos (10 dígitos) na tela inicial."); return; }
       sigtap = sigtapOculos;
       descricao = "Concessão Óculos";
+    } else if (type === "retina") {
+      sigtap = "0211060127";
+      descricao = "Mapeamento Retina";
+    } else if (type === "cores") {
+      sigtap = "0211060224";
+      descricao = "Visão de Cores";
+    } else if (type === "ortoptico") {
+      sigtap = "0211060232";
+      descricao = "Teste Ortoptico";
+    } else if (type === "tonometria") {
+      sigtap = "0211060259";
+      descricao = "Tonometria";
     }
 
     p.procedimentos.push({ sigtap, descricao });

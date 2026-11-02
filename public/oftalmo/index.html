@@ -254,6 +254,30 @@
   </div>
 </div>
 
+<!-- ===================== MODAL EDITAR ENDEREÇO ===================== -->
+<div id="modalEditEndereco" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Editar Endereço do Paciente</h3>
+      <button class="modal-close" id="btnFecharEndereco">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p id="endPacienteNome" style="margin-bottom:1rem;color:var(--text-muted);font-size:.9rem;"></p>
+      <div class="form-grid">
+        <div class="form-group"><label>Endereço / Logradouro</label><input type="text" id="editEndLogradouro" placeholder="Ex: DR EZEQUIEL DE MACEDO"></div>
+        <div class="form-group"><label>Número</label><input type="text" id="editEndNumero" placeholder="Ex: 221"></div>
+        <div class="form-group"><label>Complemento</label><input type="text" id="editEndComplemento" placeholder="Ex: CASA"></div>
+        <div class="form-group"><label>Bairro</label><input type="text" id="editEndBairro" placeholder="Ex: CENTRO"></div>
+        <div class="form-group"><label>CEP</label><input type="text" id="editEndCep" placeholder="Ex: 35544000"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost-dark" id="btnCancelarEndereco">Cancelar</button>
+      <button class="btn btn-primary" id="btnSalvarEndereco">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===================== MODAL INFO SIGTAP ===================== -->
 <div id="modalInfoSigtap" class="modal-overlay hidden">
   <div class="modal-card modal-wide">

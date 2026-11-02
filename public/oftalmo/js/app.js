@@ -331,6 +331,11 @@
       if (!p.match && !p.naoCompareceu) {
         btnPreencherHtml = '<button class="btn btn-primary btn-xs btn-preencher" data-idx="' + realIdx + '">+ Preencher</button>';
       }
+      // Botão editar endereço se vazio
+      let btnEnderecoHtml = "";
+      if (!p.naoCompareceu && (!p.endereco || !p.bairro)) {
+        btnEnderecoHtml = '<button class="btn btn-warn btn-xs btn-edit-end" data-idx="' + realIdx + '" title="Editar endereço">📍 Endereço</button>';
+      }
 
       // Renderizar procedimentos como tags
       let procHtml = "";
@@ -357,7 +362,7 @@
         '<td class="col-data">' + dataAtendInput + '</td>' +
         '<td>' + escapeHtml(p.nome) + '</td>' +
         '<td>' + escapeHtml(p.nasc) + '</td>' +
-        '<td><div class="info-extra">' + infoExtra + '</div>' + btnPreencherHtml + '</td>' +
+        '<td><div class="info-extra">' + infoExtra + '</div>' + btnPreencherHtml + btnEnderecoHtml + '</td>' +
         '<td class="col-check"><div class="check-cell"><input type="checkbox" data-field="naoCompareceu" data-id="' + p.id + '"' + (p.naoCompareceu ? " checked" : "") + '></div></td>' +
         '<td class="col-procs">' + procHtml + '</td>' +
         '</tr>';
@@ -367,6 +372,10 @@
     // Bind eventos
     triagemBody.querySelectorAll('.btn-preencher').forEach(btn => {
       btn.addEventListener('click', () => abrirModalOrigem(parseInt(btn.dataset.idx, 10)));
+    });
+
+    triagemBody.querySelectorAll('.btn-edit-end').forEach(btn => {
+      btn.addEventListener('click', () => abrirModalEndereco(parseInt(btn.dataset.idx, 10)));
     });
 
     triagemBody.querySelectorAll('.btn-add-proc').forEach(btn => {
@@ -500,7 +509,10 @@
         if (!proc.sigtap || proc.sigtap.length !== 10) erros.push({paciente: p.nome, erro: 'SIGTAP inválido (' + (proc.sigtap||'') + ')'});
         if (!p.dataAtendimento && !dataAtendPadrao) erros.push({paciente: p.nome, erro: 'Data de atendimento não informada'});
         if (!p.ibge || (p.ibge.length !== 6 && p.ibge.length !== 7)) erros.push({paciente: p.nome, erro: 'IBGE município inválido (' + (p.ibge||'') + '). Use 6 ou 7 dígitos.'});
-        if (!p.endereco && !p.bairro) erros.push({paciente: p.nome, erro: 'Endereço e bairro vazios'});
+        // Endereço e bairro: usar fallback do CEP padrão + município se vazios
+        const endFinal = p.endereco || '';
+        const baiFinal = p.bairro || '';
+        if (!endFinal && !baiFinal && !cepPadrao) erros.push({paciente: p.nome, erro: 'Endereço e bairro vazios (preencha ou configure CEP padrão)'});
       });
     });
     if (erros.length > 0) {
@@ -914,6 +926,43 @@
   if (btnInfo) btnInfo.addEventListener('click', abrirModalInfoSigtap);
   const btnFecharInfo = document.getElementById('btnFecharInfoSigtap');
   if (btnFecharInfo) btnFecharInfo.addEventListener('click', fecharModalInfoSigtap);
+
+  // ---------- Modal Editar Endereço ----------
+  let idxEditEnd = -1;
+  function abrirModalEndereco(idx) {
+    idxEditEnd = idx;
+    const p = pacientes[idx];
+    if (!p) return;
+    document.getElementById('endPacienteNome').textContent = p.nome + ' (' + p.nasc + ')';
+    document.getElementById('editEndLogradouro').value = p.endereco || '';
+    document.getElementById('editEndNumero').value = p.numero || '';
+    document.getElementById('editEndComplemento').value = p.complemento || '';
+    document.getElementById('editEndBairro').value = p.bairro || '';
+    document.getElementById('editEndCep').value = p.cep || document.getElementById('cepPadrao')?.value || '';
+    document.getElementById('modalEditEndereco').classList.remove('hidden');
+  }
+  function salvarEndereco() {
+    if (idxEditEnd < 0) return;
+    const p = pacientes[idxEditEnd];
+    if (!p) return;
+    p.endereco = document.getElementById('editEndLogradouro').value.trim();
+    p.numero = document.getElementById('editEndNumero').value.trim();
+    p.complemento = document.getElementById('editEndComplemento').value.trim();
+    p.bairro = document.getElementById('editEndBairro').value.trim();
+    p.cep = onlyDigits(document.getElementById('editEndCep').value);
+    fecharModalEndereco();
+    renderTriagem();
+  }
+  function fecharModalEndereco() {
+    idxEditEnd = -1;
+    document.getElementById('modalEditEndereco').classList.add('hidden');
+  }
+  const btnSalvarEnd = document.getElementById('btnSalvarEndereco');
+  if (btnSalvarEnd) btnSalvarEnd.addEventListener('click', salvarEndereco);
+  const btnCancelarEnd = document.getElementById('btnCancelarEndereco');
+  if (btnCancelarEnd) btnCancelarEnd.addEventListener('click', fecharModalEndereco);
+  const btnFecharEnd = document.getElementById('btnFecharEndereco');
+  if (btnFecharEnd) btnFecharEnd.addEventListener('click', fecharModalEndereco);
   const btnOkInfo = document.getElementById('btnOkInfoSigtap');
   if (btnOkInfo) btnOkInfo.addEventListener('click', fecharModalInfoSigtap);
 

@@ -173,12 +173,12 @@
             cols.cns = norm.findIndex(n => n.includes("CPF/CNS") || n === "CNS");
             cols.microarea = norm.findIndex(n => n.includes("MICROAREA") || n === "MICROÁREA");
             cols.equipe = norm.findIndex(n => n.includes("NOME EQUIPE") || n === "EQUIPE");
-            cols.endereco = norm.findIndex(n => n === "ENDERECO" || n === "ENDEREÇO");
+            cols.endereco = norm.findIndex(n => n === "ENDERECO" || n === "ENDEREÇO" || n === "LOGRADOURO" || n === "RUA" || n.includes("ENDERECO") || n.includes("LOGRADOURO"));
             cols.ibge = norm.findIndex(n => n.includes("CODIGO IBGE") || n.includes("MUNICIPIO") || n === "IBGE");
             cols.cep = norm.findIndex(n => n === "CEP");
             cols.sexo = norm.findIndex(n => n === "SEXO");
             cols.cpf = norm.findIndex(n => n === "CPF" || n.includes("CPF/CNS"));
-            cols.bairro = norm.findIndex(n => n === "BAIRRO");
+            cols.bairro = norm.findIndex(n => n === "BAIRRO" || n.includes("BAIRRO") || n === "DISTRITO");
             cols.numero = norm.findIndex(n => n === "NUMERO" || n === "NÚMERO");
             cols.complemento = norm.findIndex(n => n === "COMPLEMENTO");
             cols.telefone = norm.findIndex(n => n === "TELEFONE" || n.includes("CELULAR"));
@@ -861,5 +861,60 @@
     document.getElementById('viewResultado').classList.add('hidden');
     document.getElementById('viewTriagem').classList.remove('hidden');
   });
+
+  // ---------- Modal Info SIGTAP ----------
+  const MAPA_SIGTAP_DESCRICAO = {
+    '0301010072': 'Consulta Médica em Atenção Especializada (Oftalmologia)',
+    '0701040050': 'Concessão de Óculos com Lentes Corretivas (>= 0,5 dioptrias)',
+    '0211060127': 'Mapeamento de Retina',
+    '0211060224': 'Teste de Visão de Cores (Ishihara)',
+    '0211060232': 'Teste Ortoptico / Avaliação Sensorial Motora',
+    '0211060259': 'Tonometria de Aplanação'
+  };
+
+  function abrirModalInfoSigtap() {
+    const tbody = document.getElementById('infoSigtapBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    // Coletar SIGTAPs únicos utilizados nos pacientes ativos ou na config
+    const sigtapsUsados = new Set();
+    const sCons = document.getElementById('sigtapConsulta')?.value?.trim();
+    const sOcul = document.getElementById('sigtapOculos')?.value?.trim();
+    if (sCons) sigtapsUsados.add(sCons);
+    if (sOcul) sigtapsUsados.add(sOcul);
+    pacientes.forEach(p => {
+      if (p.procedimentos) p.procedimentos.forEach(proc => {
+        if (proc.sigtap) sigtapsUsados.add(proc.sigtap);
+      });
+    });
+
+    // Ordenar e renderizar
+    const lista = Array.from(sigtapsUsados).sort();
+    if (lista.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;padding:16px;">Nenhum procedimento registrado.</td></tr>';
+    } else {
+      lista.forEach(cod => {
+        const desc = MAPA_SIGTAP_DESCRICAO[cod] || 'Procedimento não catalogado nesta versão.';
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td style="font-family:monospace;font-weight:600;white-space:nowrap;">' + escapeHtml(cod) + '</td>' +
+                       '<td>' + escapeHtml(desc) + '</td>';
+        tbody.appendChild(tr);
+      });
+    }
+
+    document.getElementById('modalInfoSigtap').classList.remove('hidden');
+  }
+
+  function fecharModalInfoSigtap() {
+    document.getElementById('modalInfoSigtap').classList.add('hidden');
+  }
+
+  const btnInfo = document.getElementById('btnInfoSigtap');
+  if (btnInfo) btnInfo.addEventListener('click', abrirModalInfoSigtap);
+  const btnFecharInfo = document.getElementById('btnFecharInfoSigtap');
+  if (btnFecharInfo) btnFecharInfo.addEventListener('click', fecharModalInfoSigtap);
+  const btnOkInfo = document.getElementById('btnOkInfoSigtap');
+  if (btnOkInfo) btnOkInfo.addEventListener('click', fecharModalInfoSigtap);
 
 })();

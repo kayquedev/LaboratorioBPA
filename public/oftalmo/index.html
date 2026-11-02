@@ -160,6 +160,7 @@
       <div class="msg" id="resultMsg"></div>
       <div class="action-row">
         <button class="btn btn-ghost-dark" id="btnVoltarTriagem">← Voltar à consulta</button>
+        <button class="btn btn-ghost-dark" id="btnInfoSigtap">ℹ Info Procedimentos</button>
         <button class="btn btn-primary" id="btnDownload">⬇ Baixar arquivo</button>
       </div>
     </div>
@@ -249,6 +250,30 @@
       <div class="modal-footer">
         <button class="btn btn-ghost-dark" id="btnCancelarEsus">Cancelar</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL INFO SIGTAP ===================== -->
+<div id="modalInfoSigtap" class="modal-overlay hidden">
+  <div class="modal-card modal-wide">
+    <div class="modal-header">
+      <h3>Procedimentos SIGTAP Utilizados</h3>
+      <button class="modal-close" id="btnFecharInfoSigtap">✕</button>
+    </div>
+    <div class="modal-body">
+      <table class="preview compact" style="width:100%">
+        <thead>
+          <tr>
+            <th>Código SIGTAP</th>
+            <th>Nome / Descrição do Procedimento</th>
+          </tr>
+        </thead>
+        <tbody id="infoSigtapBody"></tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" id="btnOkInfoSigtap">Fechar</button>
     </div>
   </div>
 </div>

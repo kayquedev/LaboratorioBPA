@@ -174,6 +174,14 @@
             cols.microarea = norm.findIndex(n => n.includes("MICROAREA") || n === "MICROÁREA");
             cols.equipe = norm.findIndex(n => n.includes("NOME EQUIPE") || n === "EQUIPE");
             cols.endereco = norm.findIndex(n => n === "ENDERECO" || n === "ENDEREÇO");
+            cols.ibge = norm.findIndex(n => n.includes("CODIGO IBGE") || n.includes("MUNICIPIO") || n === "IBGE");
+            cols.cep = norm.findIndex(n => n === "CEP");
+            cols.sexo = norm.findIndex(n => n === "SEXO");
+            cols.cpf = norm.findIndex(n => n === "CPF" || n.includes("CPF/CNS"));
+            cols.bairro = norm.findIndex(n => n === "BAIRRO");
+            cols.numero = norm.findIndex(n => n === "NUMERO" || n === "NÚMERO");
+            cols.complemento = norm.findIndex(n => n === "COMPLEMENTO");
+            cols.telefone = norm.findIndex(n => n === "TELEFONE" || n.includes("CELULAR"));
             break;
           }
         }
@@ -200,7 +208,15 @@
             cns: cns,
             microarea: String(parts[cols.microarea] || "").trim(),
             equipe: String(parts[cols.equipe] || "").trim(),
-            endereco: String(parts[cols.endereco] || "").trim()
+            endereco: String(parts[cols.endereco] || "").trim(),
+            ibge: onlyDigits(String(parts[cols.ibge] || "").trim()),
+            cep: onlyDigits(String(parts[cols.cep] || "").trim()),
+            sexo: String(parts[cols.sexo] || "").trim().toUpperCase().charAt(0),
+            cpf: onlyDigits(String(parts[cols.cpf] || "").trim()),
+            bairro: String(parts[cols.bairro] || "").trim(),
+            numero: String(parts[cols.numero] || "").trim(),
+            complemento: String(parts[cols.complemento] || "").trim(),
+            telefone: onlyDigits(String(parts[cols.telefone] || "").trim())
           });
           count++;
         }
@@ -255,6 +271,14 @@
         microarea: match ? match.microarea : "",
         equipe: match ? match.equipe : "",
         endereco: match ? match.endereco : "",
+        ibge: match ? match.ibge : "",
+        cep: match ? match.cep : "",
+        sexo: match ? match.sexo : "",
+        cpf: match ? match.cpf : "",
+        bairro: match ? match.bairro : "",
+        numero: match ? match.numero : "",
+        complemento: match ? match.complemento : "",
+        telefone: match ? match.telefone : "",
         naoCompareceu: false,
         dataAtendimento: "", // dd/mm/yyyy - preenchido na consulta
         procedimentos: [] // Array de { sigtap, descricao }
@@ -465,13 +489,23 @@
       return line.slice(0, start) + v + line.slice(start + len);
     }
     function montarLinhaBpaI(d) {
-      let L = " ".repeat(349) + "N" + "  ";
+      let L = " ".repeat(351) + "N";
       L = patchTxt(L, 0, 2, d.tipo || "03");
       L = patchNum(L, 2, 7, d.cnes || "");
       L = patchNum(L, 9, 6, d.competencia || "");
       L = patchNum(L, 15, 15, d.cnsProfissional || "");
       L = patchNum(L, 30, 6, d.cbo || "");
-      L = patchNum(L, 36, 8, d.dataAtendimento || "");
+      // Data no formato ddmmaaaa; se vier yyyy-mm-dd ou dd/mm/yyyy, converter
+      let dt = String(d.dataAtendimento || "").replace(/\D/g, "");
+      if (dt.length === 8 && parseInt(dt.slice(0,4),10) > 1900) {
+        // yyyyMMdd -> ddMMyyyy
+        dt = dt.slice(6,8) + dt.slice(4,6) + dt.slice(0,4);
+      } else if (dt.length === 8 && parseInt(dt.slice(4,8),10) > 1900) {
+        // ddMMyyyy já está correto
+      } else {
+        dt = "";
+      }
+      L = patchNum(L, 36, 8, dt);
       L = patchNum(L, 44, 3, d.folha || 1);
       L = patchNum(L, 47, 2, d.sequencia || 1);
       L = patchNum(L, 49, 10, d.sigtap || "");

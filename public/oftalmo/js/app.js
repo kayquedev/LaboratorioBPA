@@ -393,111 +393,113 @@
       setMsg(triagemMsg, "warn", semCns.length + " paciente(s) sem CNS válido serão incluídos com CNS em branco. Verifique os dados no e-SUS.");
     }
 
-    // Construir linhas BPA-I
-    // Formato BPA-I magnético (tipo 03) conforme layout DATASUS/SIA
-    // Offsets validados contra parser.js / writer.js e arquivo real PA202606.txt
+    // Construir linhas BPA-I usando a MESMA lógica de patch do correcao_bpa/writer.js
+    // Linha base de 352 bytes (349 dados + sufixo N + padding) preenchida com espaços,
+    // campos aplicados via patchNum/patchTxt nos offsets exatos do parser.js.
+    const LINHAS_POR_FOLHA = 20; // padrão DATASUS/SIA (mesmo do writer.js)
     const linhas = [];
     let seq = 1;
     let folha = folhaIni;
-    const linhasPorFolha = 50;
     let contadorLinhaFolha = 0;
+
+    function patchNum(line, start, len, valor) {
+      let v = String(valor == null ? "" : valor).replace(/\D/g, "");
+      if (!v) v = "0";
+      if (v.length > len) v = v.slice(-len);
+      v = v.padStart(len, "0");
+      return line.slice(0, start) + v + line.slice(start + len);
+    }
+    function patchTxt(line, start, len, valor) {
+      let v = String(valor == null ? "" : valor).toUpperCase();
+      v = (v + " ".repeat(len)).slice(0, len);
+      return line.slice(0, start) + v + line.slice(start + len);
+    }
+    function montarLinhaBpaI(d) {
+      // Linha base: 349 espaços + 'N' na pos 349 + 2 espaços finais = 352 bytes
+      let L = " ".repeat(349) + "N" + "  "; // 349 espaços + N na pos 349 + 2 espaços = 352 bytes
+      L = patchTxt(L, 0, 2, d.tipo || "03");
+      L = patchNum(L, 2, 7, d.cnes || "");
+      L = patchNum(L, 9, 6, d.competencia || "");
+      L = patchNum(L, 15, 15, d.cnsProfissional || "");
+      L = patchNum(L, 30, 6, d.cbo || "");
+      L = patchNum(L, 36, 8, d.dataAtendimento || "");
+      L = patchNum(L, 44, 3, d.folha || 1);
+      L = patchNum(L, 47, 2, d.sequencia || 1);
+      L = patchNum(L, 49, 10, d.sigtap || "");
+      L = patchNum(L, 59, 15, d.cns || "");
+      L = patchTxt(L, 74, 1, d.sexo || "");
+      L = patchNum(L, 75, 6, d.ibge || "");
+      L = patchTxt(L, 81, 4, d.cid || "");
+      L = patchNum(L, 94, 2, d.caraterAtendimento || "01");
+      L = patchTxt(L, 112, 30, d.nome || "");
+      L = patchNum(L, 142, 8, d.nasc || "");
+      L = patchNum(L, 150, 2, d.racaCor || "99");
+      L = patchTxt(L, 152, 4, d.etnia || "");
+      L = patchNum(L, 156, 3, d.nacionalidade || "010");
+      L = patchNum(L, 159, 3, d.servico || "");
+      L = patchNum(L, 162, 3, d.classificacao || "");
+      L = patchNum(L, 191, 8, d.cep || "");
+      L = patchNum(L, 199, 3, d.codLogradouro || "");
+      L = patchTxt(L, 202, 30, d.endereco || "");
+      L = patchTxt(L, 232, 10, d.complemento || "");
+      L = patchTxt(L, 242, 5, d.numero || "");
+      L = patchTxt(L, 247, 30, d.bairro || "");
+      L = patchNum(L, 277, 11, d.telefone || "");
+      L = patchNum(L, 338, 11, d.cpfPaciente || "");
+      return L;
+    }
 
     ativos.forEach(p => {
       // Procedimento Compareceu
       const linhaComp = montarLinhaBpaI({
-        tipo: "03",
-        cnes: cnes,
-        competencia: compYyyy + compMm,
-        cnsProfissional: "",
-        cbo: cbo,
-        dataAtendimento: dataAtendPadrao,
-        folha: padLeft(folha, 3),
-        sequencia: padLeft(seq, 2),
-        sigtap: sigtapComp,
-        cns: p.cns || "",
-        sexo: p.sexo || "",
-        ibge: p.ibge || "",
-        caraterAtendimento: "01",
-        nome: p.nome,
-        nasc: dataNascParaChave(p.nasc),
-        racaCor: p.racaCor || "99",
-        nacionalidade: p.nacionalidade || "010",
-        cep: p.cep || "",
-        codLogradouro: p.codLogradouro || "",
-        endereco: p.endereco || "",
-        complemento: p.complemento || "",
-        numero: p.numero || "",
-        bairro: p.bairro || "",
-        telefone: p.telefone || "",
-        cpfPaciente: p.cpf || ""
+        tipo: "03", cnes: cnes, competencia: compYyyy + compMm,
+        cnsProfissional: "", cbo: cbo, dataAtendimento: dataAtendPadrao,
+        folha: folha, sequencia: seq, sigtap: sigtapComp,
+        cns: p.cns || "", sexo: p.sexo || "", ibge: p.ibge || "",
+        caraterAtendimento: "01", nome: p.nome, nasc: dataNascParaChave(p.nasc),
+        racaCor: p.racaCor || "99", nacionalidade: p.nacionalidade || "010",
+        cep: p.cep || "", codLogradouro: p.codLogradouro || "",
+        endereco: p.endereco || "", complemento: p.complemento || "",
+        numero: p.numero || "", bairro: p.bairro || "",
+        telefone: p.telefone || "", cpfPaciente: p.cpf || ""
       });
       linhas.push(linhaComp);
-      seq++;
-      contadorLinhaFolha++;
+      seq++; contadorLinhaFolha++;
 
       // Procedimento Recebeu Óculos (se marcado)
       if (p.recebeuOculos && sigtapOcul.length === 10) {
-        if (contadorLinhaFolha >= linhasPorFolha) {
-          folha++;
-          contadorLinhaFolha = 0;
-        }
+        if (contadorLinhaFolha >= LINHAS_POR_FOLHA) { folha++; seq = 1; contadorLinhaFolha = 0; }
         const linhaOcul = montarLinhaBpaI({
-          tipo: "03",
-          cnes: cnes,
-          competencia: compYyyy + compMm,
-          cnsProfissional: "",
-          cbo: cbo,
-          dataAtendimento: dataAtendPadrao,
-          folha: padLeft(folha, 3),
-          sequencia: padLeft(seq, 2),
-          sigtap: sigtapOcul,
-          cns: p.cns || "",
-          sexo: p.sexo || "",
-          ibge: p.ibge || "",
-          caraterAtendimento: "01",
-          nome: p.nome,
-          nasc: dataNascParaChave(p.nasc),
-          racaCor: p.racaCor || "99",
-          nacionalidade: p.nacionalidade || "010",
-          cep: p.cep || "",
-          codLogradouro: p.codLogradouro || "",
-          endereco: p.endereco || "",
-          complemento: p.complemento || "",
-          numero: p.numero || "",
-          bairro: p.bairro || "",
-          telefone: p.telefone || "",
-          cpfPaciente: p.cpf || ""
+          tipo: "03", cnes: cnes, competencia: compYyyy + compMm,
+          cnsProfissional: "", cbo: cbo, dataAtendimento: dataAtendPadrao,
+          folha: folha, sequencia: seq, sigtap: sigtapOcul,
+          cns: p.cns || "", sexo: p.sexo || "", ibge: p.ibge || "",
+          caraterAtendimento: "01", nome: p.nome, nasc: dataNascParaChave(p.nasc),
+          racaCor: p.racaCor || "99", nacionalidade: p.nacionalidade || "010",
+          cep: p.cep || "", codLogradouro: p.codLogradouro || "",
+          endereco: p.endereco || "", complemento: p.complemento || "",
+          numero: p.numero || "", bairro: p.bairro || "",
+          telefone: p.telefone || "", cpfPaciente: p.cpf || ""
         });
         linhas.push(linhaOcul);
-        seq++;
-        contadorLinhaFolha++;
+        seq++; contadorLinhaFolha++;
       }
 
-      if (contadorLinhaFolha >= linhasPorFolha) {
-        folha++;
-        contadorLinhaFolha = 0;
-      }
+      if (contadorLinhaFolha >= LINHAS_POR_FOLHA) { folha++; seq = 1; contadorLinhaFolha = 0; }
     });
 
-    // Montar cabeçalho (tipo 01) obrigatório no BPA magnético
-    // Layout real: 01(2) + #BPA#(5) + competencia(6=aaaamm) + numLinhas(6) + numFolhas(6)
-    // + codUnidade(4) + nomeUnidade(30) + cnesOrigem(7) + sistema(20)
+    // Cabeçalho tipo 01 - mesmo layout do writer.js (offsets HEADER_OFFSETS)
     const numLinhasTotal = linhas.length;
     const numFolhas = folha - folhaIni + 1;
-    const codUnidade = "1352"; // código da unidade (fixo ou configurável)
-    const nomeUnidade = "SECRETARIA SAUDE";
-    const cnesOrigem = cnes || "0000000";
-    const sistema = "MANALYTICS";
-    function padR(s, len) { let v = String(s == null ? "" : s); return v.length >= len ? v.slice(0, len) : v.padEnd(len, " "); }
-    const headerLine = "01" +
-      "#BPA#" +
-      padLeft(compYyyy + compMm, 6) +
-      padLeft(numLinhasTotal, 6) +
-      padLeft(numFolhas, 6) +
-      padR(codUnidade, 4) +
-      padR(nomeUnidade, 30) +
-      padLeft(cnesOrigem, 7) +
-      padR(sistema, 20);
+    let headerLine = " ".repeat(349) + "N" + "  "; // base 352 bytes
+    headerLine = patchTxt(headerLine, 0, 2, "01");
+    headerLine = patchTxt(headerLine, 2, 5, "#BPA#");
+    headerLine = patchNum(headerLine, 7, 6, compYyyy + compMm);
+    headerLine = patchNum(headerLine, 13, 6, numLinhasTotal);
+    headerLine = patchNum(headerLine, 19, 6, numFolhas);
+    // Demais campos do cabeçalho (codUnidade, nome, CNES, sistema) mantidos como espaços
+    // pois o writer.js também não os preenche via patch - ficam vazios na linha base.
+    fileContent = headerLine + "\r\n" + linhas.join("\r\n") + "\r\n";
     fileContent = headerLine + "\r\n" + linhas.join("\r\n") + "\r\n";
     fileName = "PA" + compYyyy + compMm + ".txt";
 
@@ -520,7 +522,6 @@
 
     // Download button
     document.getElementById("btnDownload").onclick = () => {
-      // BPA magnético usa encoding latin-1 (ISO-8859-1), não UTF-8
       const blob = new Blob([fileContent], { type: "text/plain;charset=iso-8859-1" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -530,57 +531,6 @@
       setMsg(document.getElementById("resultMsg"), "ok", "Arquivo baixado: " + fileName);
     };
   });
-
-  function montarLinhaBpaI(d) {
-    // Layout BPA-I magnético (tipo 03) - offsets exatos do parser.js / writer.js
-    // Total: 352 bytes (349 dados + sufixo 'N' + padding). Gaps preenchidos com espaços.
-    const buf = [];
-    for (let i = 0; i < 352; i++) buf[i] = " ";
-    function set(start, len, val, type) {
-      let s = String(val == null ? "" : val);
-      if (type === "num") s = s.replace(/\D/g, "");
-      if (s.length > len) s = s.slice(0, len);
-      else if (s.length < len) s = type === "num" ? s.padStart(len, "0") : s.padEnd(len, " ");
-      for (let i = 0; i < len; i++) buf[start + i] = s[i];
-    }
-    set(0, 2, d.tipo || "03", "txt");           // tipo registro
-    set(2, 7, d.cnes || "", "num");              // CNES
-    set(9, 6, d.competencia || "", "num");       // competência aaaamm
-    set(15, 15, d.cnsProfissional || "", "num"); // CNS profissional
-    set(30, 6, d.cbo || "", "num");              // CBO
-    set(36, 8, d.dataAtendimento || "", "num");  // data atendimento ddmmaaaa
-    set(44, 3, d.folha || "001", "num");         // folha
-    set(47, 2, d.sequencia || "01", "num");      // sequência
-    set(49, 10, d.sigtap || "", "num");          // SIGTAP procedimento
-    set(59, 15, d.cns || "", "num");             // CNS paciente
-    set(74, 1, d.sexo || "", "txt");             // sexo (M/F)
-    set(75, 6, d.ibge || "", "num");             // município IBGE
-    set(81, 4, d.cid || "", "txt");              // CID-10
-    // pos 85-93: reservado (espaços)
-    set(94, 2, d.caraterAtendimento || "01", "num"); // caráter atendimento
-    // pos 96-111: reservado (espaços)
-    set(112, 30, d.nome || "", "txt");           // nome paciente
-    set(142, 8, d.nasc || "", "num");            // data nascimento aaaammdd
-    set(150, 2, d.racaCor || "99", "num");       // raça/cor
-    set(152, 4, d.etnia || "", "txt");           // etnia
-    set(156, 3, d.nacionalidade || "010", "num");// nacionalidade
-    set(159, 3, d.servico || "", "num");         // serviço
-    set(162, 3, d.classificacao || "", "num");   // classificação
-    // pos 165-190: reservado (espaços)
-    set(191, 8, d.cep || "", "num");             // CEP
-    set(199, 3, d.codLogradouro || "", "num");   // código logradouro
-    set(202, 30, d.endereco || "", "txt");       // endereço
-    set(232, 10, d.complemento || "", "txt");    // complemento
-    set(242, 5, d.numero || "", "txt");          // número
-    set(247, 30, d.bairro || "", "txt");         // bairro
-    set(277, 11, d.telefone || "", "num");       // telefone
-    // pos 288-337: reservado (espaços)
-    set(338, 11, d.cpfPaciente || "", "num");    // CPF paciente
-    // Sufixo padrão do BPA-I magnético
-    buf[349] = "N";
-    return buf.join("");
-  }
-
   // ---------- Modal Origem (escolha Manual vs e-SUS) ----------
   function abrirModalOrigem(idx) {
     modalTargetIdx = idx;

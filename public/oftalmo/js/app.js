@@ -251,6 +251,7 @@
     const cbo = onlyDigits(cboInput.value);
     const compMes = document.getElementById("competencia").value;
     const folhaIni = parseInt(document.getElementById("folhaIni").value, 10) || 1;
+    const ibgeGlobal = onlyDigits(document.getElementById("ibgeMunicipio")?.value || "");
 
     if (cnes.length !== 7) { setMsg(camposMsg, "err", "CNES deve ter 7 dígitos."); return; }
     if (cbo.length !== 6) { setMsg(camposMsg, "err", "CBO deve ter 6 dígitos."); return; }
@@ -271,7 +272,7 @@
         microarea: match ? match.microarea : "",
         equipe: match ? match.equipe : "",
         endereco: match ? match.endereco : "",
-        ibge: match ? match.ibge : "",
+        ibge: (match && match.ibge) ? match.ibge : ibgeGlobal,
         cep: match ? match.cep : "",
         sexo: match ? match.sexo : "",
         cpf: match ? match.cpf : "",
@@ -480,7 +481,7 @@
       p.procedimentos.forEach(proc => {
         if (!proc.sigtap || proc.sigtap.length !== 10) erros.push({paciente: p.nome, erro: 'SIGTAP inválido (' + (proc.sigtap||'') + ')'});
         if (!p.dataAtendimento && !dataAtendPadrao) erros.push({paciente: p.nome, erro: 'Data de atendimento não informada'});
-        if (!p.ibge || p.ibge.length !== 6) erros.push({paciente: p.nome, erro: 'IBGE município inválido (' + (p.ibge||'') + ')'});
+        if (!p.ibge || (p.ibge.length !== 6 && p.ibge.length !== 7)) erros.push({paciente: p.nome, erro: 'IBGE município inválido (' + (p.ibge||'') + '). Use 6 ou 7 dígitos.'});
         if (!p.endereco && !p.bairro) erros.push({paciente: p.nome, erro: 'Endereço e bairro vazios'});
       });
     });

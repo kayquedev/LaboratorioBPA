@@ -55,11 +55,13 @@
       <div class="card disabled" id="card-upload-esus">
         <div class="card-title">2. Cidadãos Vinculados e-SUS PEC</div>
         <label class="drop" id="dropEsus">
-          <input type="file" id="fileEsus" accept=".csv">
+          <input type="file" id="fileEsus" accept=".csv" multiple>
           <div class="icon">🏥</div>
-          <div><b>Clique para selecionar</b> ou arraste o CSV do e-SUS aqui</div>
+          <div><b>Clique para selecionar</b> ou arraste um ou mais CSVs do e-SUS aqui</div>
           <div class="fname" id="fnameEsus"></div>
         </label>
+        <div class="esus-files-list" id="esusFilesList"></div>
+        <button class="btn btn-ghost-dark btn-sm hidden" id="btnLimparEsus" style="margin-top:8px;font-size:.78rem;padding:.3rem .7rem;">✕ Limpar cidadãos vinculados</button>
         <div class="msg" id="msgEsus"></div>
       </div>
 

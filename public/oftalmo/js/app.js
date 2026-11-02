@@ -114,16 +114,41 @@
   const fileEsus = document.getElementById("fileEsus");
   const fnameEsus = document.getElementById("fnameEsus");
   const msgEsus = document.getElementById("msgEsus");
+  const esusFilesList = document.getElementById("esusFilesList");
+  let esusTotalCount = 0;
+  const btnLimparEsus = document.getElementById("btnLimparEsus");
+
+  function atualizarBtnLimparEsus() {
+    if (esusTotalCount > 0) btnLimparEsus.classList.remove("hidden");
+    else btnLimparEsus.classList.add("hidden");
+  }
+
+  btnLimparEsus.addEventListener("click", () => {
+    esusMap.clear();
+    esusTotalCount = 0;
+    fnameEsus.textContent = "";
+    esusFilesList.innerHTML = "";
+    clearMsg(msgEsus);
+    fileEsus.value = "";
+    atualizarBtnLimparEsus();
+  });
 
   ["dragenter", "dragover"].forEach(ev => dropEsus.addEventListener(ev, e => { e.preventDefault(); dropEsus.classList.add("drag"); }));
   ["dragleave", "drop"].forEach(ev => dropEsus.addEventListener(ev, e => { e.preventDefault(); dropEsus.classList.remove("drag"); }));
   dropEsus.addEventListener("drop", e => {
-    if (e.dataTransfer.files.length) { fileEsus.files = e.dataTransfer.files; handleEsus(e.dataTransfer.files[0]); }
+    if (e.dataTransfer.files.length) {
+      fileEsus.files = e.dataTransfer.files;
+      Array.from(e.dataTransfer.files).forEach(f => handleEsus(f));
+    }
   });
-  fileEsus.addEventListener("change", () => { if (fileEsus.files.length) handleEsus(fileEsus.files[0]); });
+  fileEsus.addEventListener("change", () => {
+    if (fileEsus.files.length) {
+      Array.from(fileEsus.files).forEach(f => handleEsus(f));
+      fileEsus.value = "";
+    }
+  });
 
   function handleEsus(file) {
-    fnameEsus.textContent = file.name;
     clearMsg(msgEsus);
     const reader = new FileReader();
     reader.onload = function (e) {
@@ -150,9 +175,8 @@
             break;
           }
         }
-        if (headerIdx < 0) throw new Error("Cabeçalho do e-SUS não encontrado (esperado: Nome + Data de nascimento).");
+        if (headerIdx < 0) throw new Error("Cabeçalho do e-SUS não encontrado em " + file.name);
 
-        esusMap = new Map();
         let count = 0;
         for (let i = headerIdx + 1; i < lines.length; i++) {
           const parts = lines[i].split(";");
@@ -162,7 +186,6 @@
           const nasc = normalizeDataNasc(nascRaw);
           const chave = chaveCruzamento(nome, nasc);
           const cnsRaw = String(parts[cols.cns] || "").trim();
-          // CNS pode vir como notação científica (ex: 8,82538E+14)
           let cns = cnsRaw;
           if (cnsRaw.includes("E+") || cnsRaw.includes("e+")) {
             try { cns = String(Math.round(Number(cnsRaw))); } catch (_) { /* keep raw */ }
@@ -180,11 +203,21 @@
           count++;
         }
 
-        if (count === 0) throw new Error("Nenhum cidadão encontrado no CSV do e-SUS.");
-        setMsg(msgEsus, "ok", count + " cidadãos vinculados carregados do e-SUS.");
+        if (count === 0) throw new Error("Nenhum cidadão encontrado em " + file.name);
+        esusTotalCount += count;
+        fnameEsus.textContent = esusTotalCount + " cidadãos carregados";
+        
+        // Adicionar à lista visual de arquivos
+        const tag = document.createElement("span");
+        tag.className = "esus-file-tag";
+        tag.textContent = file.name + " (" + count + ")";
+        esusFilesList.appendChild(tag);
+
+        setMsg(msgEsus, "ok", esusTotalCount + " cidadãos vinculados carregados no total.");
+        atualizarBtnLimparEsus();
         enableCard("card-campos-bpa");
       } catch (err) {
-        setMsg(msgEsus, "err", "Erro ao ler e-SUS: " + err.message);
+        setMsg(msgEsus, "err", "Erro ao ler " + file.name + ": " + err.message);
       }
     };
     reader.readAsText(file, "latin-1");

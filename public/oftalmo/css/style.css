@@ -65,6 +65,13 @@ input:focus { border-color: var(--accent); }
 .drop .icon { font-size: 2rem; }
 .drop .fname { font-size: .8rem; color: var(--accent); margin-top: .25rem; word-break: break-all; }
 
+.esus-files-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.esus-file-tag {
+  display: inline-block; padding: 3px 10px; border-radius: 999px;
+  background: rgba(20,184,166,0.15); color: var(--accent); font-size: 0.78rem;
+  border: 1px solid rgba(20,184,166,0.3); word-break: break-all;
+}
+
 /* Messages */
 .msg { font-size: .85rem; padding: .5rem .75rem; border-radius: 6px; margin-top: .75rem; display: none; }
 .msg.show { display: block; }

@@ -480,15 +480,24 @@
     });
 
     // Montar cabeçalho (tipo 01) obrigatório no BPA magnético
-    // Layout: 01(2) + #BPA#(5) + competencia(6=aammdd) + numLinhas(6) + numFolhas(6) + ...
+    // Layout real: 01(2) + #BPA#(5) + competencia(6=aaaamm) + numLinhas(6) + numFolhas(6)
+    // + codUnidade(4) + nomeUnidade(30) + cnesOrigem(7) + sistema(20)
     const numLinhasTotal = linhas.length;
     const numFolhas = folha - folhaIni + 1;
+    const codUnidade = "1352"; // código da unidade (fixo ou configurável)
+    const nomeUnidade = "SECRETARIA SAUDE";
+    const cnesOrigem = cnes || "0000000";
+    const sistema = "MANALYTICS";
+    function padR(s, len) { let v = String(s == null ? "" : s); return v.length >= len ? v.slice(0, len) : v.padEnd(len, " "); }
     const headerLine = "01" +
       "#BPA#" +
-      padLeft(compMm + compYyyy.slice(2), 6) + // aammdd (dia 00)
+      padLeft(compYyyy + compMm, 6) +
       padLeft(numLinhasTotal, 6) +
       padLeft(numFolhas, 6) +
-      padRight("", 270); // preenchimento até ~300 bytes
+      padR(codUnidade, 4) +
+      padR(nomeUnidade, 30) +
+      padLeft(cnesOrigem, 7) +
+      padR(sistema, 20);
     fileContent = headerLine + "\r\n" + linhas.join("\r\n") + "\r\n";
     fileName = "PA" + compYyyy + compMm + ".txt";
 
@@ -523,63 +532,52 @@
   });
 
   function montarLinhaBpaI(d) {
-    // Layout BPA-I magnético (tipo 03) conforme parser.js / writer.js do qualidade_bpa
-    // e arquivo real PA202606.txt. Offsets baseados em 0.
-    // Total ~350+ bytes por linha.
+    // Layout BPA-I magnético (tipo 03) - offsets exatos do parser.js / writer.js
+    // Total: 352 bytes (349 dados + sufixo 'N' + padding). Gaps preenchidos com espaços.
     const buf = [];
-    function set(pos, len, val, align) {
-      let v = String(val == null ? "" : val);
-      if (align === "num") {
-        v = v.replace(/\D/g, "");
-        if (!v) v = "0";
-        if (v.length > len) v = v.slice(-len);
-        v = v.padStart(len, "0");
-      } else {
-        v = v.toUpperCase();
-        if (v.length > len) v = v.slice(0, len);
-        else v = v.padEnd(len, " ");
-      }
-      // Expandir buffer se necessário
-      while (buf.length < pos) buf.push(" ");
-      for (let i = 0; i < len; i++) buf[pos + i] = v[i];
+    for (let i = 0; i < 352; i++) buf[i] = " ";
+    function set(start, len, val, type) {
+      let s = String(val == null ? "" : val);
+      if (type === "num") s = s.replace(/\D/g, "");
+      if (s.length > len) s = s.slice(0, len);
+      else if (s.length < len) s = type === "num" ? s.padStart(len, "0") : s.padEnd(len, " ");
+      for (let i = 0; i < len; i++) buf[start + i] = s[i];
     }
-
-    set(0, 2, d.tipo, "num");              // tipo 03
-    set(2, 7, d.cnes, "num");              // CNES
-    set(9, 6, d.competencia, "num");       // aaaamm
-    set(15, 15, d.cnsProfissional || "", "txt"); // CNS do profissional
-    set(30, 6, d.cbo, "num");              // CBO
-    set(36, 8, d.dataAtendimento || "", "num"); // ddmmaaaa
-    set(44, 3, d.folha, "num");            // folha
-    set(47, 2, d.sequencia, "num");        // seq
-    set(49, 10, d.sigtap, "num");          // SIGTAP
-    // 59-73: quantidade não é campo separado no BPA-I (sempre 1 atendimento)
-    set(59, 15, d.cns || "", "num");       // CNS/CPF paciente
-    set(74, 1, d.sexo || "", "txt");       // sexo
-    set(75, 6, d.ibge || "", "num");       // IBGE município
-    set(81, 4, "", "txt");                 // CID
-    set(85, 9, "", "txt");                 // preenchimento
+    set(0, 2, d.tipo || "03", "txt");           // tipo registro
+    set(2, 7, d.cnes || "", "num");              // CNES
+    set(9, 6, d.competencia || "", "num");       // competência aaaamm
+    set(15, 15, d.cnsProfissional || "", "num"); // CNS profissional
+    set(30, 6, d.cbo || "", "num");              // CBO
+    set(36, 8, d.dataAtendimento || "", "num");  // data atendimento ddmmaaaa
+    set(44, 3, d.folha || "001", "num");         // folha
+    set(47, 2, d.sequencia || "01", "num");      // sequência
+    set(49, 10, d.sigtap || "", "num");          // SIGTAP procedimento
+    set(59, 15, d.cns || "", "num");             // CNS paciente
+    set(74, 1, d.sexo || "", "txt");             // sexo (M/F)
+    set(75, 6, d.ibge || "", "num");             // município IBGE
+    set(81, 4, d.cid || "", "txt");              // CID-10
+    // pos 85-93: reservado (espaços)
     set(94, 2, d.caraterAtendimento || "01", "num"); // caráter atendimento
-    set(96, 16, "", "txt");                // preenchimento
-    set(112, 30, (d.nome || "").substring(0, 30), "txt"); // nome paciente
-    set(142, 8, d.nasc || "", "num");      // data nascimento aaaammdd
-    set(150, 2, d.racaCor || "99", "num"); // raça/cor
-    set(152, 4, "", "txt");                // etnia
-    set(156, 3, d.nacionalidade || "010", "num"); // nacionalidade
-    set(159, 3, d.servico || "", "num");   // serviço
-    set(162, 3, d.classificacao || "", "num"); // classificação
-    set(165, 26, "", "txt");               // preenchimento até 191
-    set(191, 8, d.cep || "", "num");       // CEP
-    set(199, 3, d.codLogradouro || "", "num"); // código logradouro
-    set(202, 30, d.endereco || "", "txt"); // endereço
-    set(232, 10, d.complemento || "", "txt"); // complemento
-    set(242, 5, d.numero || "", "txt");    // número
-    set(247, 30, d.bairro || "", "txt");   // bairro
-    set(277, 11, d.telefone || "", "num"); // telefone
-    set(288, 50, "", "txt");               // preenchimento até 338
-    set(338, 11, d.cpfPaciente || "", "num"); // CPF paciente
-    set(349, 20, "", "txt");               // preenchimento final
-
+    // pos 96-111: reservado (espaços)
+    set(112, 30, d.nome || "", "txt");           // nome paciente
+    set(142, 8, d.nasc || "", "num");            // data nascimento aaaammdd
+    set(150, 2, d.racaCor || "99", "num");       // raça/cor
+    set(152, 4, d.etnia || "", "txt");           // etnia
+    set(156, 3, d.nacionalidade || "010", "num");// nacionalidade
+    set(159, 3, d.servico || "", "num");         // serviço
+    set(162, 3, d.classificacao || "", "num");   // classificação
+    // pos 165-190: reservado (espaços)
+    set(191, 8, d.cep || "", "num");             // CEP
+    set(199, 3, d.codLogradouro || "", "num");   // código logradouro
+    set(202, 30, d.endereco || "", "txt");       // endereço
+    set(232, 10, d.complemento || "", "txt");    // complemento
+    set(242, 5, d.numero || "", "txt");          // número
+    set(247, 30, d.bairro || "", "txt");         // bairro
+    set(277, 11, d.telefone || "", "num");       // telefone
+    // pos 288-337: reservado (espaços)
+    set(338, 11, d.cpfPaciente || "", "num");    // CPF paciente
+    // Sufixo padrão do BPA-I magnético
+    buf[349] = "N";
     return buf.join("");
   }
 

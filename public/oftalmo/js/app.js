@@ -465,16 +465,44 @@
       return;
     }
 
-    const semCns = ativos.filter(p => !p.cns || p.cns.length < 15);
-    if (semCns.length > 0) {
-      setMsg(triagemMsg, "warn", semCns.length + " paciente(s) sem CNS válido serão incluídos com CNS em branco.");
+    // CNS Profissional obrigatório para BPA-I
+    const cnsProfInput = document.getElementById('cnsProfissional');
+    const cnsProf = onlyDigits(cnsProfInput ? cnsProfInput.value : '');
+    if (!cnsProf || cnsProf.length !== 15) {
+      setMsg(camposMsg, 'err', 'CNS Profissional é obrigatório e deve ter 15 dígitos para gerar o BPA-I.');
+      if (cnsProfInput) cnsProfInput.focus();
+      return;
     }
 
+    // Validação pré-exportação: listar erros por registro
+    const erros = [];
+    ativos.forEach((p, idx) => {
+      p.procedimentos.forEach(proc => {
+        if (!proc.sigtap || proc.sigtap.length !== 10) erros.push({paciente: p.nome, erro: 'SIGTAP inválido (' + (proc.sigtap||'') + ')'});
+        if (!p.dataAtendimento && !dataAtendPadrao) erros.push({paciente: p.nome, erro: 'Data de atendimento não informada'});
+        if (!p.ibge || p.ibge.length !== 6) erros.push({paciente: p.nome, erro: 'IBGE município inválido (' + (p.ibge||'') + ')'});
+        if (!p.endereco && !p.bairro) erros.push({paciente: p.nome, erro: 'Endereço e bairro vazios'});
+      });
+    });
+    if (erros.length > 0) {
+      const msgErros = erros.slice(0, 10).map(e => e.paciente + ': ' + e.erro).join('\n');
+      setMsg(triagemMsg, 'err', erros.length + ' erro(s) encontrado(s). Corrija antes de exportar:\n' + msgErros + (erros.length > 10 ? '\n...e mais ' + (erros.length - 10) : ''));
+      return;
+    }
+
+    const semIdentificacao = ativos.filter(p => (!p.cns || p.cns.length < 15) && (!p.cpf || p.cpf.length < 11));
+    if (semIdentificacao.length > 0) {
+      setMsg(triagemMsg, 'warn', semIdentificacao.length + ' paciente(s) sem CNS nem CPF válido. Serão incluídos com identificação incompleta.');
+    }
+
+    // Agrupamento de folha/seq por chave (CNES + CBO + CNS Profissional)
+    // Conforme regra SIA: mesma folha só contém registros da mesma chave
     const LINHAS_POR_FOLHA = 20;
     const linhas = [];
-    let seq = 1;
     let folha = folhaIni;
+    let seq = 1;
     let contadorLinhaFolha = 0;
+    let chaveAtual = cnes + '|' + cbo + '|' + cnsProf; // chave única por grupo
 
     function patchNum(line, start, len, valor) {
       let v = String(valor == null ? "" : valor).replace(/\D/g, "");
@@ -534,19 +562,47 @@
 
     ativos.forEach(p => {
       p.procedimentos.forEach(proc => {
-        if (contadorLinhaFolha >= LINHAS_POR_FOLHA) { folha++; seq = 1; contadorLinhaFolha = 0; }
-        
+        // Verificar se mudou a chave (não muda neste caso pois CNS Prof é global,
+        // mas mantém a estrutura para quando houver múltiplos profissionais)
+        const chavePaciente = cnes + '|' + cbo + '|' + cnsProf;
+        if (chavePaciente !== chaveAtual) {
+          folha++; seq = 1; contadorLinhaFolha = 0;
+          chaveAtual = chavePaciente;
+        }
+        if (contadorLinhaFolha >= LINHAS_POR_FOLHA) {
+          folha++; seq = 1; contadorLinhaFolha = 0;
+        }
+
+        // Separar CPF e CNS conforme regra SIA:
+        // Se tem CNS válido (15 dígitos) -> pos 59; CPF vai para pos 338
+        // Se NÃO tem CNS mas tem CPF -> CPF na pos 59, pos 338 vazia
+        const temCnsValido = p.cns && p.cns.length === 15;
+        const cnsCampo59 = temCnsValido ? p.cns : (p.cpf || '');
+        const cpfCampo338 = temCnsValido ? (p.cpf || '') : '';
+
+        // Data de nascimento no formato ddmmyyyy
+        let nascFmt = '';
+        const nascStr = String(p.nasc || '').trim();
+        const mNasc = nascStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+        if (mNasc) {
+          nascFmt = padLeft(mNasc[1], 2) + padLeft(mNasc[2], 2) + mNasc[3];
+        } else {
+          const mNasc2 = nascStr.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+          if (mNasc2) nascFmt = padLeft(mNasc2[3], 2) + padLeft(mNasc2[2], 2) + mNasc2[1];
+        }
+
         const linha = montarLinhaBpaI({
-          tipo: "03", cnes: cnes, competencia: compYyyy + compMm,
-          cnsProfissional: "", cbo: cbo, dataAtendimento: p.dataAtendimento ? dataNascParaChave(p.dataAtendimento) : dataAtendPadrao,
+          tipo: '03', cnes: cnes, competencia: compYyyy + compMm,
+          cnsProfissional: cnsProf, cbo: cbo,
+          dataAtendimento: p.dataAtendimento || dataAtendPadrao,
           folha: folha, sequencia: seq, sigtap: proc.sigtap,
-          cns: p.cns || "", sexo: p.sexo || "", ibge: p.ibge || "",
-          caraterAtendimento: "01", nome: p.nome, nasc: dataNascParaChave(p.nasc),
-          racaCor: p.racaCor || "99", nacionalidade: p.nacionalidade || "010",
-          cep: p.cep || "", codLogradouro: p.codLogradouro || "",
-          endereco: p.endereco || "", complemento: p.complemento || "",
-          numero: p.numero || "", bairro: p.bairro || "",
-          telefone: p.telefone || "", cpfPaciente: p.cpf || ""
+          cns: cnsCampo59, sexo: p.sexo || '', ibge: p.ibge || '',
+          caraterAtendimento: '01', nome: p.nome, nasc: nascFmt,
+          racaCor: '03', nacionalidade: p.nacionalidade || '010',
+          cep: p.cep || '', codLogradouro: p.codLogradouro || '',
+          endereco: p.endereco || '', complemento: p.complemento || '',
+          numero: p.numero || '', bairro: p.bairro || '',
+          telefone: p.telefone || '', cpfPaciente: cpfCampo338
         });
         linhas.push(linha);
         seq++; contadorLinhaFolha++;

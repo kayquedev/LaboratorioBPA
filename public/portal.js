@@ -10,6 +10,7 @@
     bolsa_familia: "ACOMPANHAMENTO",
     qualidade_bpa: "FATURAMENTO",
     correcao_bpa: "FATURAMENTO",
+    oftalmo: "FATURAMENTO",
     datasus_sia: "FATURAMENTO",
     acompanhamento_pec: "ACOMPANHAMENTO",
     mapa_territorio: "TERRITÓRIO",

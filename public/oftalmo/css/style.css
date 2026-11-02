@@ -88,6 +88,10 @@ table.preview tr:last-child td { border-bottom: none; }
 table.preview tr.row-disabled { opacity: .4; }
 table.preview tr.row-disabled td { text-decoration: line-through; text-decoration-color: var(--text-muted); }
 .col-check { text-align: center; width: 100px; }
+.col-data { width: 140px; min-width: 130px; }
+.input-data-atend { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; background: var(--surface-alt); color: var(--text); }
+.input-data-atend:focus { border-color: var(--accent); outline: none; }
+.input-data-atend:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* Checkboxes custom */
 .check-cell { display: flex; justify-content: center; }

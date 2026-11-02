@@ -256,6 +256,7 @@
         equipe: match ? match.equipe : "",
         endereco: match ? match.endereco : "",
         naoCompareceu: false,
+        dataAtendimento: "", // dd/mm/yyyy - preenchido na triagem
         procedimentos: [] // Array de { sigtap, descricao }
       };
     });
@@ -321,7 +322,10 @@
         procHtml = '<span style="color:var(--text-muted);font-size:.8rem;">Não compareceu</span>';
       }
 
+      const dataAtendVal = p.dataAtendimento || "";
+      const dataAtendInput = '<input type="date" class="input-data-atend" data-id="' + p.id + '" value="' + (dataAtendVal ? dataAtendVal.split('/').reverse().join('-') : '') + '"' + (p.naoCompareceu ? ' disabled' : '') + '>';
       html += '<tr class="' + disabledClass + '" data-id="' + p.id + '">' +
+        '<td class="col-data">' + dataAtendInput + '</td>' +
         '<td>' + escapeHtml(p.nome) + '</td>' +
         '<td>' + escapeHtml(p.nasc) + '</td>' +
         '<td><div class="info-extra">' + infoExtra + '</div>' + btnPreencherHtml + '</td>' +
@@ -351,6 +355,21 @@
         const pidx = parseInt(btn.dataset.pidx, 10);
         const procid = parseInt(btn.dataset.procid, 10);
         removerProcedimento(pidx, procid);
+      });
+    });
+
+    triagemBody.querySelectorAll('.input-data-atend').forEach(inp => {
+      inp.addEventListener('change', (e) => {
+        const id = parseInt(e.target.dataset.id, 10);
+        const p = pacientes.find(x => x.id === id);
+        if (!p) return;
+        const val = e.target.value; // yyyy-mm-dd
+        if (val) {
+          const parts = val.split('-');
+          p.dataAtendimento = parts[2] + '/' + parts[1] + '/' + parts[0];
+        } else {
+          p.dataAtendimento = '';
+        }
       });
     });
 
@@ -413,7 +432,7 @@
     const folhaIni = parseInt(document.getElementById("folhaIni").value, 10) || 1;
     const compYyyy = compMes.split("-")[0];
     const compMm = compMes.split("-")[1];
-    const dataAtendPadrao = "01" + compMm + compYyyy;
+    const dataAtendPadrao = "01" + compMm + compYyyy; // fallback: primeiro dia da competência
 
     // Filtrar pacientes com procedimentos
     const ativos = pacientes.filter(p => !p.naoCompareceu && p.procedimentos.length > 0 && (p.match || p.vinculado));
@@ -485,7 +504,7 @@
         
         const linha = montarLinhaBpaI({
           tipo: "03", cnes: cnes, competencia: compYyyy + compMm,
-          cnsProfissional: "", cbo: cbo, dataAtendimento: dataAtendPadrao,
+          cnsProfissional: "", cbo: cbo, dataAtendimento: p.dataAtendimento ? dataNascParaChave(p.dataAtendimento) : dataAtendPadrao,
           folha: folha, sequencia: seq, sigtap: proc.sigtap,
           cns: p.cns || "", sexo: p.sexo || "", ibge: p.ibge || "",
           caraterAtendimento: "01", nome: p.nome, nasc: dataNascParaChave(p.nasc),

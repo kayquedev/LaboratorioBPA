@@ -125,7 +125,10 @@
 
       <div class="triagem-footer">
         <div class="msg" id="triagemMsg"></div>
-        <button class="btn btn-primary" id="btnGerarBpa">Gerar arquivo BPA-I</button>
+        <div class="action-row">
+          <button class="btn btn-ghost-dark" id="btnAddCidadao">+ Adicionar Cidadão</button>
+          <button class="btn btn-primary" id="btnGerarBpa">Gerar arquivo BPA-I</button>
+        </div>
       </div>
     </div>
   </section>
@@ -151,6 +154,92 @@
     </div>
   </section>
 
+</div>
+
+<!-- ===================== MODAL ESCOLHA ORIGEM ===================== -->
+<div id="modalOrigem" class="modal-overlay hidden">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 id="modalOrigemTitulo">Preencher dados</h3>
+      <button class="modal-close" id="btnFecharOrigem">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="lead" id="modalOrigemLead">Escolha como deseja preencher os dados deste cidadão:</p>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="btnOpcaoManual">📝 Manual</button>
+        <button class="btn btn-ghost-dark" id="btnOpcaoEsus">🏥 Buscar no e-SUS PEC</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL MANUAL ===================== -->
+<div id="modalManual" class="modal-overlay hidden">
+  <div class="modal-card modal-wide">
+    <div class="modal-header">
+      <h3>Preenchimento Manual · BPA-I</h3>
+      <button class="modal-close" id="btnFecharManual">✕</button>
+    </div>
+    <div class="modal-ref" id="manualRefInfo"></div>
+    <div class="modal-body">
+      <div class="field-grid">
+        <label>Nome completo
+          <input type="text" id="manNome" maxlength="50">
+        </label>
+        <label>Data de nascimento (dd/mm/aaaa)
+          <input type="text" id="manNasc" maxlength="10" placeholder="dd/mm/aaaa">
+        </label>
+        <label>CNS (15 dígitos)
+          <input type="text" id="manCns" maxlength="15">
+        </label>
+        <label>Microárea
+          <input type="text" id="manMicroarea" maxlength="10">
+        </label>
+        <label>Equipe
+          <input type="text" id="manEquipe" maxlength="50">
+        </label>
+        <label>Endereço
+          <input type="text" id="manEndereco" maxlength="100">
+        </label>
+      </div>
+      <div class="msg" id="manualMsg"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost-dark" id="btnCancelarManual">Cancelar</button>
+        <button class="btn btn-primary" id="btnSalvarManual">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL BUSCA ESUS ===================== -->
+<div id="modalEsus" class="modal-overlay hidden">
+  <div class="modal-card modal-wide">
+    <div class="modal-header">
+      <h3>Vincular cidadão do e-SUS PEC</h3>
+      <button class="modal-close" id="btnFecharEsus">✕</button>
+    </div>
+    <div class="modal-ref" id="esusRefInfo"></div>
+    <div class="modal-body">
+      <input type="text" id="buscaEsus" placeholder="Buscar por nome ou CNS..." style="width:100%;margin-bottom:12px;">
+      <div class="tbl-wrap" style="max-height:320px;overflow-y:auto;">
+        <table class="preview compact">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Nascimento</th>
+              <th>CNS</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="esusListaBody"></tbody>
+        </table>
+      </div>
+      <div class="msg" id="esusModalMsg"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost-dark" id="btnCancelarEsus">Cancelar</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>

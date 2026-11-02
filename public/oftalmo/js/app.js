@@ -4,9 +4,11 @@
   // ---------- state ----------
   let miguellinRows = [];   // { nome, nasc, comunidade }
   let esusMap = new Map();  // chave normalizada -> { nome, nasc, cns, cpf, ibge, cep, cbo, microarea, equipe }
+  let esusList = [];        // array plano para busca no modal (derivado do esusMap)
   let pacientes = [];       // resultado do cruzamento
   let fileContent = "";
   let fileName = "";
+  let modalTargetIdx = -1;  // índice do paciente sendo editado no modal (-1 = novo cidadão)
 
   // ---------- helpers ----------
   function onlyDigits(s) { return String(s == null ? "" : s).replace(/\D/g, ""); }
@@ -296,18 +298,25 @@
     document.getElementById("triagemTitulo").textContent = filtered.length + " paciente(s) exibido(s)";
 
     let html = "";
-    filtered.forEach(p => {
+    filtered.forEach((p, idx) => {
+      const realIdx = pacientes.indexOf(p);
       const disabledClass = p.naoCompareceu ? "row-disabled" : "";
       const infoExtra = p.match
         ? '<span class="lbl">CNS:</span> ' + escapeHtml(p.cns || "—") +
           '<span class="lbl">Microárea:</span> ' + escapeHtml(p.microarea || "—") +
           '<span class="lbl">Equipe:</span> ' + escapeHtml(p.equipe || "—")
-        : '<span style="color:var(--warn)">⚠ Paciente não encontrado no e-SUS vinculado</span>';
+        : '<span style="color:var(--warn)">⚠ Não vinculado</span>';
+
+      // Botão + Preencher para não vinculados (e não desabilitados por não-comparecimento)
+      let btnPreencherHtml = "";
+      if (!p.match && !p.naoCompareceu) {
+        btnPreencherHtml = '<button class="btn btn-primary btn-xs btn-preencher" data-idx="' + realIdx + '">+ Preencher</button>';
+      }
 
       html += '<tr class="' + disabledClass + '" data-id="' + p.id + '">' +
         '<td>' + escapeHtml(p.nome) + '</td>' +
         '<td>' + escapeHtml(p.nasc) + '</td>' +
-        '<td><div class="info-extra">' + infoExtra + '</div></td>' +
+        '<td><div class="info-extra">' + infoExtra + '</div>' + btnPreencherHtml + '</td>' +
         '<td class="col-check"><div class="check-cell"><input type="checkbox" data-field="compareceu" data-id="' + p.id + '"' + (p.compareceu ? " checked" : "") + '></div></td>' +
         '<td class="col-check"><div class="check-cell"><input type="checkbox" data-field="naoCompareceu" data-id="' + p.id + '"' + (p.naoCompareceu ? " checked" : "") + '></div></td>' +
         '<td class="col-check"><div class="check-cell"><input type="checkbox" data-field="recebeuOculos" data-id="' + p.id + '"' +
@@ -318,7 +327,14 @@
     });
     triagemBody.innerHTML = html;
 
-    // Bind events
+    // Bind eventos dos botões + Preencher
+    triagemBody.querySelectorAll('.btn-preencher').forEach(btn => {
+      btn.addEventListener('click', () => {
+        abrirModalOrigem(parseInt(btn.dataset.idx, 10));
+      });
+    });
+
+    // Bind eventos dos checkboxes
     triagemBody.querySelectorAll('input[type="checkbox"]').forEach(cb => {
       cb.addEventListener("change", (e) => {
         const id = parseInt(e.target.dataset.id, 10);
@@ -363,7 +379,7 @@
     const compMm = compMes.split("-")[1];
 
     // Filtrar apenas pacientes que compareceram
-    const ativos = pacientes.filter(p => p.compareceu && p.match);
+    const ativos = pacientes.filter(p => p.compareceu && (p.match || p.vinculado));
     if (ativos.length === 0) {
       setMsg(triagemMsg, "err", "Nenhum paciente com 'Compareceu' marcado e vinculado ao e-SUS. Marque pelo menos um paciente como Compareceu.");
       return;
@@ -503,10 +519,169 @@
     ].join("");
   }
 
+  // ---------- Modal Origem (escolha Manual vs e-SUS) ----------
+  function abrirModalOrigem(idx) {
+    modalTargetIdx = idx;
+    const p = idx >= 0 ? pacientes[idx] : null;
+    const refHtml = p
+      ? '<strong>' + escapeHtml(p.nome) + '</strong> · Nasc: ' + escapeHtml(p.nasc) + (p.comunidade ? ' · Comunidade: ' + escapeHtml(p.comunidade) : '')
+      : '<strong>Novo cidadão</strong>';
+    document.getElementById('modalOrigemTitulo').textContent = p ? 'Preencher dados' : 'Adicionar Cidadão';
+    document.getElementById('modalOrigemLead').textContent = p
+      ? 'Este paciente não foi encontrado nos arquivos do e-SUS. Escolha como deseja preencher os dados:'
+      : 'Adicione um cidadão que não consta na planilha MIGUELLIN mas precisa ser incluído no BPA-I.';
+    document.getElementById('manualRefInfo').innerHTML = refHtml;
+    document.getElementById('esusRefInfo').innerHTML = refHtml;
+    document.getElementById('modalOrigem').classList.remove('hidden');
+  }
+
+  function fecharTodosModais() {
+    document.getElementById('modalOrigem').classList.add('hidden');
+    document.getElementById('modalManual').classList.add('hidden');
+    document.getElementById('modalEsus').classList.add('hidden');
+    modalTargetIdx = -1;
+  }
+
+  ['btnFecharOrigem','btnFecharManual','btnCancelarManual','btnFecharEsus','btnCancelarEsus'].forEach(id => {
+    document.getElementById(id).addEventListener('click', fecharTodosModais);
+  });
+  ['modalOrigem','modalManual','modalEsus'].forEach(id => {
+    document.getElementById(id).addEventListener('click', (e) => { if (e.target.id === id) fecharTodosModais(); });
+  });
+
+  // ---------- Opção MANUAL ----------
+  document.getElementById('btnOpcaoManual').addEventListener('click', () => {
+    document.getElementById('modalOrigem').classList.add('hidden');
+    limparFormManual();
+    if (modalTargetIdx >= 0 && pacientes[modalTargetIdx]) {
+      const p = pacientes[modalTargetIdx];
+      document.getElementById('manNome').value = p.nome || '';
+      document.getElementById('manNasc').value = p.nasc || '';
+    }
+    clearMsg(document.getElementById('manualMsg'));
+    document.getElementById('modalManual').classList.remove('hidden');
+  });
+
+  function limparFormManual() {
+    ['manNome','manNasc','manCns','manMicroarea','manEquipe','manEndereco'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+  }
+
+  document.getElementById('btnSalvarManual').addEventListener('click', () => {
+    const nome = document.getElementById('manNome').value.trim();
+    const nasc = normalizeDataNasc(document.getElementById('manNasc').value.trim());
+    const cns = onlyDigits(document.getElementById('manCns').value);
+    if (!nome) { setMsg(document.getElementById('manualMsg'), 'err', 'Nome é obrigatório.'); return; }
+    if (!nasc || nasc.length < 8) { setMsg(document.getElementById('manualMsg'), 'err', 'Data de nascimento inválida.'); return; }
+    aplicarDadosPaciente(modalTargetIdx, {
+      nome, nasc, cns: cns || '',
+      microarea: document.getElementById('manMicroarea').value.trim(),
+      equipe: document.getElementById('manEquipe').value.trim(),
+      endereco: document.getElementById('manEndereco').value.trim(),
+      origem: 'manual'
+    });
+    fecharTodosModais();
+    renderTriagem();
+  });
+
+  // ---------- Opção ESUS PEC (busca) ----------
+  document.getElementById('btnOpcaoEsus').addEventListener('click', () => {
+    document.getElementById('modalOrigem').classList.add('hidden');
+    esusList = [];
+    esusMap.forEach(v => esusList.push(v));
+    document.getElementById('buscaEsus').value = '';
+    renderListaEsus(esusList);
+    clearMsg(document.getElementById('esusModalMsg'));
+    document.getElementById('modalEsus').classList.remove('hidden');
+    setTimeout(() => document.getElementById('buscaEsus').focus(), 100);
+  });
+
+  function renderListaEsus(lista) {
+    const tbody = document.getElementById('esusListaBody');
+    tbody.innerHTML = '';
+    if (lista.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:2rem;">Nenhum cidadão encontrado.</td></tr>';
+      return;
+    }
+    lista.slice(0, 200).forEach(c => {
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + escapeHtml(c.nome) + '</td>' +
+        '<td>' + escapeHtml(c.nasc) + '</td>' +
+        '<td>' + escapeHtml(c.cns || '') + '</td>' +
+        '<td class="col-check"><button class="btn btn-primary btn-xs btn-vincular-esus">Vincular</button></td>';
+      tr.querySelector('.btn-vincular-esus').addEventListener('click', () => {
+        aplicarDadosPaciente(modalTargetIdx, {
+          nome: c.nome, nasc: c.nasc, cns: c.cns || '', cpf: c.cpf || '',
+          ibge: c.ibge || '', cep: c.cep || '', cbo: c.cbo || '',
+          microarea: c.microarea || '', equipe: c.equipe || '',
+          origem: 'esus'
+        });
+        fecharTodosModais();
+        renderTriagem();
+      });
+      tbody.appendChild(tr);
+    });
+    if (lista.length > 200) {
+      setMsg(document.getElementById('esusModalMsg'), 'warn', 'Mostrando 200 de ' + lista.length + ' resultados. Refine a busca.');
+    } else {
+      clearMsg(document.getElementById('esusModalMsg'));
+    }
+  }
+
+  document.getElementById('buscaEsus').addEventListener('input', (e) => {
+    const q = stripAccents(e.target.value.trim().toLowerCase());
+    if (!q) { renderListaEsus(esusList); return; }
+    const filtrados = esusList.filter(c =>
+      stripAccents(c.nome || '').toLowerCase().includes(q) ||
+      (c.cns || '').includes(q) ||
+      (c.cpf || '').includes(q)
+    );
+    renderListaEsus(filtrados);
+  });
+
+  // ---------- Aplicar dados ao paciente ----------
+  function aplicarDadosPaciente(idx, dados) {
+    if (idx >= 0 && pacientes[idx]) {
+      const p = pacientes[idx];
+      p.nome = dados.nome || p.nome;
+      p.nasc = dados.nasc || p.nasc;
+      p.cns = dados.cns || p.cns || '';
+      p.cpf = dados.cpf || p.cpf || '';
+      p.ibge = dados.ibge || p.ibge || '';
+      p.cep = dados.cep || p.cep || '';
+      p.cbo = dados.cbo || p.cbo || '';
+      p.microarea = dados.microarea || p.microarea || '';
+      p.equipe = dados.equipe || p.equipe || '';
+      p.match = true;
+      p.vinculado = true;
+      p.origemVinculo = dados.origem || 'manual';
+      if (p.status === 'pendente') p.status = 'compareceu';
+    } else {
+      pacientes.push({
+        id: pacientes.length,
+        nome: dados.nome, nasc: dados.nasc,
+        cns: dados.cns || '', cpf: dados.cpf || '',
+        ibge: dados.ibge || '', cep: dados.cep || '',
+        cbo: dados.cbo || '', microarea: dados.microarea || '',
+        equipe: dados.equipe || '', comunidade: '',
+        match: true, vinculado: true,
+        origemVinculo: dados.origem || 'manual',
+        compareceu: true, naoCompareceu: false, recebeuOculos: false
+      });
+    }
+  }
+
+  // ---------- Botão + Adicionar Cidadão (footer da triagem) ----------
+  document.getElementById('btnAddCidadao').addEventListener('click', () => {
+    abrirModalOrigem(-1);
+  });
+
   // ---------- Voltar à triagem ----------
-  document.getElementById("btnVoltarTriagem").addEventListener("click", () => {
-    document.getElementById("viewResultado").classList.add("hidden");
-    document.getElementById("viewTriagem").classList.remove("hidden");
+  document.getElementById('btnVoltarTriagem').addEventListener('click', () => {
+    document.getElementById('viewResultado').classList.add('hidden');
+    document.getElementById('viewTriagem').classList.remove('hidden');
   });
 
 })();

@@ -151,9 +151,21 @@
     }
   });
 
-  // Parser de endereço: separa tipo de logradouro do nome da via
-  // Ex: "Rua DR EZEQUIEL DE MACEDO, 221. CASA - CENTRO" -> { codTipo: "RUA", logradouro: "DR EZEQUIEL DE MACEDO", numero: "221", complemento: "CASA", bairro: "CENTRO" }
-  const TIPOS_LOGRADOURO = ['RUA','AVENIDA','AV','TRAVESSA','TV','ALAMEDA','AL','ESTRADA','EST','RODOVIA','BR','PRACA','PC','LARGO','BECO','VIADUTO','PONTE','TUNEL','MORRO','COLINA','VALE','PARQUE','JARDIM','CONDOMINIO','CONJUNTO','RESIDENCIAL','VILA','DISTRITO','FAZENDA','SITIO','CHACARA','GLEBA','NUCLEO','SETOR','QUADRA','BLOCO','AREA'];
+  // Tabela oficial de códigos de tipo de logradouro (DATASUS/SIA)
+  const COD_TIPO_LOGRADOURO = {
+    'ACESSO': '001', 'ALAMEDA': '004', 'AVENIDA': '008', 'AV': '008',
+    'BECO': '011', 'CAMINHO': '017', 'CONJUNTO': '020', 'CONJ': '020',
+    'ESTRADA': '031', 'EST': '031', 'FAZENDA': '037', 'JARDIM': '052',
+    'LADEIRA': '053', 'LARGO': '054', 'LOTEAMENTO': '056', 'PRACA': '065',
+    'PC': '065', 'PARQUE': '072', 'QUADRA': '077', 'RUA': '081',
+    'RODOVIA': '090', 'BR': '090', 'SITIO': '092', 'SERVIDAO': '094',
+    'SETOR': '095', 'TRAVESSA': '100', 'TV': '100', 'VIA': '101',
+    'VIADUTO': '103', 'VILA': '104', 'VIELA': '105', 'CHACARA': '481',
+    'CONDOMINIO': '485'
+  };
+
+  // Parser de endereço: separa tipo de logradouro (código numérico), nome da via, número, complemento e bairro
+  // Ex: "Rua DR EZEQUIEL DE MACEDO, 221. CASA - CENTRO" -> { codTipo: "081", logradouro: "DR EZEQUIEL DE MACEDO", numero: "221", complemento: "CASA", bairro: "CENTRO" }
   function parseEndereco(enderecoCompleto) {
     if (!enderecoCompleto) return { codTipo: '', logradouro: '', numero: '', complemento: '', bairro: '' };
     let end = String(enderecoCompleto).trim();
@@ -167,13 +179,13 @@
       bairro = end.substring(hifenIdx + 3).trim();
       end = end.substring(0, hifenIdx).trim();
     }
-    // Extrair tipo de logradouro
+    // Extrair tipo de logradouro e mapear para código numérico oficial
     const partes = end.split(/\s+/);
     const primeira = stripAccents(partes[0] || '').toUpperCase();
     let codTipo = '';
     let logradouro = end;
-    if (TIPOS_LOGRADOURO.includes(primeira)) {
-      codTipo = primeira.substring(0, 3);
+    if (COD_TIPO_LOGRADOURO[primeira]) {
+      codTipo = COD_TIPO_LOGRADOURO[primeira];
       logradouro = partes.slice(1).join(' ');
     }
     // Extrair número e complemento do logradouro
@@ -605,7 +617,8 @@
       L = patchNum(L, 44, 3, d.folha || 1);
       L = patchNum(L, 47, 2, d.sequencia || 1);
       L = patchNum(L, 49, 10, d.sigtap || "");
-      L = patchNum(L, 59, 15, d.cns || "");
+      L = patchNum(L, 57, 2, d.quantidade || 1);
+      L = patchNum(L, 59, 15, d.cnsPaciente || "");
       L = patchTxt(L, 74, 1, d.sexo || "");
       L = patchNum(L, 75, 6, d.ibge || "");
       L = patchTxt(L, 81, 4, d.cid || "");
@@ -643,11 +656,11 @@
         }
 
         // Separar CPF e CNS conforme regra SIA:
-        // Se tem CNS válido (15 dígitos) -> pos 59; CPF vai para pos 338
-        // Se NÃO tem CNS mas tem CPF -> CPF na pos 59, pos 338 vazia
+        // CNS válido (15 dígitos) -> pos 59 (cnsPaciente); CPF -> pos 339 (cpfPaciente)
+        // Sem CNS -> pos 59 vazia; CPF apenas na pos 339
         const temCnsValido = p.cns && p.cns.length === 15;
-        const cnsCampo59 = temCnsValido ? p.cns : (p.cpf || '');
-        const cpfCampo338 = temCnsValido ? (p.cpf || '') : '';
+        const cnsPaciente = temCnsValido ? p.cns : '';
+        const cpfPaciente = p.cpf || '';
 
         // Mapa de procedimentos pré-estabelecidos com SERVIÇO, CLASSIFICAÇÃO e CID padrão
         const PROCEDIMENTOS_PRE = {
@@ -681,7 +694,7 @@
           cnsProfissional: cnsProf, cbo: cbo,
           dataAtendimento: p.dataAtendimento || dataAtendPadrao,
           folha: folha, sequencia: seq, sigtap: proc.sigtap,
-          cns: cnsCampo59, sexo: p.sexo || '', ibge: p.ibge || '',
+          cnsPaciente: cnsPaciente, sexo: p.sexo || '', ibge: p.ibge || '', quantidade: proc.qtd || 1,
           caraterAtendimento: '01', nome: p.nome, nasc: nascFmt,
           racaCor: '03', nacionalidade: p.nacionalidade || '010',
           cep: p.cep || cepPadrao || '',
@@ -689,7 +702,7 @@
           endereco: parsedEnd.logradouro,
           complemento: p.complemento || '',
           numero: p.numero || '', bairro: p.bairro || '',
-          telefone: p.telefone || '', cpfPaciente: cpfCampo338,
+          telefone: p.telefone || '', cpfPaciente: cpfPaciente,
           numAutorizacao: numAutorizacao,
           cid: cidProc, servico: servicoProc, classificacao: classifProc
         });

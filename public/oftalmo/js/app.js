@@ -10,6 +10,11 @@
   let fileName = "";
   let modalTargetIdx = -1;  // índice do paciente sendo editado no modal (-1 = novo cidadão)
 
+  // Procedimentos padrão (editáveis pelo usuário na config)
+  const SIGTAP_CONSULTA_PADRAO = "0301010072";
+  const SIGTAP_OCULOS_PADRAO = "0701040050";
+  const CBO_OFTALMO_PADRAO = "225265";
+
   // ---------- helpers ----------
   function onlyDigits(s) { return String(s == null ? "" : s).replace(/\D/g, ""); }
   function stripAccents(s) { return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
@@ -25,22 +30,18 @@
   }
 
   function normalizeDataNasc(val) {
-    // Aceita Date, string dd/mm/aaaa, string aaaammdd
     if (val instanceof Date && !isNaN(val)) {
       const d = val.getDate(), m = val.getMonth() + 1, y = val.getFullYear();
       return padLeft(d, 2) + "/" + padLeft(m, 2) + "/" + y;
     }
     const s = String(val || "").trim();
-    // dd/mm/aaaa ou dd-mm-aaaa
     const m1 = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
     if (m1) return padLeft(m1[1], 2) + "/" + padLeft(m1[2], 2) + "/" + m1[3];
-    // aaaammdd
     if (/^\d{8}$/.test(s)) return s.slice(6, 8) + "/" + s.slice(4, 6) + "/" + s.slice(0, 4);
     return s;
   }
 
   function dataNascParaChave(ddmmyyyy) {
-    // dd/mm/aaaa -> aaaammdd
     if (!ddmmyyyy || typeof ddmmyyyy !== "string") return "";
     const parts = ddmmyyyy.split("/");
     if (parts.length !== 3) return "";
@@ -52,8 +53,9 @@
   }
 
   // ---------- STEP 1: Config SIGTAP ----------
-  const sigtapCompareceuInput = document.getElementById("sigtapCompareceu");
+  const sigtapConsultaInput = document.getElementById("sigtapConsulta");
   const sigtapOculosInput = document.getElementById("sigtapOculos");
+  const cboInput = document.getElementById("cbo");
   const configMsg = document.getElementById("configMsg");
 
   // ---------- Upload MIGUELLIN ----------
@@ -80,7 +82,6 @@
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
 
-        // Header na linha 2 (0-indexed): QUANT | PACIENTE | NASC | COMUNIDADE
         let headerIdx = -1;
         for (let i = 0; i < Math.min(rows.length, 10); i++) {
           const r = rows[i];
@@ -158,7 +159,6 @@
         const text = e.target.result;
         const lines = text.split(/\r?\n/);
 
-        // Encontrar header: linha com "Nome" e "Data de nascimento"
         let headerIdx = -1;
         let cols = {};
         for (let i = 0; i < Math.min(lines.length, 30); i++) {
@@ -209,7 +209,6 @@
         esusTotalCount += count;
         fnameEsus.textContent = esusTotalCount + " cidadãos carregados";
         
-        // Adicionar à lista visual de arquivos
         const tag = document.createElement("span");
         tag.className = "esus-file-tag";
         tag.textContent = file.name + " (" + count + ")";
@@ -232,15 +231,11 @@
   btnCruzar.addEventListener("click", () => {
     clearMsg(camposMsg);
 
-    const sigtapComp = onlyDigits(sigtapCompareceuInput.value);
-    const sigtapOcul = onlyDigits(sigtapOculosInput.value);
     const cnes = onlyDigits(document.getElementById("cnes").value);
-    const cbo = onlyDigits(document.getElementById("cbo").value);
-    const compMes = document.getElementById("competencia").value; // yyyy-mm
+    const cbo = onlyDigits(cboInput.value);
+    const compMes = document.getElementById("competencia").value;
     const folhaIni = parseInt(document.getElementById("folhaIni").value, 10) || 1;
 
-    if (sigtapComp.length !== 10) { setMsg(camposMsg, "err", "SIGTAP Compareceu deve ter 10 dígitos."); return; }
-    if (sigtapOcul.length > 0 && sigtapOcul.length !== 10) { setMsg(camposMsg, "err", "SIGTAP Recebeu Óculos deve ter 10 dígitos (ou deixe vazio)."); return; }
     if (cnes.length !== 7) { setMsg(camposMsg, "err", "CNES deve ter 7 dígitos."); return; }
     if (cbo.length !== 6) { setMsg(camposMsg, "err", "CBO deve ter 6 dígitos."); return; }
     if (!compMes) { setMsg(camposMsg, "err", "Informe a competência."); return; }
@@ -260,9 +255,8 @@
         microarea: match ? match.microarea : "",
         equipe: match ? match.equipe : "",
         endereco: match ? match.endereco : "",
-        compareceu: false,
         naoCompareceu: false,
-        recebeuOculos: false
+        procedimentos: [] // Array de { sigtap, descricao }
       };
     });
 
@@ -307,34 +301,59 @@
           '<span class="lbl">Equipe:</span> ' + escapeHtml(p.equipe || "—")
         : '<span style="color:var(--warn)">⚠ Não vinculado</span>';
 
-      // Botão + Preencher para não vinculados (e não desabilitados por não-comparecimento)
       let btnPreencherHtml = "";
       if (!p.match && !p.naoCompareceu) {
         btnPreencherHtml = '<button class="btn btn-primary btn-xs btn-preencher" data-idx="' + realIdx + '">+ Preencher</button>';
+      }
+
+      // Renderizar procedimentos como tags
+      let procHtml = "";
+      if (!p.naoCompareceu) {
+        p.procedimentos.forEach((proc, pIdx) => {
+          procHtml += '<span class="proc-tag">' + escapeHtml(proc.descricao) + 
+                      ' <button class="proc-remove" data-pidx="' + realIdx + '" data-procid="' + pIdx + '">✕</button></span>';
+        });
+        procHtml += '<div class="proc-actions">' +
+                    '<button class="btn btn-ghost-dark btn-xs btn-add-proc" data-type="consulta" data-pidx="' + realIdx + '">+ Consulta</button>' +
+                    '<button class="btn btn-ghost-dark btn-xs btn-add-proc" data-type="oculos" data-pidx="' + realIdx + '">+ Óculos</button>' +
+                    '</div>';
+      } else {
+        procHtml = '<span style="color:var(--text-muted);font-size:.8rem;">Não compareceu</span>';
       }
 
       html += '<tr class="' + disabledClass + '" data-id="' + p.id + '">' +
         '<td>' + escapeHtml(p.nome) + '</td>' +
         '<td>' + escapeHtml(p.nasc) + '</td>' +
         '<td><div class="info-extra">' + infoExtra + '</div>' + btnPreencherHtml + '</td>' +
-        '<td class="col-check"><div class="check-cell"><input type="checkbox" data-field="compareceu" data-id="' + p.id + '"' + (p.compareceu ? " checked" : "") + '></div></td>' +
         '<td class="col-check"><div class="check-cell"><input type="checkbox" data-field="naoCompareceu" data-id="' + p.id + '"' + (p.naoCompareceu ? " checked" : "") + '></div></td>' +
-        '<td class="col-check"><div class="check-cell"><input type="checkbox" data-field="recebeuOculos" data-id="' + p.id + '"' +
-        (p.recebeuOculos ? " checked" : "") +
-        (!p.compareceu ? " disabled" : "") +
-        '></div></td>' +
+        '<td class="col-procs">' + procHtml + '</td>' +
         '</tr>';
     });
     triagemBody.innerHTML = html;
 
-    // Bind eventos dos botões + Preencher
+    // Bind eventos
     triagemBody.querySelectorAll('.btn-preencher').forEach(btn => {
-      btn.addEventListener('click', () => {
-        abrirModalOrigem(parseInt(btn.dataset.idx, 10));
+      btn.addEventListener('click', () => abrirModalOrigem(parseInt(btn.dataset.idx, 10)));
+    });
+
+    triagemBody.querySelectorAll('.btn-add-proc').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const pidx = parseInt(btn.dataset.pidx, 10);
+        const type = btn.dataset.type;
+        adicionarProcedimento(pidx, type);
       });
     });
 
-    // Bind eventos dos checkboxes
+    triagemBody.querySelectorAll('.proc-remove').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const pidx = parseInt(btn.dataset.pidx, 10);
+        const procid = parseInt(btn.dataset.procid, 10);
+        removerProcedimento(pidx, procid);
+      });
+    });
+
     triagemBody.querySelectorAll('input[type="checkbox"]').forEach(cb => {
       cb.addEventListener("change", (e) => {
         const id = parseInt(e.target.dataset.id, 10);
@@ -342,61 +361,73 @@
         const p = pacientes.find(x => x.id === id);
         if (!p) return;
 
-        if (field === "compareceu") {
-          p.compareceu = e.target.checked;
-          if (p.compareceu) {
-            p.naoCompareceu = false;
-          } else {
-            // Desmarcou compareceu -> limpa e desabilita recebeuOculos
-            p.recebeuOculos = false;
-          }
-        } else if (field === "naoCompareceu") {
+        if (field === "naoCompareceu") {
           p.naoCompareceu = e.target.checked;
           if (p.naoCompareceu) {
-            p.compareceu = false;
-            p.recebeuOculos = false;
+            p.procedimentos = []; // Limpa procedimentos se não compareceu
           }
-        } else if (field === "recebeuOculos") {
-          p.recebeuOculos = e.target.checked;
         }
-
         renderTriagem();
       });
     });
+  }
+
+  function adicionarProcedimento(pidx, type) {
+    const p = pacientes[pidx];
+    if (!p || p.naoCompareceu) return;
+
+    const sigtapConsulta = onlyDigits(sigtapConsultaInput.value);
+    const sigtapOculos = onlyDigits(sigtapOculosInput.value);
+
+    let sigtap = "";
+    let descricao = "";
+
+    if (type === "consulta") {
+      if (sigtapConsulta.length !== 10) { alert("Configure o SIGTAP de Consulta (10 dígitos) na tela inicial."); return; }
+      sigtap = sigtapConsulta;
+      descricao = "Consulta Oftalmo";
+    } else if (type === "oculos") {
+      if (sigtapOculos.length !== 10) { alert("Configure o SIGTAP de Óculos (10 dígitos) na tela inicial."); return; }
+      sigtap = sigtapOculos;
+      descricao = "Concessão Óculos";
+    }
+
+    p.procedimentos.push({ sigtap, descricao });
+    renderTriagem();
+  }
+
+  function removerProcedimento(pidx, procid) {
+    const p = pacientes[pidx];
+    if (!p) return;
+    p.procedimentos.splice(procid, 1);
+    renderTriagem();
   }
 
   // ---------- Gerar BPA-I ----------
   btnGerarBpa.addEventListener("click", () => {
     clearMsg(triagemMsg);
 
-    const sigtapComp = onlyDigits(sigtapCompareceuInput.value);
-    const sigtapOcul = onlyDigits(sigtapOculosInput.value);
     const cnes = onlyDigits(document.getElementById("cnes").value);
-    const cbo = onlyDigits(document.getElementById("cbo").value);
-    const compMes = document.getElementById("competencia").value; // yyyy-mm
+    const cbo = onlyDigits(cboInput.value);
+    const compMes = document.getElementById("competencia").value;
     const folhaIni = parseInt(document.getElementById("folhaIni").value, 10) || 1;
     const compYyyy = compMes.split("-")[0];
     const compMm = compMes.split("-")[1];
-    // Data de atendimento padrão: primeiro dia da competência (formato ddmmaaaa)
     const dataAtendPadrao = "01" + compMm + compYyyy;
 
-    // Filtrar apenas pacientes que compareceram
-    const ativos = pacientes.filter(p => p.compareceu && (p.match || p.vinculado));
+    // Filtrar pacientes com procedimentos
+    const ativos = pacientes.filter(p => !p.naoCompareceu && p.procedimentos.length > 0 && (p.match || p.vinculado));
     if (ativos.length === 0) {
-      setMsg(triagemMsg, "err", "Nenhum paciente com 'Compareceu' marcado e vinculado ao e-SUS. Marque pelo menos um paciente como Compareceu.");
+      setMsg(triagemMsg, "err", "Nenhum paciente com procedimentos adicionados e vinculado ao e-SUS. Adicione procedimentos aos pacientes.");
       return;
     }
 
-    // Verificar se há pacientes sem CNS
     const semCns = ativos.filter(p => !p.cns || p.cns.length < 15);
     if (semCns.length > 0) {
-      setMsg(triagemMsg, "warn", semCns.length + " paciente(s) sem CNS válido serão incluídos com CNS em branco. Verifique os dados no e-SUS.");
+      setMsg(triagemMsg, "warn", semCns.length + " paciente(s) sem CNS válido serão incluídos com CNS em branco.");
     }
 
-    // Construir linhas BPA-I usando a MESMA lógica de patch do correcao_bpa/writer.js
-    // Linha base de 352 bytes (349 dados + sufixo N + padding) preenchida com espaços,
-    // campos aplicados via patchNum/patchTxt nos offsets exatos do parser.js.
-    const LINHAS_POR_FOLHA = 20; // padrão DATASUS/SIA (mesmo do writer.js)
+    const LINHAS_POR_FOLHA = 20;
     const linhas = [];
     let seq = 1;
     let folha = folhaIni;
@@ -415,8 +446,7 @@
       return line.slice(0, start) + v + line.slice(start + len);
     }
     function montarLinhaBpaI(d) {
-      // Linha base: 349 espaços + 'N' na pos 349 + 2 espaços finais = 352 bytes
-      let L = " ".repeat(349) + "N" + "  "; // 349 espaços + N na pos 349 + 2 espaços = 352 bytes
+      let L = " ".repeat(349) + "N" + "  ";
       L = patchTxt(L, 0, 2, d.tipo || "03");
       L = patchNum(L, 2, 7, d.cnes || "");
       L = patchNum(L, 9, 6, d.competencia || "");
@@ -450,29 +480,13 @@
     }
 
     ativos.forEach(p => {
-      // Procedimento Compareceu
-      const linhaComp = montarLinhaBpaI({
-        tipo: "03", cnes: cnes, competencia: compYyyy + compMm,
-        cnsProfissional: "", cbo: cbo, dataAtendimento: dataAtendPadrao,
-        folha: folha, sequencia: seq, sigtap: sigtapComp,
-        cns: p.cns || "", sexo: p.sexo || "", ibge: p.ibge || "",
-        caraterAtendimento: "01", nome: p.nome, nasc: dataNascParaChave(p.nasc),
-        racaCor: p.racaCor || "99", nacionalidade: p.nacionalidade || "010",
-        cep: p.cep || "", codLogradouro: p.codLogradouro || "",
-        endereco: p.endereco || "", complemento: p.complemento || "",
-        numero: p.numero || "", bairro: p.bairro || "",
-        telefone: p.telefone || "", cpfPaciente: p.cpf || ""
-      });
-      linhas.push(linhaComp);
-      seq++; contadorLinhaFolha++;
-
-      // Procedimento Recebeu Óculos (se marcado)
-      if (p.recebeuOculos && sigtapOcul.length === 10) {
+      p.procedimentos.forEach(proc => {
         if (contadorLinhaFolha >= LINHAS_POR_FOLHA) { folha++; seq = 1; contadorLinhaFolha = 0; }
-        const linhaOcul = montarLinhaBpaI({
+        
+        const linha = montarLinhaBpaI({
           tipo: "03", cnes: cnes, competencia: compYyyy + compMm,
           cnsProfissional: "", cbo: cbo, dataAtendimento: dataAtendPadrao,
-          folha: folha, sequencia: seq, sigtap: sigtapOcul,
+          folha: folha, sequencia: seq, sigtap: proc.sigtap,
           cns: p.cns || "", sexo: p.sexo || "", ibge: p.ibge || "",
           caraterAtendimento: "01", nome: p.nome, nasc: dataNascParaChave(p.nasc),
           racaCor: p.racaCor || "99", nacionalidade: p.nacionalidade || "010",
@@ -481,38 +495,29 @@
           numero: p.numero || "", bairro: p.bairro || "",
           telefone: p.telefone || "", cpfPaciente: p.cpf || ""
         });
-        linhas.push(linhaOcul);
+        linhas.push(linha);
         seq++; contadorLinhaFolha++;
-      }
-
-      if (contadorLinhaFolha >= LINHAS_POR_FOLHA) { folha++; seq = 1; contadorLinhaFolha = 0; }
+      });
     });
 
-    // Cabeçalho tipo 01 - mesmo layout do writer.js (offsets HEADER_OFFSETS)
     const numLinhasTotal = linhas.length;
     const numFolhas = folha - folhaIni + 1;
-    let headerLine = " ".repeat(349) + "N" + "  "; // base 352 bytes
+    let headerLine = " ".repeat(349) + "N" + "  ";
     headerLine = patchTxt(headerLine, 0, 2, "01");
     headerLine = patchTxt(headerLine, 2, 5, "#BPA#");
     headerLine = patchNum(headerLine, 7, 6, compYyyy + compMm);
     headerLine = patchNum(headerLine, 13, 6, numLinhasTotal);
     headerLine = patchNum(headerLine, 19, 6, numFolhas);
-    // Demais campos do cabeçalho (codUnidade, nome, CNES, sistema) mantidos como espaços
-    // pois o writer.js também não os preenche via patch - ficam vazios na linha base.
-    fileContent = headerLine + "\r\n" + linhas.join("\r\n") + "\r\n";
+    
     fileContent = headerLine + "\r\n" + linhas.join("\r\n") + "\r\n";
     fileName = "PA" + compYyyy + compMm + ".txt";
 
-    // Mostrar resultado
     document.getElementById("resultResumo").textContent =
       ativos.length + " paciente(s) faturado(s) em " + linhas.length + " linha(s) de produção, " + numFolhas + " folha(s).";
     
-    // Prévia
     const previewLines = linhas.slice(0, 6);
     let previewHtml = "";
-    previewLines.forEach(l => {
-      previewHtml += escapeHtml(l) + "\n";
-    });
+    previewLines.forEach(l => { previewHtml += escapeHtml(l) + "\n"; });
     if (linhas.length > 6) previewHtml += "… mais " + (linhas.length - 6) + " linha(s) …";
     document.getElementById("rawPreview").textContent = previewHtml;
     document.getElementById("fileNameBadge").textContent = fileName;
@@ -520,7 +525,6 @@
     document.getElementById("viewTriagem").classList.add("hidden");
     document.getElementById("viewResultado").classList.remove("hidden");
 
-    // Download button
     document.getElementById("btnDownload").onclick = () => {
       const blob = new Blob([fileContent], { type: "text/plain;charset=iso-8859-1" });
       const url = URL.createObjectURL(blob);
@@ -531,7 +535,8 @@
       setMsg(document.getElementById("resultMsg"), "ok", "Arquivo baixado: " + fileName);
     };
   });
-  // ---------- Modal Origem (escolha Manual vs e-SUS) ----------
+
+  // ---------- Modal Origem ----------
   function abrirModalOrigem(idx) {
     modalTargetIdx = idx;
     const p = idx >= 0 ? pacientes[idx] : null;
@@ -597,7 +602,7 @@
     renderTriagem();
   });
 
-  // ---------- Opção ESUS PEC (busca) ----------
+  // ---------- Opção ESUS PEC ----------
   document.getElementById('btnOpcaoEsus').addEventListener('click', () => {
     document.getElementById('modalOrigem').classList.add('hidden');
     esusList = [];
@@ -669,7 +674,6 @@
       p.match = true;
       p.vinculado = true;
       p.origemVinculo = dados.origem || 'manual';
-      if (p.status === 'pendente') p.status = 'compareceu';
     } else {
       pacientes.push({
         id: pacientes.length,
@@ -680,12 +684,12 @@
         equipe: dados.equipe || '', comunidade: '',
         match: true, vinculado: true,
         origemVinculo: dados.origem || 'manual',
-        compareceu: true, naoCompareceu: false, recebeuOculos: false
+        naoCompareceu: false, procedimentos: []
       });
     }
   }
 
-  // ---------- Botão + Adicionar Cidadão (footer da triagem) ----------
+  // ---------- Botão + Adicionar Cidadão ----------
   document.getElementById('btnAddCidadao').addEventListener('click', () => {
     abrirModalOrigem(-1);
   });

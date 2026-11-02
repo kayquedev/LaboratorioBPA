@@ -31,11 +31,11 @@
       <div class="card" id="card-config">
         <div class="card-title">Procedimentos SIGTAP</div>
         <div class="field-row">
-          <label>Compareceu (triagem/exame)
-            <input type="text" id="sigtapCompareceu" maxlength="10" placeholder="Ex: 0405020015">
+          <label>SIGTAP Consulta Oftalmológica
+            <input type="text" id="sigtapConsulta" maxlength="10" value="0301010072">
           </label>
-          <label>Recebeu Óculos (entrega)
-            <input type="text" id="sigtapOculos" maxlength="10" placeholder="Ex: 0602010010">
+          <label>SIGTAP Concessão de Óculos
+            <input type="text" id="sigtapOculos" maxlength="10" value="0701040050">
           </label>
         </div>
         <div class="msg" id="configMsg"></div>
@@ -72,7 +72,7 @@
             <input type="text" id="cnes" maxlength="7" placeholder="7 dígitos">
           </label>
           <label>CBO
-            <input type="text" id="cbo" maxlength="6" placeholder="6 dígitos">
+            <input type="text" id="cbo" maxlength="6" placeholder="6 dígitos" value="225265">
           </label>
           <label>Competência
             <input type="month" id="competencia">
@@ -114,9 +114,8 @@
               <th>Paciente</th>
               <th>Nascimento</th>
               <th>Mais informações</th>
-              <th class="col-check">Compareceu</th>
               <th class="col-check">Não Compareceu</th>
-              <th class="col-check">Recebeu Óculos</th>
+              <th>Procedimentos</th>
             </tr>
           </thead>
           <tbody id="triagemBody"></tbody>

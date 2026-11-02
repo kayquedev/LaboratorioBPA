@@ -133,6 +133,21 @@ table.preview tr.row-disabled td { text-decoration: line-through; text-decoratio
 /* Btn preencher na tabela */
 .btn-xs { padding: .25rem .6rem; font-size: .75rem; border-radius: 4px; }
 
+/* Procedimentos (tags) */
+.col-procs { min-width: 260px; }
+.proc-tag {
+  display: inline-flex; align-items: center; gap: .35rem;
+  background: rgba(20,184,166,.15); color: var(--accent);
+  border: 1px solid rgba(20,184,166,.3); border-radius: 999px;
+  padding: .2rem .6rem; font-size: .75rem; margin: .15rem .25rem .15rem 0;
+}
+.proc-remove {
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  font-size: .8rem; line-height: 1; padding: 0 2px;
+}
+.proc-remove:hover { color: var(--danger); }
+.proc-actions { display: flex; gap: .35rem; flex-wrap: wrap; margin-top: .25rem; }
+
 @media (max-width: 640px) {
   .field-row { flex-direction: column; }
   .triagem-header { flex-direction: column; align-items: flex-start; }

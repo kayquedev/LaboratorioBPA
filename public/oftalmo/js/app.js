@@ -256,7 +256,7 @@
         equipe: match ? match.equipe : "",
         endereco: match ? match.endereco : "",
         naoCompareceu: false,
-        dataAtendimento: "", // dd/mm/yyyy - preenchido na triagem
+        dataAtendimento: "", // dd/mm/yyyy - preenchido na consulta
         procedimentos: [] // Array de { sigtap, descricao }
       };
     });
@@ -266,7 +266,7 @@
     document.getElementById("viewTriagem").classList.remove("hidden");
   });
 
-  // ---------- Triagem ----------
+  // ---------- Consulta ----------
   const triagemBody = document.getElementById("triagemBody");
   const fBusca = document.getElementById("fBusca");
   const btnVoltarConfig = document.getElementById("btnVoltarConfig");
@@ -713,7 +713,7 @@
     abrirModalOrigem(-1);
   });
 
-  // ---------- Voltar à triagem ----------
+  // ---------- Voltar à consulta ----------
   document.getElementById('btnVoltarTriagem').addEventListener('click', () => {
     document.getElementById('viewResultado').classList.add('hidden');
     document.getElementById('viewTriagem').classList.remove('hidden');

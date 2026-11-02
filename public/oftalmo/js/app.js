@@ -458,6 +458,8 @@
     const compYyyy = compMes.split("-")[0];
     const compMm = compMes.split("-")[1];
     const dataAtendPadrao = "01" + compMm + compYyyy; // fallback: primeiro dia da competência
+    const cepPadrao = onlyDigits(document.getElementById('cepPadrao') ? document.getElementById('cepPadrao').value : '') || '35544000';
+    const numAutorizacao = onlyDigits(document.getElementById('numAutorizacao') ? document.getElementById('numAutorizacao').value : '') || '';
 
     // Filtrar pacientes com procedimentos
     const ativos = pacientes.filter(p => !p.naoCompareceu && p.procedimentos.length > 0 && (p.match || p.vinculado));
@@ -517,6 +519,19 @@
       v = (v + " ".repeat(len)).slice(0, len);
       return line.slice(0, start) + v + line.slice(start + len);
     }
+    // Parser de endereço: separa tipo de logradouro do nome da via
+    // Ex: "Rua DR EZEQUIEL DE MACEDO" -> { tipo: "RUA", logradouro: "DR EZEQUIEL DE MACEDO" }
+    const TIPOS_LOGRADOURO = ['RUA','AVENIDA','AV','TRAVESSA','TV','ALAMEDA','AL','ESTRADA','EST','RODOVIA','BR','PRACA','PC','LARGO','BECO','VIADUTO','PONTE','TUNEL','MORRO','COLINA','VALE','PARQUE','JARDIM','CONDOMINIO','CONJUNTO','RESIDENCIAL','VILA','DISTRITO','FAZENDA','SITIO','CHACARA','GLEBA','NUCLEO','SETOR','QUADRA','BLOCO','AREA'];
+    function parseEndereco(enderecoCompleto) {
+      if (!enderecoCompleto) return { tipo: '', logradouro: '' };
+      const partes = String(enderecoCompleto).trim().split(/\s+/);
+      const primeira = stripAccents(partes[0] || '').toUpperCase();
+      if (TIPOS_LOGRADOURO.includes(primeira)) {
+        return { tipo: primeira.substring(0, 3), logradouro: partes.slice(1).join(' ') };
+      }
+      return { tipo: '', logradouro: enderecoCompleto };
+    }
+
     function montarLinhaBpaI(d) {
       let L = " ".repeat(351) + "N";
       L = patchTxt(L, 0, 2, d.tipo || "03");
@@ -542,6 +557,7 @@
       L = patchTxt(L, 74, 1, d.sexo || "");
       L = patchNum(L, 75, 6, d.ibge || "");
       L = patchTxt(L, 81, 4, d.cid || "");
+      L = patchNum(L, 85, 9, d.numAutorizacao || "");
       L = patchNum(L, 94, 2, d.caraterAtendimento || "01");
       L = patchTxt(L, 112, 30, d.nome || "");
       L = patchNum(L, 142, 8, d.nasc || "");
@@ -581,6 +597,15 @@
         const cnsCampo59 = temCnsValido ? p.cns : (p.cpf || '');
         const cpfCampo338 = temCnsValido ? (p.cpf || '') : '';
 
+        // Regras condicionais para Óculos: CID H542, Serviço 164, Classificação 007
+        const isOculos = proc.sigtap === '0701040050';
+        const cidProc = isOculos ? (proc.cid || 'H542') : (proc.cid || '');
+        const servicoProc = isOculos ? (proc.servico || '164') : (proc.servico || '');
+        const classifProc = isOculos ? (proc.classificacao || '007') : (proc.classificacao || '');
+
+        // Parsing do endereço para separar tipo de logradouro
+        const parsedEnd = parseEndereco(p.endereco);
+
         // Data de nascimento no formato ddmmyyyy
         let nascFmt = '';
         const nascStr = String(p.nasc || '').trim();
@@ -600,10 +625,14 @@
           cns: cnsCampo59, sexo: p.sexo || '', ibge: p.ibge || '',
           caraterAtendimento: '01', nome: p.nome, nasc: nascFmt,
           racaCor: '03', nacionalidade: p.nacionalidade || '010',
-          cep: p.cep || '', codLogradouro: p.codLogradouro || '',
-          endereco: p.endereco || '', complemento: p.complemento || '',
+          cep: p.cep || cepPadrao || '',
+          codLogradouro: parsedEnd.tipo,
+          endereco: parsedEnd.logradouro,
+          complemento: p.complemento || '',
           numero: p.numero || '', bairro: p.bairro || '',
-          telefone: p.telefone || '', cpfPaciente: cpfCampo338
+          telefone: p.telefone || '', cpfPaciente: cpfCampo338,
+          numAutorizacao: numAutorizacao,
+          cid: cidProc, servico: servicoProc, classificacao: classifProc
         });
         linhas.push(linha);
         seq++; contadorLinhaFolha++;

@@ -597,11 +597,18 @@
         const cnsCampo59 = temCnsValido ? p.cns : (p.cpf || '');
         const cpfCampo338 = temCnsValido ? (p.cpf || '') : '';
 
-        // Regras condicionais para Óculos: CID H542, Serviço 164, Classificação 007
-        const isOculos = proc.sigtap === '0701040050';
-        const cidProc = isOculos ? (proc.cid || 'H542') : (proc.cid || '');
-        const servicoProc = isOculos ? (proc.servico || '164') : (proc.servico || '');
-        const classifProc = isOculos ? (proc.classificacao || '007') : (proc.classificacao || '');
+        // Mapa de procedimentos pré-estabelecidos com SERVIÇO, CLASSIFICAÇÃO e CID padrão
+        const PROCEDIMENTOS_PRE = {
+          '0701040050': { servico: '164', classificacao: '007', cid: 'H542' }, // Óculos >= 0.5 dioptrias
+          '0211060127': { servico: '131', classificacao: '001', cid: '' },      // Mapeamento de retina
+          '0211060224': { servico: '131', classificacao: '001', cid: '' },      // Teste de visão de cores
+          '0211060232': { servico: '131', classificacao: '001', cid: '' },      // Teste ortóptico
+          '0211060259': { servico: '131', classificacao: '001', cid: '' }       // Tonometria
+        };
+        const preDef = PROCEDIMENTOS_PRE[proc.sigtap] || {};
+        const cidProc = proc.cid || preDef.cid || '';
+        const servicoProc = proc.servico || preDef.servico || '';
+        const classifProc = proc.classificacao || preDef.classificacao || '';
 
         // Parsing do endereço para separar tipo de logradouro
         const parsedEnd = parseEndereco(p.endereco);

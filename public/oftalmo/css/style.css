@@ -1,0 +1,116 @@
+/* Oftalmo BPA-I — paleta saúde (teal/verde-azulado) */
+:root {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface-alt: #162032;
+  --border: #334155;
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --accent: #14b8a6;
+  --accent-hover: #0d9488;
+  --danger: #ef4444;
+  --warn: #f59e0b;
+  --ok: #22c55e;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Inter", system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; min-height: 100vh; }
+.hidden { display: none !important; }
+
+/* Topbar */
+.topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 1.5rem; height: 56px; display: flex; align-items: center; position: sticky; top: 0; z-index: 100; }
+.topbar-wrap { display: flex; align-items: center; gap: 1rem; width: 100%; max-width: 1400px; margin: 0 auto; }
+.topbar-brand { font-weight: 700; font-size: 1.1rem; color: var(--accent); white-space: nowrap; }
+.back-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); padding: .35rem .75rem; border-radius: 6px; cursor: pointer; font-size: .85rem; }
+.back-btn:hover { border-color: var(--accent); color: var(--accent); }
+.topbar-user { margin-left: auto; display: flex; align-items: center; gap: .75rem; font-size: .85rem; color: var(--text-muted); }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem 1rem; border-radius: 6px; font-size: .875rem; font-weight: 500; cursor: pointer; border: none; transition: all .15s; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-ghost-dark { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+.btn-ghost-dark:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Views */
+.view-dark { padding: 2rem 1.5rem; max-width: 1400px; margin: 0 auto; }
+.wrap-narrow { max-width: 720px; margin: 0 auto; }
+.wrap-wide { max-width: 1200px; margin: 0 auto; }
+.eyebrow { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); margin-bottom: .5rem; font-weight: 600; }
+h1 { font-size: 1.75rem; margin-bottom: .5rem; }
+h2 { font-size: 1.35rem; margin-bottom: .5rem; }
+.lead { color: var(--text-muted); margin-bottom: 1.5rem; font-size: .95rem; }
+
+/* Cards */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; margin-bottom: 1.25rem; }
+.card.disabled { opacity: .45; pointer-events: none; }
+.card-title { font-weight: 600; margin-bottom: 1rem; font-size: 1rem; color: var(--accent); }
+
+/* Fields */
+.field-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.field-row label, .field-grid label { display: flex; flex-direction: column; gap: .3rem; font-size: .8rem; color: var(--text-muted); flex: 1; min-width: 200px; }
+.field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
+input[type="text"], input[type="number"], input[type="month"] {
+  background: var(--surface-alt); border: 1px solid var(--border); color: var(--text);
+  padding: .5rem .75rem; border-radius: 6px; font-size: .9rem; outline: none;
+}
+input:focus { border-color: var(--accent); }
+
+/* Drop zone */
+.drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem;
+  border: 2px dashed var(--border); border-radius: 10px; padding: 2rem; cursor: pointer;
+  text-align: center; color: var(--text-muted); transition: all .15s; }
+.drop:hover, .drop.drag { border-color: var(--accent); color: var(--accent); background: rgba(20,184,166,.05); }
+.drop input { display: none; }
+.drop .icon { font-size: 2rem; }
+.drop .fname { font-size: .8rem; color: var(--accent); margin-top: .25rem; word-break: break-all; }
+
+/* Messages */
+.msg { font-size: .85rem; padding: .5rem .75rem; border-radius: 6px; margin-top: .75rem; display: none; }
+.msg.show { display: block; }
+.msg.ok { background: rgba(34,197,94,.12); color: var(--ok); }
+.msg.warn { background: rgba(245,158,11,.12); color: var(--warn); }
+.msg.err { background: rgba(239,68,68,.12); color: var(--danger); }
+
+/* Table */
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; margin-top: 1rem; }
+table.preview { width: 100%; border-collapse: collapse; font-size: .82rem; }
+table.preview th { background: var(--surface-alt); color: var(--text-muted); font-weight: 600; text-align: left; padding: .6rem .75rem; white-space: nowrap; border-bottom: 1px solid var(--border); position: sticky; top: 0; }
+table.preview td { padding: .55rem .75rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+table.preview tr:last-child td { border-bottom: none; }
+table.preview tr.row-disabled { opacity: .4; }
+table.preview tr.row-disabled td { text-decoration: line-through; text-decoration-color: var(--text-muted); }
+.col-check { text-align: center; width: 100px; }
+
+/* Checkboxes custom */
+.check-cell { display: flex; justify-content: center; }
+.check-cell input[type="checkbox"] { accent-color: var(--accent); width: 18px; height: 18px; cursor: pointer; }
+.check-cell input[type="checkbox"]:disabled { opacity: .3; cursor: not-allowed; }
+
+/* Triagem header/footer */
+.triagem-header { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
+.triagem-stats { display: flex; gap: .5rem; flex-wrap: wrap; }
+.stat-pill { font-size: .78rem; padding: .3rem .7rem; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); color: var(--text-muted); }
+.stat-pill.stat-ok { border-color: var(--ok); color: var(--ok); }
+.stat-pill.stat-warn { border-color: var(--warn); color: var(--warn); }
+.search-row { display: flex; gap: .75rem; align-items: center; margin-bottom: .5rem; }
+.search-row input { flex: 1; background: var(--surface-alt); border: 1px solid var(--border); color: var(--text); padding: .5rem .75rem; border-radius: 6px; font-size: .875rem; outline: none; }
+.search-row input:focus { border-color: var(--accent); }
+.triagem-footer { display: flex; justify-content: flex-end; align-items: center; gap: 1rem; margin-top: 1.25rem; flex-wrap: wrap; }
+
+/* Resultado */
+.raw-preview { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; font-family: "JetBrains Mono", monospace; font-size: .75rem; line-height: 1.6; overflow-x: auto; max-height: 320px; white-space: pre; color: var(--text-muted); }
+.badge-file { display: inline-block; margin-top: .5rem; font-size: .78rem; color: var(--accent); font-weight: 600; }
+.action-row { display: flex; gap: .75rem; margin-top: 1.25rem; flex-wrap: wrap; }
+
+/* Info extra do paciente */
+.info-extra { font-size: .78rem; color: var(--text-muted); line-height: 1.4; }
+.info-extra span { display: block; }
+.info-extra .lbl { color: var(--accent); font-weight: 500; }
+
+@media (max-width: 640px) {
+  .field-row { flex-direction: column; }
+  .triagem-header { flex-direction: column; align-items: flex-start; }
+  .topbar-wrap { gap: .5rem; }
+  .topbar-brand { font-size: .95rem; }
+}

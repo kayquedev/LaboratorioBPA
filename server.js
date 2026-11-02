@@ -5,11 +5,15 @@ const express = require("express");
 const cookieParser = require("cookie-parser");
 
 const { requireModulePage, requireAdminPage } = require("./middleware/auth");
+const { criarRouter: kodeMapsApi } = require("./routes/kodemaps");
 const authRoutes = require("./routes/auth");
 const adminRoutes = require("./routes/admin");
 
 const app = express();
 const PUBLIC_DIR = path.join(__dirname, "public");
+
+// Kode Maps traz o próprio parser JSON (importações grandes) e vem antes do global.
+app.use("/kode-maps/api", kodeMapsApi());
 
 app.use(express.json());
 app.use(cookieParser());
@@ -25,6 +29,9 @@ app.use("/bolsa_familia", requireModulePage("bolsa_familia"), express.static(pat
 app.use("/datasus_sia", requireModulePage("datasus_sia"), express.static(path.join(PUBLIC_DIR, "datasus_sia")));
 app.use("/acompanhamento_pec", requireModulePage("acompanhamento_pec"), express.static(path.join(PUBLIC_DIR, "acompanhamento_pec")));
 app.use("/mapa_territorio", requireModulePage("mapa_territorio"), express.static(path.join(PUBLIC_DIR, "mapa_territorio")));
+app.use("/oftalmo", requireModulePage("oftalmo"), express.static(path.join(PUBLIC_DIR, "oftalmo")));
+
+app.use("/kode-maps", requireModulePage("kode-maps"), express.static(path.join(PUBLIC_DIR, "kode-maps")));
 
 app.use(express.static(PUBLIC_DIR));
 

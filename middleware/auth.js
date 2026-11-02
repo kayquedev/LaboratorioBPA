@@ -33,6 +33,10 @@ async function loadUserFromRequest(req) {
     return null;
   }
 
+  return loadUserById(payload.sub);
+}
+
+async function loadUserById(id) {
   const { rows } = await pool.query(
     `SELECT u.id, u.name, u.email, u.cpf, u.is_admin,
             COALESCE(json_agg(m.slug) FILTER (WHERE m.id IS NOT NULL), '[]') AS granted_slugs
@@ -41,7 +45,7 @@ async function loadUserFromRequest(req) {
      LEFT JOIN modules m ON m.id = um.module_id
      WHERE u.id = $1
      GROUP BY u.id`,
-    [payload.sub]
+    [id]
   );
   if (!rows.length) return null;
 
@@ -93,6 +97,7 @@ module.exports = {
   setSessionCookie,
   clearSessionCookie,
   loadUserFromRequest,
+  loadUserById,
   requireAuth,
   requireAdmin,
   requireModulePage,

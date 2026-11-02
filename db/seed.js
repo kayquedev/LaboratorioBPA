@@ -14,9 +14,10 @@ const MODULES = [
   { slug: "datasus_sia", name: "DATASUS · SIA/SUS", description: "Analisa o relatório RSPROCED (produzido × aprovado por procedimento SIGTAP e unidade) após o processamento do BPA/FPO pelo SIA/SUS, identificando glosas por procedimento e por unidade.", status: "live", sort_order: 6 },
   { slug: "acompanhamento_pec", name: "Acompanhamento Cidadãos PEC", description: "Cruza os relatórios de cidadãos vinculados, condições de saúde e território do e-SUS PEC para identificar cadastros sem endereço, desatualizados, sem atendimento registrado ou sem domicílio mapeado.", status: "live", sort_order: 7 },
   { slug: "mapa_territorio", name: "Mapa do Território", description: "Organiza o relatório de Acompanhamento do Território do e-SUS PEC por bairro e logradouro, com contagem de pessoas e famílias, unificação de ruas com nome divergente e impressão do relatório consolidado.", status: "live", sort_order: 8 },
-  { slug: "oftalmo", name: "Oftalmo", description: "Gere o arquivo BPA para exportar para o SIA, através da importação da planilha dos dados dos pacientes.", status: "soon", sort_order: 9 },
-  { slug: "esus_pec", name: "ESUS PEC", description: "Gerador de BPA a partir da produção registrada no ESUS PEC.", status: "soon", sort_order: 10 },
-  { slug: "declaracao_endereco", name: "Gerador Declaração de Endereço (CadÚnico)", description: "Extensão de navegador que gera a Declaração de Endereço a partir dos dados do imóvel/família no e-SUS PEC — em PDF ou já formatada para colar direto na aba Orientações do prontuário.", status: "live", sort_order: 11 },
+  { slug: "kode-maps", name: "Kode Maps", description: "Importa os cidadãos vinculados e o território do e-SUS PEC, recebe do app Android (offline) a localização GPS de cada domicílio e exporta a planilha pronta para importar no Google MyMaps.", status: "live", sort_order: 9 },
+  { slug: "oftalmo", name: "Oftalmo · BPA-I", description: "Cruza a planilha MIGUELLIN com cidadãos vinculados do e-SUS PEC para gerar o arquivo BPA-I dos atendimentos oftalmológicos.", status: "live", sort_order: 10 },
+  { slug: "esus_pec", name: "ESUS PEC", description: "Gerador de BPA a partir da produção registrada no ESUS PEC.", status: "soon", sort_order: 11 },
+  { slug: "declaracao_endereco", name: "Gerador Declaração de Endereço (CadÚnico)", description: "Extensão de navegador que gera a Declaração de Endereço a partir dos dados do imóvel/família no e-SUS PEC — em PDF ou já formatada para colar direto na aba Orientações do prontuário.", status: "live", sort_order: 12 },
 ];
 
 async function main() {

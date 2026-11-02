@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oftalmo · BPA-I</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="appShell" class="hidden">
+
+  <nav class="topbar">
+    <div class="topbar-wrap">
+      <button class="back-btn" onclick="location.href='/'" title="Início">← Início</button>
+      <div class="topbar-brand">Oftalmo · BPA-I</div>
+      <div class="topbar-user">
+        <span id="topbarUsername"></span>
+        <button class="btn btn-ghost-dark" id="btnLogout">Sair</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===================== STEP 1: CONFIG ===================== -->
+  <section id="viewConfig" class="view-dark">
+    <div class="wrap-narrow">
+      <div class="eyebrow">SUS · SIA · BPA-I Individualizado</div>
+      <h1>Oftalmo</h1>
+      <p class="lead">Cruza a planilha MIGUELLIN (pacientes agendados) com os cidadãos vinculados do e-SUS PEC para gerar o arquivo BPA-I dos atendimentos oftalmológicos. Configure os códigos SIGTAP antes de importar.</p>
+
+      <div class="card" id="card-config">
+        <div class="card-title">Procedimentos SIGTAP</div>
+        <div class="field-row">
+          <label>Compareceu (triagem/exame)
+            <input type="text" id="sigtapCompareceu" maxlength="10" placeholder="Ex: 0405020015">
+          </label>
+          <label>Recebeu Óculos (entrega)
+            <input type="text" id="sigtapOculos" maxlength="10" placeholder="Ex: 0602010010">
+          </label>
+        </div>
+        <div class="msg" id="configMsg"></div>
+      </div>
+
+      <div class="card" id="card-upload-miguellin">
+        <div class="card-title">1. Planilha MIGUELLIN (agendamentos)</div>
+        <label class="drop" id="dropMiguellin">
+          <input type="file" id="fileMiguellin" accept=".xlsx,.xls">
+          <div class="icon">📋</div>
+          <div><b>Clique para selecionar</b> ou arraste o arquivo .xlsx aqui</div>
+          <div class="fname" id="fnameMiguellin"></div>
+        </label>
+        <div class="msg" id="msgMiguellin"></div>
+      </div>
+
+      <div class="card disabled" id="card-upload-esus">
+        <div class="card-title">2. Cidadãos Vinculados e-SUS PEC</div>
+        <label class="drop" id="dropEsus">
+          <input type="file" id="fileEsus" accept=".csv">
+          <div class="icon">🏥</div>
+          <div><b>Clique para selecionar</b> ou arraste o CSV do e-SUS aqui</div>
+          <div class="fname" id="fnameEsus"></div>
+        </label>
+        <div class="msg" id="msgEsus"></div>
+      </div>
+
+      <div class="card disabled" id="card-campos-bpa">
+        <div class="card-title">3. Dados do BPA-I</div>
+        <div class="field-grid">
+          <label>CNES
+            <input type="text" id="cnes" maxlength="7" placeholder="7 dígitos">
+          </label>
+          <label>CBO
+            <input type="text" id="cbo" maxlength="6" placeholder="6 dígitos">
+          </label>
+          <label>Competência
+            <input type="month" id="competencia">
+          </label>
+          <label>Folha inicial
+            <input type="number" id="folhaIni" min="1" max="999" value="1">
+          </label>
+        </div>
+        <div class="msg" id="camposMsg"></div>
+        <button class="btn btn-primary" id="btnCruzar">Cruzar dados e listar pacientes</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== STEP 2: TRIAGEM ===================== -->
+  <section id="viewTriagem" class="view-dark hidden">
+    <div class="wrap-wide">
+      <div class="triagem-header">
+        <div>
+          <div class="eyebrow">Triagem de pacientes</div>
+          <h2 id="triagemTitulo">Pacientes encontrados</h2>
+        </div>
+        <div class="triagem-stats">
+          <span class="stat-pill" id="statTotal">0 total</span>
+          <span class="stat-pill stat-ok" id="statMatch">0 vinculados</span>
+          <span class="stat-pill stat-warn" id="statNoMatch">0 sem vínculo</span>
+        </div>
+      </div>
+
+      <div class="search-row">
+        <input id="fBusca" placeholder="Buscar por nome...">
+        <button class="btn btn-ghost-dark" id="btnVoltarConfig">← Voltar</button>
+      </div>
+
+      <div class="tbl-wrap">
+        <table class="preview">
+          <thead>
+            <tr>
+              <th>Paciente</th>
+              <th>Nascimento</th>
+              <th>Mais informações</th>
+              <th class="col-check">Compareceu</th>
+              <th class="col-check">Não Compareceu</th>
+              <th class="col-check">Recebeu Óculos</th>
+            </tr>
+          </thead>
+          <tbody id="triagemBody"></tbody>
+        </table>
+      </div>
+
+      <div class="triagem-footer">
+        <div class="msg" id="triagemMsg"></div>
+        <button class="btn btn-primary" id="btnGerarBpa">Gerar arquivo BPA-I</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== STEP 3: RESULTADO ===================== -->
+  <section id="viewResultado" class="view-dark hidden">
+    <div class="wrap-narrow">
+      <div class="eyebrow">Arquivo gerado</div>
+      <h2>BPA-I pronto para download</h2>
+      <p class="lead" id="resultResumo"></p>
+
+      <div class="card">
+        <div class="card-title">Prévia do arquivo</div>
+        <pre id="rawPreview" class="raw-preview"></pre>
+        <div class="badge-file" id="fileNameBadge"></div>
+      </div>
+
+      <div class="msg" id="resultMsg"></div>
+      <div class="action-row">
+        <button class="btn btn-ghost-dark" id="btnVoltarTriagem">← Voltar à triagem</button>
+        <button class="btn btn-primary" id="btnDownload">⬇ Baixar arquivo</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="js/session.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>

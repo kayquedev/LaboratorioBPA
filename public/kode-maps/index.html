@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kode Maps</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+</head>
+<body>
+
+<div id="appShell" class="hidden">
+
+  <nav class="topbar">
+    <div class="topbar-wrap">
+      <button class="back-btn" id="btnVoltar">← Início</button>
+      <div class="topbar-brand">📍 Kode Maps</div>
+      <div class="topbar-user">
+        <span id="topbarUsername"></span>
+        <button class="btn btn-ghost" id="btnLogout">Sair</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="wrap">
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="resumo">Resumo e importação</button>
+      <button class="tab" data-tab="domicilios">Domicílios</button>
+      <button class="tab" data-tab="exportar">Exportar MyMaps</button>
+    </div>
+
+    <!-- ============ RESUMO + IMPORTAÇÃO ============ -->
+    <section id="tab-resumo" class="panel">
+      <div class="eyebrow">e-SUS PEC → Kode Maps</div>
+      <h1>Importar planilhas</h1>
+      <p class="lead">Envie os relatórios do e-SUS PEC. O <b>Território</b> traz os domicílios e as famílias (um arquivo por microárea, a microárea é lida do cabeçalho). Os <b>Cidadãos vinculados</b> completam a base com endereços que ainda não estão no território. Pode reimportar à vontade: GPS, tipo de imóvel e observações já preenchidos nunca são sobrescritos.</p>
+
+      <div class="grid2">
+        <div>
+          <div class="group-label">Território (vários arquivos)</div>
+          <label class="drop" id="dropTerr"><input type="file" id="inputTerr" accept=".csv" multiple>
+            <div class="icon">🏘</div><div>Clique ou arraste os .csv de Território</div></label>
+        </div>
+        <div>
+          <div class="group-label">Cidadãos vinculados (vários arquivos)</div>
+          <label class="drop" id="dropVinc"><input type="file" id="inputVinc" accept=".csv" multiple>
+            <div class="icon">👥</div><div>Clique ou arraste os .csv de Vinculados</div></label>
+        </div>
+      </div>
+      <div id="logImport" class="log"></div>
+
+      <h2>Situação da coleta</h2>
+      <div id="resumoBox" class="stat-row"></div>
+      <table class="tbl" id="tblResumo"><thead><tr><th>Microárea</th><th>Domicílios</th><th>Famílias</th><th>Com GPS</th><th>Progresso</th></tr></thead><tbody></tbody></table>
+      <p class="hint" id="semDomicilio"></p>
+    </section>
+
+    <!-- ============ DOMICÍLIOS ============ -->
+    <section id="tab-domicilios" class="panel hidden">
+      <div class="toolbar">
+        <select id="fMicro"><option value="">Todas as microáreas</option></select>
+        <select id="fStatus"><option value="">Todos</option><option value="pendente">Sem GPS</option><option value="coletado">Com GPS</option></select>
+        <input id="fBusca" type="search" placeholder="Buscar rua, número ou responsável">
+        <button class="btn btn-primary" id="btnNovo">+ Novo domicílio</button>
+        <button class="btn btn-ghost" id="btnMapa">🗺️ Ver no mapa</button>
+      </div>
+      <div class="hint" id="contagem"></div>
+      <div id="mapaWrap" class="hidden"><div id="mapa"></div></div>
+      <table class="tbl" id="tblDom"><thead><tr><th>Microárea</th><th>Endereço</th><th>Responsável(is)</th><th>Tipo</th><th>GPS</th><th></th></tr></thead><tbody></tbody></table>
+      <div class="pager"><button class="btn btn-ghost" id="btnAnt">‹ Anterior</button><span id="pagInfo"></span><button class="btn btn-ghost" id="btnProx">Próxima ›</button></div>
+    </section>
+
+    <!-- ============ EXPORTAR ============ -->
+    <section id="tab-exportar" class="panel hidden">
+      <div class="eyebrow">Google MyMaps</div>
+      <h1>Exportar para o MyMaps</h1>
+      <p class="lead">Gera o CSV no formato da sua tabela de dados do MyMaps. Só saem domicílios <b>com GPS coletado</b>. Há uma linha por família (no mesmo ponto); domicílio sem família sai numa linha só.</p>
+      <div class="card">
+        <label class="lbl">Microárea
+          <select id="exMicro"><option value="">Todas</option></select></label>
+        <p class="hint">Colunas: <code>WKT, nome, Tipo Imovel, Nº Prontuário Familiar, Responsavel Familiar, CPF, Endereco, Complemento, Ponto de Referencia, descrição</code>. A microárea vai no início da <i>descrição</i>.</p>
+        <a class="btn btn-primary" id="btnBaixar" href="api/exportar/mymaps.csv">⬇ Baixar CSV</a>
+        <p class="hint" id="exInfo"></p>
+      </div>
+      <div class="card">
+        <b>Como importar no MyMaps:</b>
+        <ol class="hint">
+          <li>Abra o mapa, vá em <i>Adicionar nova camada → Importar</i> e escolha este CSV.</li>
+          <li>Em "colunas de posição", marque <b>WKT</b>; em "título dos marcadores", marque <b>nome</b>.</li>
+          <li>Para uma camada por microárea, exporte uma microárea de cada vez.</li>
+        </ol>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- modal edição -->
+<div id="modal" class="modal hidden"><div class="modal-box">
+  <h2 id="mTitulo">Domicílio</h2>
+  <div class="grid2">
+    <label class="lbl">Tipo de imóvel
+      <select id="mTipo">
+        <option value="DPO">DPO – Domicílio Permanentemente Ocupado</option>
+        <option value="DUO">DUO – Domicílio de Uso Ocasional</option>
+        <option value="VAGO">VAGO – Domicílio vago</option>
+        <option value="EST">EST – Estabelecimento</option>
+        <option value="OUTROS">OUTROS</option>
+        <option value="SEM INFO">SEM INFO</option>
+      </select></label>
+    <label class="lbl">Microárea<input id="mMicro"></label>
+    <label class="lbl">Tipo de logradouro<input id="mTipoLog"></label>
+    <label class="lbl">Logradouro<input id="mLog"></label>
+    <label class="lbl">Número<input id="mNum"></label>
+    <label class="lbl">Complemento<input id="mCompl"></label>
+    <label class="lbl">Ponto de referência<input id="mRef"></label>
+    <label class="lbl">Bairro<input id="mBairro"></label>
+    <label class="lbl">Latitude<input id="mLat" inputmode="decimal"></label>
+    <label class="lbl">Longitude<input id="mLng" inputmode="decimal"></label>
+  </div>
+  <label class="lbl">Observação<textarea id="mObs" rows="2"></textarea></label>
+  <div class="group-label">Famílias</div>
+  <div id="mFamilias"></div>
+  <button class="btn btn-ghost" id="mAddFam">+ Família</button>
+  <div class="msg" id="mMsg"></div>
+  <div class="modal-actions">
+    <button class="btn btn-danger" id="mExcluir">Excluir</button>
+    <span style="flex:1"></span>
+    <button class="btn btn-ghost" id="mCancelar">Cancelar</button>
+    <button class="btn btn-primary" id="mSalvar">Salvar</button>
+  </div>
+</div></div>
+
+<script src="js/parserCsvGenerico.js"></script>
+<script src="js/session.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

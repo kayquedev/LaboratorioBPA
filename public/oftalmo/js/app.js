@@ -202,20 +202,28 @@
           }
           cns = onlyDigits(cns);
 
+          const endRaw = String(parts[cols.endereco] || "").trim();
+          const parsedEnd = parseEndereco(endRaw);
+          const cepVinc = onlyDigits(String(parts[cols.cep] || "").trim());
+          const bairroVinc = String(parts[cols.bairro] || "").trim() || parsedEnd.bairro;
+          const numVinc = String(parts[cols.numero] || "").trim() || parsedEnd.numero;
+          const compVinc = String(parts[cols.complemento] || "").trim() || parsedEnd.complemento;
+
           esusMap.set(chave, {
             nome: nome,
             nasc: nasc,
             cns: cns,
             microarea: String(parts[cols.microarea] || "").trim(),
             equipe: String(parts[cols.equipe] || "").trim(),
-            endereco: String(parts[cols.endereco] || "").trim(),
+            endereco: parsedEnd.logradouro,
+            codLogradouro: parsedEnd.codTipo,
             ibge: onlyDigits(String(parts[cols.ibge] || "").trim()),
-            cep: onlyDigits(String(parts[cols.cep] || "").trim()),
+            cep: cepVinc || parsedEnd.cep,
             sexo: String(parts[cols.sexo] || "").trim().toUpperCase().charAt(0),
             cpf: onlyDigits(String(parts[cols.cpf] || "").trim()),
-            bairro: String(parts[cols.bairro] || "").trim(),
-            numero: String(parts[cols.numero] || "").trim(),
-            complemento: String(parts[cols.complemento] || "").trim(),
+            bairro: bairroVinc,
+            numero: numVinc,
+            complemento: compVinc,
             telefone: onlyDigits(String(parts[cols.telefone] || "").trim())
           });
           count++;
@@ -331,11 +339,6 @@
       if (!p.match && !p.naoCompareceu) {
         btnPreencherHtml = '<button class="btn btn-primary btn-xs btn-preencher" data-idx="' + realIdx + '">+ Preencher</button>';
       }
-      // Botão editar endereço se vazio
-      let btnEnderecoHtml = "";
-      if (!p.naoCompareceu && (!p.endereco || !p.bairro)) {
-        btnEnderecoHtml = '<button class="btn btn-warn btn-xs btn-edit-end" data-idx="' + realIdx + '" title="Editar endereço">📍 Endereço</button>';
-      }
 
       // Renderizar procedimentos como tags
       let procHtml = "";
@@ -362,7 +365,7 @@
         '<td class="col-data">' + dataAtendInput + '</td>' +
         '<td>' + escapeHtml(p.nome) + '</td>' +
         '<td>' + escapeHtml(p.nasc) + '</td>' +
-        '<td><div class="info-extra">' + infoExtra + '</div>' + btnPreencherHtml + btnEnderecoHtml + '</td>' +
+        '<td><div class="info-extra">' + infoExtra + '</div>' + btnPreencherHtml + '</td>' +
         '<td class="col-check"><div class="check-cell"><input type="checkbox" data-field="naoCompareceu" data-id="' + p.id + '"' + (p.naoCompareceu ? " checked" : "") + '></div></td>' +
         '<td class="col-procs">' + procHtml + '</td>' +
         '</tr>';
@@ -374,9 +377,6 @@
       btn.addEventListener('click', () => abrirModalOrigem(parseInt(btn.dataset.idx, 10)));
     });
 
-    triagemBody.querySelectorAll('.btn-edit-end').forEach(btn => {
-      btn.addEventListener('click', () => abrirModalEndereco(parseInt(btn.dataset.idx, 10)));
-    });
 
     triagemBody.querySelectorAll('.btn-add-proc').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -927,42 +927,6 @@
   const btnFecharInfo = document.getElementById('btnFecharInfoSigtap');
   if (btnFecharInfo) btnFecharInfo.addEventListener('click', fecharModalInfoSigtap);
 
-  // ---------- Modal Editar Endereço ----------
-  let idxEditEnd = -1;
-  function abrirModalEndereco(idx) {
-    idxEditEnd = idx;
-    const p = pacientes[idx];
-    if (!p) return;
-    document.getElementById('endPacienteNome').textContent = p.nome + ' (' + p.nasc + ')';
-    document.getElementById('editEndLogradouro').value = p.endereco || '';
-    document.getElementById('editEndNumero').value = p.numero || '';
-    document.getElementById('editEndComplemento').value = p.complemento || '';
-    document.getElementById('editEndBairro').value = p.bairro || '';
-    document.getElementById('editEndCep').value = p.cep || document.getElementById('cepPadrao')?.value || '';
-    document.getElementById('modalEditEndereco').classList.remove('hidden');
-  }
-  function salvarEndereco() {
-    if (idxEditEnd < 0) return;
-    const p = pacientes[idxEditEnd];
-    if (!p) return;
-    p.endereco = document.getElementById('editEndLogradouro').value.trim();
-    p.numero = document.getElementById('editEndNumero').value.trim();
-    p.complemento = document.getElementById('editEndComplemento').value.trim();
-    p.bairro = document.getElementById('editEndBairro').value.trim();
-    p.cep = onlyDigits(document.getElementById('editEndCep').value);
-    fecharModalEndereco();
-    renderTriagem();
-  }
-  function fecharModalEndereco() {
-    idxEditEnd = -1;
-    document.getElementById('modalEditEndereco').classList.add('hidden');
-  }
-  const btnSalvarEnd = document.getElementById('btnSalvarEndereco');
-  if (btnSalvarEnd) btnSalvarEnd.addEventListener('click', salvarEndereco);
-  const btnCancelarEnd = document.getElementById('btnCancelarEndereco');
-  if (btnCancelarEnd) btnCancelarEnd.addEventListener('click', fecharModalEndereco);
-  const btnFecharEnd = document.getElementById('btnFecharEndereco');
-  if (btnFecharEnd) btnFecharEnd.addEventListener('click', fecharModalEndereco);
   const btnOkInfo = document.getElementById('btnOkInfoSigtap');
   if (btnOkInfo) btnOkInfo.addEventListener('click', fecharModalInfoSigtap);
 

@@ -151,6 +151,42 @@
     }
   });
 
+  // Parser de endereço: separa tipo de logradouro do nome da via
+  // Ex: "Rua DR EZEQUIEL DE MACEDO, 221. CASA - CENTRO" -> { codTipo: "RUA", logradouro: "DR EZEQUIEL DE MACEDO", numero: "221", complemento: "CASA", bairro: "CENTRO" }
+  const TIPOS_LOGRADOURO = ['RUA','AVENIDA','AV','TRAVESSA','TV','ALAMEDA','AL','ESTRADA','EST','RODOVIA','BR','PRACA','PC','LARGO','BECO','VIADUTO','PONTE','TUNEL','MORRO','COLINA','VALE','PARQUE','JARDIM','CONDOMINIO','CONJUNTO','RESIDENCIAL','VILA','DISTRITO','FAZENDA','SITIO','CHACARA','GLEBA','NUCLEO','SETOR','QUADRA','BLOCO','AREA'];
+  function parseEndereco(enderecoCompleto) {
+    if (!enderecoCompleto) return { codTipo: '', logradouro: '', numero: '', complemento: '', bairro: '' };
+    let end = String(enderecoCompleto).trim();
+    // Remover CEP e UF/Cidade do final se presentes (formato e-SUS: "... | 35544-000" ou ", Cidade - UF")
+    const pipeIdx = end.lastIndexOf('|');
+    if (pipeIdx > 0) end = end.substring(0, pipeIdx).trim();
+    // Tentar extrair bairro após último hífen ou vírgula seguida de espaço
+    let bairro = '';
+    const hifenIdx = end.lastIndexOf(' - ');
+    if (hifenIdx > 0) {
+      bairro = end.substring(hifenIdx + 3).trim();
+      end = end.substring(0, hifenIdx).trim();
+    }
+    // Extrair tipo de logradouro
+    const partes = end.split(/\s+/);
+    const primeira = stripAccents(partes[0] || '').toUpperCase();
+    let codTipo = '';
+    let logradouro = end;
+    if (TIPOS_LOGRADOURO.includes(primeira)) {
+      codTipo = primeira.substring(0, 3);
+      logradouro = partes.slice(1).join(' ');
+    }
+    // Extrair número e complemento do logradouro
+    let numero = '';
+    let complemento = '';
+    const numMatch = logradouro.match(/,?\s*(\d+)\s*\.?\s*(.*)/);
+    if (numMatch) {
+      numero = numMatch[1];
+      complemento = numMatch[2] || '';
+      logradouro = logradouro.substring(0, numMatch.index).trim();
+    }
+    return { codTipo, logradouro, numero, complemento, bairro };
+  }
   function handleEsus(file) {
     clearMsg(msgEsus);
     const reader = new FileReader();
@@ -546,18 +582,6 @@
       let v = String(valor == null ? "" : valor).toUpperCase();
       v = (v + " ".repeat(len)).slice(0, len);
       return line.slice(0, start) + v + line.slice(start + len);
-    }
-    // Parser de endereço: separa tipo de logradouro do nome da via
-    // Ex: "Rua DR EZEQUIEL DE MACEDO" -> { tipo: "RUA", logradouro: "DR EZEQUIEL DE MACEDO" }
-    const TIPOS_LOGRADOURO = ['RUA','AVENIDA','AV','TRAVESSA','TV','ALAMEDA','AL','ESTRADA','EST','RODOVIA','BR','PRACA','PC','LARGO','BECO','VIADUTO','PONTE','TUNEL','MORRO','COLINA','VALE','PARQUE','JARDIM','CONDOMINIO','CONJUNTO','RESIDENCIAL','VILA','DISTRITO','FAZENDA','SITIO','CHACARA','GLEBA','NUCLEO','SETOR','QUADRA','BLOCO','AREA'];
-    function parseEndereco(enderecoCompleto) {
-      if (!enderecoCompleto) return { tipo: '', logradouro: '' };
-      const partes = String(enderecoCompleto).trim().split(/\s+/);
-      const primeira = stripAccents(partes[0] || '').toUpperCase();
-      if (TIPOS_LOGRADOURO.includes(primeira)) {
-        return { tipo: primeira.substring(0, 3), logradouro: partes.slice(1).join(' ') };
-      }
-      return { tipo: '', logradouro: enderecoCompleto };
     }
 
     function montarLinhaBpaI(d) {

@@ -612,7 +612,7 @@
     const compMm = compMes.split("-")[1];
     const dataAtendPadrao = "01" + compMm + compYyyy; // fallback: primeiro dia da competência
     const cepPadrao = onlyDigits(document.getElementById('cepPadrao') ? document.getElementById('cepPadrao').value : '') || '35544000';
-	    const numAutorizacao = (document.getElementById('numAutorizacao') ? document.getElementById('numAutorizacao').value.trim() : '') || 'MIGUILIM';
+const numAutorizacao = document.getElementById('numAutorizacao') ? document.getElementById('numAutorizacao').value.trim() : '';
 
     // Filtrar pacientes com procedimentos
     const ativos = pacientes.filter(p => !p.naoCompareceu && p.procedimentos.length > 0 && (p.match || p.vinculado));

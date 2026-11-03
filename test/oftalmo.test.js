@@ -27,6 +27,23 @@ test("Oftalmo separa o endereço padrão do relatório de vinculados", () => {
   });
 });
 
+test("Oftalmo separa exatamente o exemplo Rua do relatório de vinculados", () => {
+  const parsed = address.parseEndereco(
+    "Rua DR EZEQUIEL DE MACEDO, 221. CASA - CENTRO, São Gonçalo do Pará - MG | 35544-000"
+  );
+  assert.deepEqual(parsed, {
+    codTipo: "081",
+    tipoLogradouro: "Rua",
+    logradouro: "DR EZEQUIEL DE MACEDO",
+    numero: "221",
+    complemento: "CASA",
+    bairro: "CENTRO",
+    cidade: "São Gonçalo do Pará",
+    uf: "MG",
+    cep: "35544000"
+  });
+});
+
 test("Oftalmo não transforma UF em bairro e trata hífen como endereço ausente", () => {
   const parsed = address.parseEndereco(
     "Rua VIA SINTETICA, 45. BAIRRO TESTE, CIDADE TESTE - UF | 00000-000"

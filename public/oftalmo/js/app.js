@@ -361,6 +361,20 @@
     renderTriagem();
     document.getElementById("viewConfig").classList.add("hidden");
     document.getElementById("viewTriagem").classList.remove("hidden");
+    const vinculadosAutomaticamente = pacientes.filter(p => p.match).length;
+    const enderecosCompletos = pacientes.filter(p => p.match && p.endereco && p.bairro).length;
+    if (vinculadosAutomaticamente === 0) {
+      setMsg(triagemMsg, "warn",
+        "Nenhum paciente do MIGUELLIN coincide por nome e data de nascimento com o arquivo de vinculados. " +
+        "Os arquivos não compartilham pacientes; use Preencher → Buscar no e-SUS para vincular a pessoa correta.");
+    } else if (enderecosCompletos < vinculadosAutomaticamente) {
+      setMsg(triagemMsg, "warn",
+        vinculadosAutomaticamente + " paciente(s) vinculado(s) automaticamente; " +
+        (vinculadosAutomaticamente - enderecosCompletos) + " endereço(s) continuam incompletos na origem.");
+    } else {
+      setMsg(triagemMsg, "ok",
+        vinculadosAutomaticamente + " paciente(s) e respectivos endereços vinculados automaticamente.");
+    }
   });
 
   // ---------- Consulta ----------
@@ -393,10 +407,16 @@
     filtered.forEach((p, idx) => {
       const realIdx = pacientes.indexOf(p);
       const disabledClass = p.naoCompareceu ? "row-disabled" : "";
+      const enderecoResumo = p.endereco
+        ? '<span class="lbl">Endereço:</span> ' + escapeHtml(
+            p.endereco + (p.numero ? ', ' + p.numero : '') + (p.bairro ? ' · ' + p.bairro : '')
+          ) + '<span class="lbl">Tipo:</span> ' + escapeHtml(p.codLogradouro || "—")
+        : '<span class="lbl">Endereço:</span> <span style="color:var(--warn)">não informado</span>';
       const infoExtra = p.match
         ? '<span class="lbl">CNS:</span> ' + escapeHtml(p.cns || "—") +
           '<span class="lbl">Microárea:</span> ' + escapeHtml(p.microarea || "—") +
-          '<span class="lbl">Equipe:</span> ' + escapeHtml(p.equipe || "—")
+          '<span class="lbl">Equipe:</span> ' + escapeHtml(p.equipe || "—") +
+          enderecoResumo
         : '<span style="color:var(--warn)">⚠ Não vinculado</span>';
 
       let btnPreencherHtml = "";
@@ -591,7 +611,7 @@
           ibge: p.ibge || '',
           endereco: p.endereco || '',
           bairro: p.bairro || '',
-          cep: p.cep || cepPadrao || '',
+          cep: cepPadrao,
           racaCor: p.racaCor || '03',
           nacionalidade: p.nacionalidade || '010',
           caraterAtendimento: '01',
@@ -822,7 +842,7 @@
           cnsPaciente: cnsPaciente, sexo: p.sexo || '', ibge: p.ibge || '', quantidade: proc.qtd || 1,
           caraterAtendimento: '01', nome: p.nome, nasc: nascFmt,
           racaCor: '03', nacionalidade: p.nacionalidade || '010',
-          cep: p.cep || cepPadrao || '',
+          cep: cepPadrao,
           codLogradouro: codLogradouroFinal,
           endereco: enderecoFinal,
           complemento: p.complemento || '',

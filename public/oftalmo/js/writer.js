@@ -15,18 +15,40 @@
     return line.slice(0, start) + text + line.slice(start + len);
   }
 
+  function patchOptionalNum(line, start, len, value) {
+    const digits = String(value == null ? "" : value).replace(/\D/g, "");
+    return digits ? patchNum(line, start, len, digits) : line;
+  }
+
+  function validYmd(year, month, day) {
+    const y = Number(year), m = Number(month), d = Number(day);
+    if (y < 1900 || y > 2100 || m < 1 || m > 12 || d < 1 || d > 31) return false;
+    const date = new Date(Date.UTC(y, m - 1, d));
+    return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+  }
+
   function formatDate(value) {
-    let date = String(value || "").replace(/\D/g, "");
-    if (date.length === 8 && parseInt(date.slice(0, 4), 10) > 1900) {
-      date = date.slice(6, 8) + date.slice(4, 6) + date.slice(0, 4);
-    } else if (!(date.length === 8 && parseInt(date.slice(4, 8), 10) > 1900)) {
-      date = "";
+    const text = String(value || "").trim();
+    let match = text.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/);
+    if (match && validYmd(match[1], match[2], match[3])) {
+      return match[1] + match[2].padStart(2, "0") + match[3].padStart(2, "0");
     }
-    return date;
+    match = text.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+    if (match && validYmd(match[3], match[2], match[1])) {
+      return match[3] + match[2].padStart(2, "0") + match[1].padStart(2, "0");
+    }
+    const digits = text.replace(/\D/g, "");
+    if (digits.length !== 8) return "";
+    if (validYmd(digits.slice(0, 4), digits.slice(4, 6), digits.slice(6, 8))) return digits;
+    if (validYmd(digits.slice(4, 8), digits.slice(2, 4), digits.slice(0, 2))) {
+      return digits.slice(4, 8) + digits.slice(2, 4) + digits.slice(0, 2);
+    }
+    return "";
   }
 
   function montarLinhaBpaI(data) {
-    let line = " ".repeat(351) + "N";
+    // Layout BPA-I: 351 posições; situação de rua fica na posição 350 (N = não).
+    let line = " ".repeat(349) + "N" + " ";
     line = patchTxt(line, 0, 2, data.tipo || "03");
     line = patchNum(line, 2, 7, data.cnes || "");
     line = patchNum(line, 9, 6, data.competencia || "");
@@ -37,31 +59,31 @@
     line = patchNum(line, 47, 2, data.sequencia || 1);
     line = patchNum(line, 49, 10, data.sigtap || "");
     // BPA-I não possui quantidade entre SIGTAP e CNS; uma linha representa um atendimento.
-    line = patchNum(line, 59, 15, data.cnsPaciente || "");
+    line = patchOptionalNum(line, 59, 15, data.cnsPaciente || "");
     line = patchTxt(line, 74, 1, data.sexo || "");
     line = patchNum(line, 75, 6, data.ibge || "");
     line = patchTxt(line, 81, 4, data.cid || "");
-    line = patchNum(line, 85, 9, data.numAutorizacao || "");
+    line = patchOptionalNum(line, 85, 9, data.numAutorizacao || "");
     line = patchNum(line, 94, 2, data.caraterAtendimento || "01");
     line = patchTxt(line, 112, 30, data.nome || "");
-    line = patchNum(line, 142, 8, data.nasc || "");
+    line = patchNum(line, 142, 8, formatDate(data.nasc));
     line = patchNum(line, 150, 2, data.racaCor || "99");
     line = patchTxt(line, 152, 4, data.etnia || "");
     line = patchNum(line, 156, 3, data.nacionalidade || "010");
-    line = patchNum(line, 159, 3, data.servico || "");
-    line = patchNum(line, 162, 3, data.classificacao || "");
+    line = patchOptionalNum(line, 159, 3, data.servico || "");
+    line = patchOptionalNum(line, 162, 3, data.classificacao || "");
     line = patchNum(line, 191, 8, data.cep || "");
     line = patchNum(line, 199, 3, data.codLogradouro || "");
     line = patchTxt(line, 202, 30, data.endereco || "");
     line = patchTxt(line, 232, 10, data.complemento || "");
     line = patchTxt(line, 242, 5, data.numero || "");
     line = patchTxt(line, 247, 30, data.bairro || "");
-    line = patchNum(line, 277, 11, data.telefone || "");
-    line = patchNum(line, 338, 11, data.cpfPaciente || "");
+    line = patchOptionalNum(line, 277, 11, data.telefone || "");
+    line = patchOptionalNum(line, 338, 11, data.cpfPaciente || "");
     return line;
   }
 
-  const api = { patchNum, patchTxt, formatDate, montarLinhaBpaI };
+  const api = { patchNum, patchTxt, patchOptionalNum, formatDate, montarLinhaBpaI };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.OftalmoWriter = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -831,24 +831,13 @@
         const codLogradouroFinal = p.codLogradouro || parseEndereco(p.endereco).codTipo;
         const enderecoFinal = p.endereco || '';
 
-        // Data de nascimento no formato ddmmyyyy
-        let nascFmt = '';
-        const nascStr = String(p.nasc || '').trim();
-        const mNasc = nascStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-        if (mNasc) {
-          nascFmt = padLeft(mNasc[1], 2) + padLeft(mNasc[2], 2) + mNasc[3];
-        } else {
-          const mNasc2 = nascStr.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
-          if (mNasc2) nascFmt = padLeft(mNasc2[3], 2) + padLeft(mNasc2[2], 2) + mNasc2[1];
-        }
-
         const linha = montarLinhaBpaI({
           tipo: '03', cnes: cnes, competencia: compYyyy + compMm,
           cnsProfissional: cnsProf, cbo: cbo,
           dataAtendimento: p.dataAtendimento || dataAtendPadrao,
           folha: folha, sequencia: seq, sigtap: proc.sigtap,
           cnsPaciente: cnsPaciente, sexo: p.sexo || '', ibge: p.ibge || '', quantidade: proc.qtd || 1,
-          caraterAtendimento: '01', nome: p.nome, nasc: nascFmt,
+          caraterAtendimento: '01', nome: p.nome, nasc: p.nasc,
           racaCor: '03', nacionalidade: p.nacionalidade || '010',
           cep: cepPadrao,
           codLogradouro: codLogradouroFinal,

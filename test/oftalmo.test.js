@@ -140,19 +140,26 @@ test("validação bloqueia logradouro ou bairro ausente e oferece correção sem
   assert.ok(stillInvalid.ocorrencias.some((item) => item.regraId === "ENDERECO_INVALIDO"));
 });
 
-test("BPA-I preserva SIGTAP, tipo, logradouro e bairro nos offsets lidos pelo Qualidade BPA", () => {
+test("BPA-I preserva datas, quantidade, endereço e situação de rua no layout oficial", () => {
   const line = writer.montarLinhaBpaI({
-    tipo: "03", cnes: "1234567", competencia: "202611",
+    tipo: "03", cnes: "1234567", competencia: "202609",
     cnsProfissional: "700000000000000", cbo: "225265",
-    dataAtendimento: "01/11/2026", folha: 1, sequencia: 1,
+    dataAtendimento: "06/09/2026", folha: 1, sequencia: 1,
     sigtap: "0301010072", cnsPaciente: "700000000000000", sexo: "F",
-    ibge: "123456", nome: "PACIENTE TESTE", nasc: "01012000",
+    ibge: "123456", nome: "PACIENTE TESTE", nasc: "14/04/2020",
     racaCor: "03", nacionalidade: "010", cep: "00000000",
     codLogradouro: "081", endereco: "VIA SINTETICA", numero: "123",
     complemento: "CASA", bairro: "BAIRRO TESTE", cpfPaciente: "00000000000"
   });
   const parsed = qualidadeParser.parseTipo03(line);
+  assert.equal(line.length, 351);
+  assert.equal(line[349], "N");
+  assert.equal(parsed.dataAtendimento, "20260906");
+  assert.equal(parsed.dataNascimento, "20200414");
+  assert.equal(parsed.quantidade, 1);
   assert.equal(parsed.sigtap, "0301010072");
+  assert.equal(parsed.servico, "");
+  assert.equal(parsed.classificacao, "");
   assert.equal(parsed.codLogradouro, "081");
   assert.equal(parsed.endereco, "VIA SINTETICA");
   assert.equal(parsed.numero, "123");

@@ -158,8 +158,8 @@ test("BPA-I preserva datas, quantidade, endereço e situação de rua no layout 
   assert.equal(parsed.dataNascimento, "20200414");
   assert.equal(parsed.quantidade, 1);
   assert.equal(parsed.sigtap, "0301010072");
-  assert.equal(parsed.servico, "");
-  assert.equal(parsed.classificacao, "");
+  assert.equal(parsed.servico, "000");
+  assert.equal(parsed.classificacao, "000");
   assert.equal(parsed.codLogradouro, "081");
   assert.equal(parsed.endereco, "VIA SINTETICA");
   assert.equal(parsed.numero, "123");

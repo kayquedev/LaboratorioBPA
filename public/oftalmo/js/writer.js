@@ -98,8 +98,11 @@
     line = patchNum(line, 150, 2, data.racaCor || "99");
     line = patchTxt(line, 152, 4, data.etnia || "");
     line = patchNum(line, 156, 3, data.nacionalidade || "010");
-    line = patchOptionalNum(line, 159, 3, data.servico || "");
-    line = patchOptionalNum(line, 162, 3, data.classificacao || "");
+    // O BPA Magnético converte estes campos para inteiro durante a importação.
+    // Consulta não exige preenchimento pelo usuário, mas o layout usa 000/000,
+    // como no arquivo de referência, em vez de espaços vazios.
+    line = patchNum(line, 159, 3, data.servico || "0");
+    line = patchNum(line, 162, 3, data.classificacao || "0");
     line = patchNum(line, 191, 8, data.cep || "");
     line = patchNum(line, 199, 3, data.codLogradouro || "");
     line = patchTxt(line, 202, 30, data.endereco || "");

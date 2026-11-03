@@ -93,6 +93,8 @@
     line = patchTxt(line, 81, 4, data.cid || "");
     line = patchOptionalNum(line, 85, 9, data.numAutorizacao || "");
     line = patchNum(line, 94, 2, data.caraterAtendimento || "01");
+    // Campo fixo "MIGUELIN     BPA" nas posições 96-111 conforme layout oficial PAOFT-CO.txt
+    line = patchTxt(line, 96, 16, data.origemSistema || "MIGUELIN     BPA");
     line = patchTxt(line, 112, 30, data.nome || "");
     line = patchNum(line, 142, 8, formatDate(data.nasc));
     line = patchNum(line, 150, 2, data.racaCor || "99");
@@ -103,7 +105,12 @@
     // como no arquivo de referência, em vez de espaços vazios.
     line = patchNum(line, 159, 3, data.servico || "0");
     line = patchNum(line, 162, 3, data.classificacao || "0");
+    // Correção de layout BPA-I: alinhamento exato das posições de endereço
+    // CEP: 191-198 (8 bytes), Cod. Logradouro: 199-201 (3 bytes)
+    // Logradouro: 202-231 (30 bytes), Complemento: 232-241 (10 bytes)
+    // Número: 242-246 (5 bytes), Bairro: 247-276 (30 bytes)
     line = patchNum(line, 191, 8, data.cep || "");
+    // Cod. Logradouro deve ser exatamente 3 dígitos (ex: 081). patchNum já trata zeros à esquerda.
     line = patchNum(line, 199, 3, data.codLogradouro || "");
     line = patchTxt(line, 202, 30, data.endereco || "");
     line = patchTxt(line, 232, 10, data.complemento || "");

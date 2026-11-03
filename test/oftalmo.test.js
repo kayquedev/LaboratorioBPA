@@ -167,6 +167,30 @@ test("BPA-I preserva datas, quantidade, endereço e situação de rua no layout 
   assert.equal(parsed.bairro, "BAIRRO TESTE");
 });
 
+test("BPA-I gera linha idêntica ao arquivo de referência PAOFT-CO.txt", () => {
+  // Dados extraídos byte-a-byte do anexo PAOFT-CO.txt (linha 03)
+  const refLine = "03111981620260678744156187415422526520260611001030301010072               F316180H54201100000101MIGUELIN     BPAANNA CAROLINE DA SILVA        2015011003    010000000                          35544000081LOGRADOURO                    COMPLEMENT100  BAIRRO                        37999955830                                                  16218362663N ";
+  assert.equal(refLine.length, 351, "Linha de referência deve ter 351 bytes");
+
+  const generated = writer.montarLinhaBpaI({
+    tipo: "03", cnes: "1119816", competencia: "202606",
+    cnsProfissional: "787441561874154", cbo: "225265",
+    dataAtendimento: "20260611", folha: 1, sequencia: 3,
+    sigtap: "0301010072", cnsPaciente: "", sexo: "F",
+    ibge: "316180", cid: "H542", numAutorizacao: "011000001",
+    caraterAtendimento: "01", nome: "ANNA CAROLINE DA SILVA",
+    nasc: "20150110", racaCor: "03", nacionalidade: "010",
+    servico: "000", classificacao: "000",
+    cep: "35544000", codLogradouro: "081",
+    endereco: "LOGRADOURO                    ", complemento: "COMPLEMENT",
+    numero: "100  ", bairro: "BAIRRO                        ",
+    telefone: "37999955830", cpfPaciente: "16218362663"
+  });
+
+  assert.equal(generated.length, 351, "Linha gerada deve ter 351 bytes");
+  assert.equal(generated, refLine, "Linha gerada deve ser idêntica à referência");
+});
+
 test("arquivo BPA usa cabeçalho de 126 bytes e linha BPA-I de 351 bytes", () => {
   const header = writer.montarCabecalhoBpa({ competencia: "202609", numLinhas: 1, numFolhas: 1 });
   const line = writer.montarLinhaBpaI({

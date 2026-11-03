@@ -239,6 +239,7 @@
             cols.microarea = norm.findIndex(n => n.includes("MICROAREA") || n === "MICROÁREA");
             cols.equipe = norm.findIndex(n => n.includes("NOME EQUIPE") || n === "EQUIPE");
             cols.endereco = norm.findIndex(n => n === "ENDERECO" || n === "ENDEREÇO" || n === "LOGRADOURO" || n === "RUA" || n.includes("ENDERECO") || n.includes("LOGRADOURO"));
+            cols.codLogradouro = norm.findIndex(n => n.includes("COD. LOGRADOURO") || n.includes("COD LOGRADOURO") || n === "CODIGO LOGRADOURO" || n === "TIPO LOGRADOURO");
             cols.ibge = norm.findIndex(n => n.includes("CODIGO IBGE") || n.includes("MUNICIPIO") || n === "IBGE");
             cols.cep = norm.findIndex(n => n === "CEP");
             cols.sexo = norm.findIndex(n => n === "SEXO");
@@ -268,6 +269,7 @@
 
           const endRaw = fieldAt(parts, cols.endereco);
           const parsedEnd = parseEndereco(endRaw);
+          const codLogVinc = onlyDigits(fieldAt(parts, cols.codLogradouro)) || parsedEnd.codTipo;
           const cepVinc = onlyDigits(fieldAt(parts, cols.cep));
           const bairroVinc = fieldAt(parts, cols.bairro) || parsedEnd.bairro;
           const numVinc = fieldAt(parts, cols.numero) || parsedEnd.numero;
@@ -279,8 +281,8 @@
             cns: documentos.cns,
             microarea: fieldAt(parts, cols.microarea),
             equipe: fieldAt(parts, cols.equipe),
-            endereco: parsedEnd.logradouro,
-            codLogradouro: parsedEnd.codTipo,
+            endereco: fieldAt(parts, cols.endereco) || parsedEnd.logradouro,
+            codLogradouro: codLogVinc,
             ibge: onlyDigits(fieldAt(parts, cols.ibge)),
             cep: cepVinc || parsedEnd.cep || "",
             sexo: fieldAt(parts, cols.sexo).toUpperCase().charAt(0),
@@ -846,7 +848,8 @@
           numero: p.numero || '', bairro: p.bairro || '',
           telefone: p.telefone || '', cpfPaciente: cpfPaciente,
           numAutorizacao: numAutorizacao,
-          cid: cidProc, servico: servicoProc, classificacao: classifProc
+          cid: cidProc, servico: servicoProc, classificacao: classifProc,
+          origemSistema: 'MIGUELIN BPA'
         });
         linhas.push(linha);
         seq++; contadorLinhaFolha++;
@@ -858,7 +861,11 @@
     const headerLine = window.OftalmoWriter.montarCabecalhoBpa({
       competencia: compYyyy + compMm,
       numLinhas: numLinhasTotal,
-      numFolhas: numFolhas
+      numFolhas: numFolhas,
+      orgOrigem: (document.getElementById('nomeCabecalho')?.value || '').substring(0, 30),
+      siglaOrigem: (document.getElementById('ufCabecalho')?.value || '').substring(0, 6),
+      cgcCpf: (document.getElementById('idNumericaCabecalho')?.value || '').substring(0, 14),
+      orgDestino: (document.getElementById('estabelecimentoCabecalho')?.value || '').substring(0, 40)
     });
     
     fileContent = headerLine + "\r\n" + linhas.join("\r\n") + "\r\n";

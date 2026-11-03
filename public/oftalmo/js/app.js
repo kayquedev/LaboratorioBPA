@@ -575,6 +575,7 @@
       if (sigtapOculos.length !== 10) { alert("Configure o SIGTAP de Óculos (10 dígitos) na tela inicial."); return; }
       sigtap = sigtapOculos;
       descricao = "Concessão Óculos";
+      p.cid = "H520";
     } else if (type === "retina") {
       sigtap = "0211060127";
       descricao = "Mapeamento Retina";
@@ -612,7 +613,7 @@
     const compMm = compMes.split("-")[1];
     const dataAtendPadrao = "01" + compMm + compYyyy; // fallback: primeiro dia da competência
     const cepPadrao = onlyDigits(document.getElementById('cepPadrao') ? document.getElementById('cepPadrao').value : '') || '35544000';
-    const numAutorizacao = onlyDigits(document.getElementById('numAutorizacao') ? document.getElementById('numAutorizacao').value : '') || '011000001';
+	    const numAutorizacao = (document.getElementById('numAutorizacao') ? document.getElementById('numAutorizacao').value.trim() : '') || 'MIGUILIM';
 
     // Filtrar pacientes com procedimentos
     const ativos = pacientes.filter(p => !p.naoCompareceu && p.procedimentos.length > 0 && (p.match || p.vinculado));

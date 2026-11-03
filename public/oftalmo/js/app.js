@@ -904,7 +904,7 @@ const numAutorizacao = document.getElementById('numAutorizacao') ? document.getE
         const linha = montarLinhaBpaI({
           tipo: '03', cnes: cnes, competencia: compYyyy + compMm,
           cnsProfissional: cnsProf, cbo: cbo,
-          dataAtendimento: p.dataAtendimento || dataAtendPadrao,
+dataAtendimento: p.dataAtendimento || (document.getElementById('dataAtendimentoUnica') ? document.getElementById('dataAtendimentoUnica').value : ''),
           folha: folha, sequencia: seq, sigtap: proc.sigtap,
           cnsPaciente: cnsPaciente, sexo: p.sexo || '', ibge: p.ibge || '', quantidade: proc.qtd || 1,
           caraterAtendimento: '01', nome: p.nome, nasc: p.nasc,

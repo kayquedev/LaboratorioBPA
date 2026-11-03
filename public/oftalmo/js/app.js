@@ -35,10 +35,44 @@
       return padLeft(d, 2) + "/" + padLeft(m, 2) + "/" + y;
     }
     const s = String(val || "").trim();
+    // dd/mm/yyyy ou dd-mm-yyyy
     const m1 = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
     if (m1) return padLeft(m1[1], 2) + "/" + padLeft(m1[2], 2) + "/" + m1[3];
+    // yyyyMMdd (formato comum em CSV/Excel sem formatação)
     if (/^\d{8}$/.test(s)) return s.slice(6, 8) + "/" + s.slice(4, 6) + "/" + s.slice(0, 4);
+    // yyyy-MM-dd (ISO)
+    const mIso = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (mIso) return padLeft(mIso[3], 2) + "/" + padLeft(mIso[2], 2) + "/" + mIso[1];
     return s;
+  }
+
+  // Validação de data real (evita 20/20/1404)
+  function isValidDate(ddmmyyyy) {
+    if (!ddmmyyyy || typeof ddmmyyyy !== 'string') return false;
+    const parts = ddmmyyyy.split('/');
+    if (parts.length !== 3) return false;
+    const d = parseInt(parts[0], 10), m = parseInt(parts[1], 10), y = parseInt(parts[2], 10);
+    if (y < 1900 || y > 2100 || m < 1 || m > 12 || d < 1 || d > 31) return false;
+    const dt = new Date(y, m - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+  }
+
+  // Dígito verificador CNS (módulo 11)
+  function isValidCns(cns) {
+    if (!cns || cns.length !== 15) return false;
+    let soma = 0;
+    for (let i = 0; i < 15; i++) soma += parseInt(cns[i], 10) * (15 - i);
+    return soma % 11 === 0;
+  }
+
+  // Dígito verificador SIGTAP (módulo 11)
+  function isValidSigtap(code) {
+    if (!code || code.length !== 10) return false;
+    let soma = 0;
+    for (let i = 0; i < 9; i++) soma += parseInt(code[i], 10) * (10 - i);
+    const resto = soma % 11;
+    const dv = resto === 0 || resto === 1 ? 0 : 11 - resto;
+    return parseInt(code[9], 10) === dv;
   }
 
   function dataNascParaChave(ddmmyyyy) {
@@ -553,14 +587,34 @@
     // Validação pré-exportação: listar erros por registro
     const erros = [];
     ativos.forEach((p, idx) => {
+      // Validar data de nascimento
+      if (!isValidDate(p.nasc)) erros.push({paciente: p.nome, erro: 'Data de nascimento inválida (' + (p.nasc||'vazia') + '). Verifique o cadastro.'});
+      // Validar CNS paciente
+      if (p.cns && p.cns.length === 15 && !isValidCns(p.cns)) erros.push({paciente: p.nome, erro: 'CNS paciente com dígito verificador inválido (' + p.cns + ')'});
+      // Validar endereço
+      const parsedEndCheck = parseEndereco(p.endereco);
+      if (!parsedEndCheck.logradouro && !p.bairro) erros.push({paciente: p.nome, erro: 'Endereço do paciente inválido/vazio. Preencha logradouro e bairro.'});
+      
       p.procedimentos.forEach(proc => {
-        if (!proc.sigtap || proc.sigtap.length !== 10) erros.push({paciente: p.nome, erro: 'SIGTAP inválido (' + (proc.sigtap||'') + ')'});
-        if (!p.dataAtendimento && !dataAtendPadrao) erros.push({paciente: p.nome, erro: 'Data de atendimento não informada'});
-        if (!p.ibge || (p.ibge.length !== 6 && p.ibge.length !== 7)) erros.push({paciente: p.nome, erro: 'IBGE município inválido (' + (p.ibge||'') + '). Use 6 ou 7 dígitos.'});
-        // Endereço e bairro: usar fallback do CEP padrão + município se vazios
-        const endFinal = p.endereco || '';
-        const baiFinal = p.bairro || '';
-        if (!endFinal && !baiFinal && !cepPadrao) erros.push({paciente: p.nome, erro: 'Endereço e bairro vazios (preencha ou configure CEP padrão)'});
+        // Validar SIGTAP (tamanho e dígito verificador)
+        if (!proc.sigtap || proc.sigtap.length !== 10) {
+          erros.push({paciente: p.nome, erro: 'SIGTAP inválido (' + (proc.sigtap||'') + '). Deve ter 10 dígitos.'});
+        } else if (!isValidSigtap(proc.sigtap)) {
+          erros.push({paciente: p.nome, erro: 'Dígito verificador do procedimento ' + proc.sigtap + ' incorreto.'});
+        }
+        // Validar data de atendimento
+        const dtAtend = p.dataAtendimento || dataAtendPadrao;
+        if (!dtAtend) {
+          erros.push({paciente: p.nome, erro: 'Data de atendimento não informada.'});
+        } else if (!isValidDate(dtAtend)) {
+          erros.push({paciente: p.nome, erro: 'Data de atendimento inválida (' + dtAtend + ').'});
+        } else {
+          // Verificar competência
+          const partsDt = dtAtend.split('/');
+          const mmYyAtend = partsDt[2] + partsDt[1];
+          if (mmYyAtend !== compYyyy + compMm) erros.push({paciente: p.nome, erro: 'Data ' + dtAtend + ' fora da competência ' + compMm + '/' + compYyyy + '.'});
+        }
+        if (!p.ibge || (p.ibge.length !== 6 && p.ibge.length !== 7)) erros.push({paciente: p.nome, erro: 'IBGE município inválido (' + (p.ibge||'') + ').'});
       });
     });
     if (erros.length > 0) {
@@ -698,7 +752,7 @@
           caraterAtendimento: '01', nome: p.nome, nasc: nascFmt,
           racaCor: '03', nacionalidade: p.nacionalidade || '010',
           cep: p.cep || cepPadrao || '',
-          codLogradouro: parsedEnd.tipo,
+          codLogradouro: parsedEnd.codTipo,
           endereco: parsedEnd.logradouro,
           complemento: p.complemento || '',
           numero: p.numero || '', bairro: p.bairro || '',

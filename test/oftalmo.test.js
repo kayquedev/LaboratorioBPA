@@ -158,8 +158,9 @@ test("BPA-I preserva datas, quantidade, endereço e situação de rua no layout 
   assert.equal(parsed.dataNascimento, "20200414");
   assert.equal(parsed.quantidade, 1);
   assert.equal(parsed.sigtap, "0301010072");
-  assert.equal(parsed.servico, "000");
-  assert.equal(parsed.classificacao, "000");
+  // Serviço e Classificação devem ser espaços (não '000') quando o valor de entrada é '000'
+  assert.equal(parsed.servico.trim(), "");
+  assert.equal(parsed.classificacao.trim(), "");
   assert.equal(parsed.codLogradouro, "081");
   assert.equal(parsed.endereco, "VIA SINTETICA");
   assert.equal(parsed.numero, "123");
@@ -169,7 +170,8 @@ test("BPA-I preserva datas, quantidade, endereço e situação de rua no layout 
 
 test("BPA-I gera linha idêntica ao arquivo de referência PAOFT-CO.txt", () => {
   // Dados extraídos byte-a-byte do anexo PAOFT-CO.txt (linha 03)
-  const refLine = "03111981620260678744156187415422526520260611001030301010072               F316180H54201100000101                ANNA CAROLINE DA SILVA        2015011003    010000000                          35544000081LOGRADOURO                    COMPLEMENT100  BAIRRO                        37999955830                                                  16218362663N ";
+  // Referência atualizada: Serviço e Classificação são espaços (não '000') conforme nova regra
+  const refLine = "03111981620260678744156187415422526520260611001030301010072               F316180H54201100000101                ANNA CAROLINE DA SILVA        2015011003    010                                35544000081LOGRADOURO                    COMPLEMENT100  BAIRRO                        37999955830                                                  16218362663N ";
   assert.equal(refLine.length, 351, "Linha de referência deve ter 351 bytes");
 
   const generated = writer.montarLinhaBpaI({

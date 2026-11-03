@@ -102,9 +102,20 @@
     line = patchNum(line, 156, 3, data.nacionalidade || "010");
     // O BPA Magnético converte estes campos para inteiro durante a importação.
     // Consulta não exige preenchimento pelo usuário, mas o layout usa 000/000,
-    // como no arquivo de referência, em vez de espaços vazios.
-    line = patchNum(line, 159, 3, data.servico || "0");
-    line = patchNum(line, 162, 3, data.classificacao || "0");
+    // Serviço e Classificação: se o valor for "000" ou vazio, usar espaços (não zeros).
+    // Caso contrário, preencher com zeros à esquerda conforme layout.
+    const servicoVal = String(data.servico || "").replace(/\D/g, "");
+    const classificacaoVal = String(data.classificacao || "").replace(/\D/g, "");
+    if (!servicoVal || servicoVal === "000") {
+      line = patchTxt(line, 159, 3, "");
+    } else {
+      line = patchNum(line, 159, 3, servicoVal);
+    }
+    if (!classificacaoVal || classificacaoVal === "000") {
+      line = patchTxt(line, 162, 3, "");
+    } else {
+      line = patchNum(line, 162, 3, classificacaoVal);
+    }
     // Correção de layout BPA-I: alinhamento exato das posições de endereço
     // CEP: 191-198 (8 bytes), Cod. Logradouro: 199-201 (3 bytes)
     // Logradouro: 202-231 (30 bytes), Complemento: 232-241 (10 bytes)

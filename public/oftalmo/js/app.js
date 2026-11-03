@@ -10,6 +10,60 @@
   let fileContent = "";
   let fileName = "";
   let modalTargetIdx = -1;  // índice do paciente sendo editado no modal (-1 = novo cidadão)
+  let datasRapidas = [];    // até 3 datas configuradas na importação (formato dd/mm/yyyy)
+
+  // ---------- datas rápidas ----------
+  function carregarDatasRapidas() {
+    datasRapidas = [];
+    for (let i = 1; i <= 3; i++) {
+      const el = document.getElementById("dataAtend0" + i);
+      if (!el || !el.value) continue;
+      // input date vem como yyyy-mm-dd; converter para dd/mm/yyyy
+      const parts = el.value.split("-");
+      if (parts.length === 3) {
+        datasRapidas.push(parts[2] + "/" + parts[1] + "/" + parts[0]);
+      }
+    }
+    renderizarBarraDatasRapidas();
+  }
+
+  function renderizarBarraDatasRapidas() {
+    const bar = document.getElementById("datasRapidasBar");
+    if (!bar) return;
+    const btns = bar.querySelectorAll(".data-rapida-btn");
+    let temData = false;
+    btns.forEach((btn, idx) => {
+      const dt = datasRapidas[idx] || "";
+      btn.textContent = dt;
+      btn.style.display = dt ? "" : "none";
+      btn.classList.remove("active");
+      if (dt) temData = true;
+    });
+    if (temData) {
+      bar.classList.remove("hidden");
+    } else {
+      bar.classList.add("hidden");
+    }
+  }
+
+  function destacarDataRapidaSelecionada(dataValor) {
+    const bar = document.getElementById("datasRapidasBar");
+    if (!bar) return;
+    bar.querySelectorAll(".data-rapida-btn").forEach((btn) => {
+      if (btn.textContent === dataValor) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+  }
+
+  function aplicarDataRapidaAoPaciente(idxPaciente, dataValor) {
+    if (idxPaciente < 0 || idxPaciente >= pacientes.length) return;
+    pacientes[idxPaciente].dataAtendimento = dataValor;
+    destacarDataRapidaSelecionada(dataValor);
+    renderTriagem();
+  }
 
   // Procedimentos padrão (editáveis pelo usuário na config)
   const SIGTAP_CONSULTA_PADRAO = "0301010072";
@@ -403,6 +457,7 @@
   });
 
   function renderTriagem() {
+    carregarDatasRapidas();
     const termo = normalizeNome(fBusca.value);
     const filtered = termo
       ? pacientes.filter(p => normalizeNome(p.nome).includes(termo))
@@ -455,6 +510,9 @@
         procHtml = '<span style="color:var(--text-muted);font-size:.8rem;">Não compareceu</span>';
       }
 
+      // Destacar data rápida selecionada para este paciente
+      destacarDataRapidaSelecionada(p.dataAtendimento || "");
+
       const dataAtendVal = p.dataAtendimento || "";
       const dataAtendInput = '<input type="date" class="input-data-atend" data-id="' + p.id + '" value="' + (dataAtendVal ? dataAtendVal.split('/').reverse().join('-') : '') + '"' + (p.naoCompareceu ? ' disabled' : '') + '>';
       html += '<tr class="' + disabledClass + '" data-id="' + p.id + '">' +
@@ -473,6 +531,38 @@
       btn.addEventListener('click', () => abrirModalOrigem(parseInt(btn.dataset.idx, 10)));
     });
 
+    // Botões de data rápida: aplicar ao paciente atualmente em foco (último clicado ou primeiro da lista)
+    document.querySelectorAll('.data-rapida-btn').forEach(btn => {
+      btn.onclick = () => {
+        const dt = btn.textContent;
+        if (!dt) return;
+        // Aplicar ao paciente que está com o input de data em foco, ou ao primeiro visível
+        const inpFocado = document.activeElement && document.activeElement.classList.contains('input-data-atend')
+          ? document.activeElement : null;
+        let pidx = -1;
+        if (inpFocado) {
+          pidx = pacientes.findIndex(p => p.id === parseInt(inpFocado.dataset.id, 10));
+        }
+        if (pidx < 0) {
+          // Fallback: aplicar ao primeiro paciente não desabilitado da lista filtrada
+          const termo = normalizeNome(fBusca.value);
+          const filtered = termo
+            ? pacientes.filter(p => normalizeNome(p.nome).includes(termo))
+            : pacientes;
+          const alvo = filtered.find(p => !p.naoCompareceu);
+          if (alvo) pidx = pacientes.indexOf(alvo);
+        }
+        if (pidx >= 0) {
+          aplicarDataRapidaAoPaciente(pidx, dt);
+          // Atualizar também o input de data correspondente na tabela
+          const inp = triagemBody.querySelector('.input-data-atend[data-id="' + pacientes[pidx].id + '"]');
+          if (inp) {
+            const parts = dt.split('/');
+            inp.value = parts[2] + '-' + parts[1] + '-' + parts[0];
+          }
+        }
+      };
+    });
 
     triagemBody.querySelectorAll('.btn-add-proc').forEach(btn => {
       btn.addEventListener('click', (e) => {

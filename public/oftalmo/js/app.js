@@ -984,9 +984,18 @@
     document.getElementById('modalOrigem').classList.add('hidden');
     esusList = [];
     esusMap.forEach(v => esusList.push(v));
-    document.getElementById('buscaEsus').value = '';
-    renderListaEsus(esusList);
+    const alvo = modalTargetIdx >= 0 ? pacientes[modalTargetIdx] : null;
+    const buscaInicial = alvo ? (alvo.nome || '') : '';
+    document.getElementById('buscaEsus').value = buscaInicial;
+    const listaInicial = buscaInicial
+      ? esusList.filter(c => normalizeNome(c.nome).includes(normalizeNome(buscaInicial)))
+      : esusList;
+    renderListaEsus(listaInicial);
     clearMsg(document.getElementById('esusModalMsg'));
+    if (buscaInicial && listaInicial.length === 0) {
+      setMsg(document.getElementById('esusModalMsg'), 'warn',
+        'Este paciente não existe no arquivo de vinculados carregado. Não selecione outra pessoa apenas para preencher o endereço.');
+    }
     document.getElementById('modalEsus').classList.remove('hidden');
     setTimeout(() => document.getElementById('buscaEsus').focus(), 100);
   });
@@ -995,17 +1004,29 @@
     const tbody = document.getElementById('esusListaBody');
     tbody.innerHTML = '';
     if (lista.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:2rem;">Nenhum cidadão encontrado.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem;">Nenhum cidadão encontrado.</td></tr>';
       return;
     }
     lista.slice(0, 200).forEach(c => {
       const tr = document.createElement('tr');
+      const enderecoOk = String(c.endereco || '').trim() !== '' && String(c.bairro || '').trim() !== '';
+      const enderecoTexto = enderecoOk
+        ? c.endereco + (c.numero ? ', ' + c.numero : '') + ' · ' + c.bairro + ' · tipo ' + (c.codLogradouro || '—')
+        : 'Ausente/incompleto no CSV';
       tr.innerHTML =
         '<td>' + escapeHtml(c.nome) + '</td>' +
         '<td>' + escapeHtml(c.nasc) + '</td>' +
         '<td>' + escapeHtml(c.cns || '') + '</td>' +
-        '<td class="col-check"><button class="btn btn-primary btn-xs btn-vincular-esus">Vincular</button></td>';
-      tr.querySelector('.btn-vincular-esus').addEventListener('click', () => {
+        '<td>' + (enderecoOk ? escapeHtml(enderecoTexto) : '<span style="color:var(--warn)">' + escapeHtml(enderecoTexto) + '</span>') + '</td>' +
+        '<td class="col-check"><button class="btn btn-primary btn-xs btn-vincular-esus"' +
+          (enderecoOk ? '' : ' disabled title="O registro não possui logradouro e bairro"') + '>Vincular</button></td>';
+      const btnVincular = tr.querySelector('.btn-vincular-esus');
+      btnVincular.addEventListener('click', () => {
+        if (!enderecoOk) {
+          setMsg(document.getElementById('esusModalMsg'), 'err',
+            'O cidadão selecionado não possui logradouro e bairro no CSV de vinculados. Corrija o cadastro de origem e reimporte.');
+          return;
+        }
         aplicarDadosPaciente(modalTargetIdx, {
           nome: c.nome, nasc: c.nasc, cns: c.cns || '', cpf: c.cpf || '',
           ibge: c.ibge || '', cep: c.cep || '', cbo: c.cbo || '',
@@ -1017,6 +1038,7 @@
         });
         fecharTodosModais();
         renderTriagem();
+        setMsg(triagemMsg, 'ok', 'Cidadão vinculado com logradouro, número, complemento e bairro importados do CSV.');
       });
       tbody.appendChild(tr);
     });

@@ -115,14 +115,42 @@
     }
 
     if (cod === "CLASSIFICACAO_INVALIDA") {
-      sugestoes.push({
-        campo: "servico_classificacao",
-        label: "Serviço/Classificação",
-        valorAtual: (registro.servico || "") + "/" + (registro.classificacao || ""),
-        valorSugerido: "",
-        justificativa: "Escolha o par Serviço/Classificação compatível com o procedimento SIGTAP.",
-        automatica: false
-      });
+      // Mapa de procedimentos que exigem serviço/classificação específicos (mesmo da regra)
+      const EXIGENTES = {
+        '0701040050': { servico: '164', classificacao: '007' },
+        '0211060127': { servico: '131', classificacao: '001' },
+        '0211060224': { servico: '131', classificacao: '001' },
+        '0211060232': { servico: '131', classificacao: '001' },
+        '0211060259': { servico: '131', classificacao: '001' }
+      };
+      const req = EXIGENTES[registro.sigtap];
+      if (req) {
+        sugestoes.push({
+          campo: "servico",
+          label: CAMPO_LABEL.servico,
+          valorAtual: registro.servico || "(vazio)",
+          valorSugerido: req.servico,
+          justificativa: "Procedimento exige Serviço " + req.servico + " conforme tabela SIGTAP.",
+          automatica: true
+        });
+        sugestoes.push({
+          campo: "classificacao",
+          label: CAMPO_LABEL.classificacao,
+          valorAtual: registro.classificacao || "(vazio)",
+          valorSugerido: req.classificacao,
+          justificativa: "Procedimento exige Classificação " + req.classificacao + " conforme tabela SIGTAP.",
+          automatica: true
+        });
+      } else {
+        sugestoes.push({
+          campo: "servico_classificacao",
+          label: "Serviço/Classificação",
+          valorAtual: (registro.servico || "") + "/" + (registro.classificacao || ""),
+          valorSugerido: "",
+          justificativa: "Escolha o par Serviço/Classificação compatível com o procedimento SIGTAP.",
+          automatica: false
+        });
+      }
     }
 
     return sugestoes;

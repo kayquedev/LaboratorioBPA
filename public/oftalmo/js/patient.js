@@ -4,7 +4,7 @@
   const COPY_FIELDS = [
     "nome", "nasc", "cns", "cpf", "ibge", "cep", "cbo", "microarea",
     "equipe", "endereco", "codLogradouro", "numero", "complemento",
-    "bairro", "telefone", "sexo", "nacionalidade", "racaCor"
+    "bairro", "telefone", "sexo", "nacionalidade", "racaCor", "dataAtendimento"
   ];
 
   function applyPatientData(patient, data) {

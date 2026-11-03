@@ -1143,8 +1143,20 @@
 
   // ---------- Aplicar dados ao paciente ----------
   function aplicarDadosPaciente(idx, dados) {
+    // Garantir que a data única da importação seja aplicada ao vincular pelo PEC
+    carregarDataAtendimentoUnica();
+    if (dataAtendimentoUnica) {
+      dados.dataAtendimento = dataAtendimentoUnica;
+    }
+    // Fallback: usar IBGE global se o cidadão do PEC não tiver IBGE válido
+    const ibgeGlobal = onlyDigits(document.getElementById("ibgeMunicipio")?.value || "");
+    if (ibgeGlobal && (!dados.ibge || dados.ibge === '000000' || dados.ibge.length !== 7)) {
+      dados.ibge = ibgeGlobal;
+    }
     if (idx >= 0 && pacientes[idx]) {
       window.OftalmoPatient.applyPatientData(pacientes[idx], dados);
+      // Forçar atualização da data mesmo se já existir no paciente
+      if (dataAtendimentoUnica) pacientes[idx].dataAtendimento = dataAtendimentoUnica;
     } else {
       pacientes.push(window.OftalmoPatient.createPatient(pacientes.length, dados));
     }

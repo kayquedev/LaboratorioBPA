@@ -918,7 +918,7 @@
           telefone: p.telefone || '', cpfPaciente: cpfPaciente,
           numAutorizacao: numAutorizacao,
           cid: cidProc, servico: servicoProc, classificacao: classifProc,
-          origemSistema: numAutorizacao
+          origemSistema: ''
         });
         linhas.push(linha);
         seq++; contadorLinhaFolha++;

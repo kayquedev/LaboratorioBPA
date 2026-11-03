@@ -91,7 +91,7 @@
     line = patchTxt(line, 74, 1, data.sexo || "");
     line = patchNum(line, 75, 6, data.ibge || "");
     line = patchTxt(line, 81, 4, data.cid || "");
-    line = patchOptionalNum(line, 85, 9, data.numAutorizacao || "");
+    line = patchTxt(line, 85, 9, data.numAutorizacao || "");
     line = patchNum(line, 94, 2, data.caraterAtendimento || "01");
     // Campo origemSistema (posições 96-111): usa valor passado ou espaços em branco
     line = patchTxt(line, 96, 16, data.origemSistema || "");

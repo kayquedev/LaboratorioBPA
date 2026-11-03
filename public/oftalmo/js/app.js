@@ -238,7 +238,8 @@
             cols.cns = norm.findIndex(n => n.includes("CPF/CNS") || n === "CNS");
             cols.microarea = norm.findIndex(n => n.includes("MICROAREA") || n === "MICROÁREA");
             cols.equipe = norm.findIndex(n => n.includes("NOME EQUIPE") || n === "EQUIPE");
-            cols.endereco = norm.findIndex(n => n === "ENDERECO" || n === "ENDEREÇO" || n === "LOGRADOURO" || n === "RUA" || n.includes("ENDERECO") || n.includes("LOGRADOURO"));
+	            cols.logradouroNome = norm.findIndex(n => n === "LOGRADOURO" || n === "RUA" || n === "NOME LOGRADOURO");
+	            cols.enderecoCompleto = norm.findIndex(n => n === "ENDERECO" || n === "ENDEREÇO" || n.includes("ENDERECO COMPLETO"));
             cols.codLogradouro = norm.findIndex(n => n.includes("COD. LOGRADOURO") || n.includes("COD LOGRADOURO") || n === "CODIGO LOGRADOURO" || n === "TIPO LOGRADOURO");
             cols.ibge = norm.findIndex(n => n.includes("CODIGO IBGE") || n.includes("MUNICIPIO") || n === "IBGE");
             cols.cep = norm.findIndex(n => n === "CEP");
@@ -267,7 +268,7 @@
             cpf: documentoCpf.cpf || documentoCns.cpf
           };
 
-          const endRaw = fieldAt(parts, cols.endereco);
+	          const endRaw = fieldAt(parts, cols.enderecoCompleto);
           const parsedEnd = parseEndereco(endRaw);
           const codLogVinc = onlyDigits(fieldAt(parts, cols.codLogradouro)) || parsedEnd.codTipo;
           const cepVinc = onlyDigits(fieldAt(parts, cols.cep));
@@ -281,7 +282,7 @@
             cns: documentos.cns,
             microarea: fieldAt(parts, cols.microarea),
             equipe: fieldAt(parts, cols.equipe),
-endereco: fieldAt(parts, cols.endereco) || parsedEnd.logradouro || endRaw,
+	endereco: fieldAt(parts, cols.logradouroNome) || parsedEnd.logradouro || endRaw,
             codLogradouro: codLogVinc,
             ibge: onlyDigits(fieldAt(parts, cols.ibge)),
             cep: cepVinc || parsedEnd.cep || "",

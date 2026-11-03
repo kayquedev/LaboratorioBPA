@@ -10,7 +10,11 @@
     RODOVIA: "090", BR: "090", SITIO: "092", SERVIDAO: "094",
     SETOR: "095", TRAVESSA: "100", TV: "100", VIA: "101",
     VIADUTO: "103", VILA: "104", VIELA: "105", CHACARA: "481",
-    CONDOMINIO: "485"
+    CONDOMINIO: "485", AREA: "472", QUINTAS: "475",
+    "1ª RUA": "552", "1A RUA": "552", "2ª RUA": "553", "2A RUA": "553",
+    "3ª RUA": "554", "3A RUA": "554", "5ª RUA": "555", "5A RUA": "555",
+    "4ª RUA": "556", "4A RUA": "556", "6ª RUA": "557", "6A RUA": "557",
+    "7ª RUA": "558", "7A RUA": "558"
   };
 
   function stripAccents(value) {
@@ -36,12 +40,24 @@
     const text = clean(value);
     if (!text) return { codTipo: "", tipoLogradouro: "", logradouro: "" };
     const parts = text.split(" ");
-    const first = stripAccents(parts[0]).toUpperCase();
-    const code = COD_TIPO_LOGRADOURO[first] || "";
-    if (!code || parts.length === 1) {
-      return { codTipo: code, tipoLogradouro: code ? parts[0] : "", logradouro: code ? "" : text };
+    const normalized = stripAccents(text).toUpperCase();
+    const typeKey = Object.keys(COD_TIPO_LOGRADOURO)
+      .sort((left, right) => right.length - left.length)
+      .find((key) => normalized === key || normalized.startsWith(key + " "));
+    const code = typeKey ? COD_TIPO_LOGRADOURO[typeKey] : "";
+    const typeParts = typeKey ? typeKey.split(" ").length : 0;
+    if (!code || parts.length === typeParts) {
+      return {
+        codTipo: code,
+        tipoLogradouro: code ? parts.slice(0, typeParts).join(" ") : "",
+        logradouro: code ? "" : text
+      };
     }
-    return { codTipo: code, tipoLogradouro: parts[0], logradouro: clean(parts.slice(1).join(" ")) };
+    return {
+      codTipo: code,
+      tipoLogradouro: parts.slice(0, typeParts).join(" "),
+      logradouro: clean(parts.slice(typeParts).join(" "))
+    };
   }
 
   // Formato padrão do relatório de vinculados do e-SUS:

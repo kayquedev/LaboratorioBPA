@@ -4,6 +4,7 @@
   // ---------- state ----------
   let miguellinRows = [];   // { nome, nasc, comunidade, endereco, bairro, numero, complemento, cep }
   let esusMap = new Map();  // chave normalizada -> { nome, nasc, cns, cpf, ibge, cep, cbo, microarea, equipe }
+  let esusAmbiguousKeys = new Set(); // mesma chave com dados divergentes nunca é vinculada automaticamente
   let esusList = [];        // array plano para busca no modal (derivado do esusMap)
   let pacientes = [];       // resultado do cruzamento
   let fileContent = "";
@@ -184,6 +185,7 @@
 
   btnLimparEsus.addEventListener("click", () => {
     esusMap.clear();
+    esusAmbiguousKeys.clear();
     esusTotalCount = 0;
     fnameEsus.textContent = "";
     esusFilesList.innerHTML = "";
@@ -257,13 +259,12 @@
           const nascRaw = fieldAt(parts, cols.nasc);
           if (!nome || !nascRaw) continue;
           const nasc = normalizeDataNasc(nascRaw);
-          const chave = chaveCruzamento(nome, nasc);
-          const cnsRaw = fieldAt(parts, cols.cns);
-          let cns = cnsRaw;
-          if (cnsRaw.includes("E+") || cnsRaw.includes("e+")) {
-            try { cns = String(Math.round(Number(cnsRaw))); } catch (_) { /* keep raw */ }
-          }
-          cns = onlyDigits(cns);
+          const documentoCns = window.OftalmoLinking.parseCpfCns(fieldAt(parts, cols.cns));
+          const documentoCpf = window.OftalmoLinking.parseCpfCns(fieldAt(parts, cols.cpf));
+          const documentos = {
+            cns: documentoCns.cns || documentoCpf.cns,
+            cpf: documentoCpf.cpf || documentoCns.cpf
+          };
 
           const endRaw = fieldAt(parts, cols.endereco);
           const parsedEnd = parseEndereco(endRaw);
@@ -272,10 +273,10 @@
           const numVinc = fieldAt(parts, cols.numero) || parsedEnd.numero;
           const compVinc = fieldAt(parts, cols.complemento) || parsedEnd.complemento;
 
-          esusMap.set(chave, {
+          const cidadao = {
             nome: nome,
             nasc: nasc,
-            cns: cns,
+            cns: documentos.cns,
             microarea: fieldAt(parts, cols.microarea),
             equipe: fieldAt(parts, cols.equipe),
             endereco: parsedEnd.logradouro,
@@ -283,12 +284,13 @@
             ibge: onlyDigits(fieldAt(parts, cols.ibge)),
             cep: cepVinc || parsedEnd.cep || "",
             sexo: fieldAt(parts, cols.sexo).toUpperCase().charAt(0),
-            cpf: onlyDigits(fieldAt(parts, cols.cpf)),
+            cpf: documentos.cpf,
             bairro: bairroVinc,
             numero: numVinc,
             complemento: compVinc,
             telefone: onlyDigits(fieldAt(parts, cols.telefone))
-          });
+          };
+          window.OftalmoLinking.indexCitizen(esusMap, esusAmbiguousKeys, cidadao);
           count++;
         }
 
@@ -301,7 +303,10 @@
         tag.textContent = file.name + " (" + count + ")";
         esusFilesList.appendChild(tag);
 
-        setMsg(msgEsus, "ok", esusTotalCount + " cidadãos vinculados carregados no total.");
+        const ambiguos = esusAmbiguousKeys.size;
+        setMsg(msgEsus, ambiguos > 0 ? "warn" : "ok",
+          esusTotalCount + " cidadãos carregados no total." +
+          (ambiguos > 0 ? " " + ambiguos + " chave(s) ambígua(s) foram bloqueadas para evitar vincular outra pessoa." : ""));
         atualizarBtnLimparEsus();
         enableCard("card-campos-bpa");
       } catch (err) {
@@ -333,25 +338,28 @@
     pacientes = miguellinRows.map((row, idx) => {
       const chave = chaveCruzamento(row.nome, row.nasc);
       const match = esusMap.get(chave);
+      const vinculado = match ? window.OftalmoLinking.linkedPatientData(row, match, ibgeGlobal) : null;
       return {
         id: idx,
-        nome: row.nome,
-        nasc: row.nasc,
+        nome: vinculado ? vinculado.nome : row.nome,
+        nasc: vinculado ? vinculado.nasc : row.nasc,
         comunidade: row.comunidade,
-        match: !!match,
-        cns: match ? match.cns : "",
-        microarea: match ? match.microarea : "",
-        equipe: match ? match.equipe : "",
-        endereco: (match && match.endereco && match.endereco.trim()) ? match.endereco : (row.endereco || ""),
-        codLogradouro: (match && match.codLogradouro && match.codLogradouro.trim()) ? match.codLogradouro : (row.codLogradouro || ""),
-        ibge: (match && match.ibge && match.ibge.trim()) ? match.ibge : ibgeGlobal,
-        cep: (match && match.cep && match.cep.trim()) ? match.cep : (row.cep || ""),
-        sexo: (match && match.sexo && match.sexo.trim()) ? match.sexo : "",
-        cpf: (match && match.cpf && match.cpf.trim()) ? match.cpf : "",
-        bairro: (match && match.bairro && match.bairro.trim()) ? match.bairro : (row.bairro || ""),
-        numero: (match && match.numero && match.numero.trim()) ? match.numero : (row.numero || ""),
-        complemento: (match && match.complemento && match.complemento.trim()) ? match.complemento : (row.complemento || ""),
-        telefone: match ? match.telefone : "",
+        match: !!vinculado,
+        vinculado: !!vinculado,
+        origemVinculo: vinculado ? "esus" : "",
+        cns: vinculado ? vinculado.cns : "",
+        microarea: vinculado ? vinculado.microarea : "",
+        equipe: vinculado ? vinculado.equipe : "",
+        endereco: vinculado ? vinculado.endereco : (row.endereco || ""),
+        codLogradouro: vinculado ? vinculado.codLogradouro : (row.codLogradouro || ""),
+        ibge: vinculado ? vinculado.ibge : ibgeGlobal,
+        cep: vinculado ? vinculado.cep : (row.cep || ""),
+        sexo: vinculado ? vinculado.sexo : "",
+        cpf: vinculado ? vinculado.cpf : "",
+        bairro: vinculado ? vinculado.bairro : (row.bairro || ""),
+        numero: vinculado ? vinculado.numero : (row.numero || ""),
+        complemento: vinculado ? vinculado.complemento : (row.complemento || ""),
+        telefone: vinculado ? vinculado.telefone : "",
         naoCompareceu: false,
         dataAtendimento: "", // dd/mm/yyyy - preenchido na consulta
         procedimentos: [] // Array de { sigtap, descricao }
@@ -413,7 +421,7 @@
           ) + '<span class="lbl">Tipo:</span> ' + escapeHtml(p.codLogradouro || "—")
         : '<span class="lbl">Endereço:</span> <span style="color:var(--warn)">não informado</span>';
       const infoExtra = p.match
-        ? '<span class="lbl">CNS:</span> ' + escapeHtml(p.cns || "—") +
+        ? '<span class="lbl">CPF/CNS:</span> ' + escapeHtml(p.cns || p.cpf || "—") +
           '<span class="lbl">Microárea:</span> ' + escapeHtml(p.microarea || "—") +
           '<span class="lbl">Equipe:</span> ' + escapeHtml(p.equipe || "—") +
           enderecoResumo
@@ -987,14 +995,14 @@
     const alvo = modalTargetIdx >= 0 ? pacientes[modalTargetIdx] : null;
     const buscaInicial = alvo ? (alvo.nome || '') : '';
     document.getElementById('buscaEsus').value = buscaInicial;
-    const listaInicial = buscaInicial
-      ? esusList.filter(c => normalizeNome(c.nome).includes(normalizeNome(buscaInicial)))
+    const listaInicial = alvo
+      ? esusList.filter(c => window.OftalmoLinking.sameCitizen(alvo, c))
       : esusList;
     renderListaEsus(listaInicial);
     clearMsg(document.getElementById('esusModalMsg'));
     if (buscaInicial && listaInicial.length === 0) {
       setMsg(document.getElementById('esusModalMsg'), 'warn',
-        'Este paciente não existe no arquivo de vinculados carregado. Não selecione outra pessoa apenas para preencher o endereço.');
+        'Este paciente não existe no arquivo de vinculados com o mesmo nome e nascimento. Não é permitido usar os dados de outra pessoa.');
     }
     document.getElementById('modalEsus').classList.remove('hidden');
     setTimeout(() => document.getElementById('buscaEsus').focus(), 100);
@@ -1010,18 +1018,25 @@
     lista.slice(0, 200).forEach(c => {
       const tr = document.createElement('tr');
       const enderecoOk = String(c.endereco || '').trim() !== '' && String(c.bairro || '').trim() !== '';
+      const alvo = modalTargetIdx >= 0 ? pacientes[modalTargetIdx] : null;
+      const cidadaoCorreto = !alvo || window.OftalmoLinking.sameCitizen(alvo, c);
       const enderecoTexto = enderecoOk
         ? c.endereco + (c.numero ? ', ' + c.numero : '') + ' · ' + c.bairro + ' · tipo ' + (c.codLogradouro || '—')
         : 'Ausente/incompleto no CSV';
       tr.innerHTML =
         '<td>' + escapeHtml(c.nome) + '</td>' +
         '<td>' + escapeHtml(c.nasc) + '</td>' +
-        '<td>' + escapeHtml(c.cns || '') + '</td>' +
+        '<td>' + escapeHtml(c.cns || c.cpf || '') + '</td>' +
         '<td>' + (enderecoOk ? escapeHtml(enderecoTexto) : '<span style="color:var(--warn)">' + escapeHtml(enderecoTexto) + '</span>') + '</td>' +
         '<td class="col-check"><button class="btn btn-primary btn-xs btn-vincular-esus"' +
-          (enderecoOk ? '' : ' disabled title="O registro não possui logradouro e bairro"') + '>Vincular</button></td>';
+          (enderecoOk && cidadaoCorreto ? '' : ' disabled title="O registro não corresponde ao paciente ou não possui endereço completo"') + '>Vincular</button></td>';
       const btnVincular = tr.querySelector('.btn-vincular-esus');
       btnVincular.addEventListener('click', () => {
+        if (!cidadaoCorreto) {
+          setMsg(document.getElementById('esusModalMsg'), 'err',
+            'Nome e nascimento não correspondem ao paciente agendado. O vínculo foi bloqueado.');
+          return;
+        }
         if (!enderecoOk) {
           setMsg(document.getElementById('esusModalMsg'), 'err',
             'O cidadão selecionado não possui logradouro e bairro no CSV de vinculados. Corrija o cadastro de origem e reimporte.');
@@ -1051,8 +1066,10 @@
 
   document.getElementById('buscaEsus').addEventListener('input', (e) => {
     const q = stripAccents(e.target.value.trim().toLowerCase());
-    if (!q) { renderListaEsus(esusList); return; }
-    const filtrados = esusList.filter(c =>
+    const alvo = modalTargetIdx >= 0 ? pacientes[modalTargetIdx] : null;
+    const base = alvo ? esusList.filter(c => window.OftalmoLinking.sameCitizen(alvo, c)) : esusList;
+    if (!q) { renderListaEsus(base); return; }
+    const filtrados = base.filter(c =>
       stripAccents(c.nome || '').toLowerCase().includes(q) ||
       (c.cns || '').includes(q) ||
       (c.cpf || '').includes(q)

@@ -4,6 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const address = require("../public/oftalmo/js/address");
+const linking = require("../public/oftalmo/js/linking");
 const patient = require("../public/oftalmo/js/patient");
 const writer = require("../public/oftalmo/js/writer");
 const rules = require("../public/oftalmo/js/rules");
@@ -54,6 +55,13 @@ test("Oftalmo não transforma UF em bairro e trata hífen como endereço ausente
   assert.equal(address.parseEndereco("-").logradouro, "");
 });
 
+test("Oftalmo reconhece Área e ruas ordinais conforme domínio de logradouro", () => {
+  const area = address.parseEndereco("Área VIA SINTETICA, 10. CASA - BAIRRO TESTE, CIDADE - UF | 00000-000");
+  const terceiraRua = address.parseEndereco("3ª Rua VIA SINTETICA, 20. CASA - BAIRRO TESTE, CIDADE - UF | 00000-000");
+  assert.deepEqual([area.codTipo, area.logradouro], ["472", "VIA SINTETICA"]);
+  assert.deepEqual([terceiraRua.codTipo, terceiraRua.logradouro], ["554", "VIA SINTETICA"]);
+});
+
 test("vinculação e preenchimento manual preservam todos os campos do endereço", () => {
   const original = patient.createPatient(1, { nome: "PACIENTE TESTE", nasc: "01/01/2000" });
   patient.applyPatientData(original, {
@@ -69,6 +77,46 @@ test("vinculação e preenchimento manual preservam todos os campos do endereço
     [original.endereco, original.codLogradouro, original.numero, original.complemento, original.bairro, original.cep],
     ["VIA SINTETICA", "081", "123", "CASA", "BAIRRO TESTE", "00000000"]
   );
+});
+
+test("vínculo usa a mesma linha do cidadão para dados pessoais e endereço", () => {
+  const agendado = { nome: "PACIENTE SINTETICO", nasc: "01/02/2010", comunidade: "TESTE" };
+  const vinculado = {
+    nome: "Paciente Sintético", nasc: "01/02/2010",
+    cpf: "00000000000", cns: "", sexo: "F", telefone: "00000000000",
+    microarea: "01", equipe: "EQUIPE TESTE", ibge: "000000",
+    endereco: "VIA SINTETICA", codLogradouro: "081", numero: "123",
+    complemento: "CASA", bairro: "BAIRRO TESTE", cep: "00000000"
+  };
+  const dados = linking.linkedPatientData(agendado, vinculado, "999999");
+  assert.ok(dados);
+  assert.deepEqual(
+    [dados.nome, dados.nasc, dados.cpf, dados.sexo, dados.telefone, dados.endereco, dados.numero, dados.bairro, dados.cep],
+    ["Paciente Sintético", "01/02/2010", "00000000000", "F", "00000000000", "VIA SINTETICA", "123", "BAIRRO TESTE", "00000000"]
+  );
+});
+
+test("vínculo rejeita homônimo com nascimento diferente", () => {
+  const agendado = { nome: "PACIENTE SINTETICO", nasc: "01/02/2010" };
+  const outraPessoa = { nome: "PACIENTE SINTETICO", nasc: "02/02/2010", endereco: "OUTRA VIA" };
+  assert.equal(linking.sameCitizen(agendado, outraPessoa), false);
+  assert.equal(linking.linkedPatientData(agendado, outraPessoa, "000000"), null);
+});
+
+test("CPF/CNS combinado é classificado sem duplicar o documento", () => {
+  assert.deepEqual(linking.parseCpfCns("000.000.000-00"), { cpf: "00000000000", cns: "" });
+  assert.deepEqual(linking.parseCpfCns("700 0000 0000 0000"), { cpf: "", cns: "700000000000000" });
+});
+
+test("chave duplicada com dados pessoais divergentes é bloqueada", () => {
+  const index = new Map();
+  const ambiguous = new Set();
+  const first = { nome: "PACIENTE TESTE", nasc: "01/01/2000", cpf: "00000000000", endereco: "VIA A" };
+  const second = { nome: "PACIENTE TESTE", nasc: "01/01/2000", cpf: "11111111111", endereco: "VIA B" };
+  assert.equal(linking.indexCitizen(index, ambiguous, first).status, "added");
+  assert.equal(linking.indexCitizen(index, ambiguous, second).status, "ambiguous");
+  assert.equal(index.size, 0);
+  assert.equal(ambiguous.size, 1);
 });
 
 test("validação bloqueia logradouro ou bairro ausente e oferece correção sem inventar valor", () => {

@@ -166,3 +166,23 @@ test("BPA-I preserva datas, quantidade, endereço e situação de rua no layout 
   assert.equal(parsed.complemento, "CASA");
   assert.equal(parsed.bairro, "BAIRRO TESTE");
 });
+
+test("arquivo BPA usa cabeçalho de 126 bytes e linha BPA-I de 351 bytes", () => {
+  const header = writer.montarCabecalhoBpa({ competencia: "202609", numLinhas: 1, numFolhas: 1 });
+  const line = writer.montarLinhaBpaI({
+    tipo: "03", cnes: "1234567", competencia: "202609",
+    cnsProfissional: "700000000000000", cbo: "225265", dataAtendimento: "06/09/2026",
+    folha: 1, sequencia: 1, sigtap: "0301010072", sexo: "F", ibge: "123456",
+    nome: "PACIENTE SINTÉTICO", nasc: "14/04/2020", racaCor: "03", nacionalidade: "010",
+    cep: "00000000", codLogradouro: "081", endereco: "VIA SINTÉTICA",
+    complemento: "CASA", numero: "123", bairro: "BAIRRO TESTE"
+  });
+  const fileBytes = writer.encodeLatin1(header + "\r\n" + line + "\r\n");
+  assert.equal(header.length, 126);
+  assert.equal(writer.encodeLatin1(header).length, 126);
+  assert.equal(line.length, 351);
+  assert.equal(writer.encodeLatin1(line).length, 351);
+  assert.equal(fileBytes.length, 126 + 2 + 351 + 2);
+  assert.equal(qualidadeParser.parseHeader(header).numLinhas, 1);
+  assert.equal(qualidadeParser.parseHeader(header).numFolhas, 1);
+});

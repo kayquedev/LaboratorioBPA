@@ -46,6 +46,34 @@
     return "";
   }
 
+  function montarCabecalhoBpa(data) {
+    const values = data || {};
+    let line = " ".repeat(126);
+    line = patchTxt(line, 0, 2, "01");
+    line = patchTxt(line, 2, 5, "#BPA#");
+    line = patchNum(line, 7, 6, values.competencia || "");
+    line = patchNum(line, 13, 6, values.numLinhas || 0);
+    line = patchNum(line, 19, 6, values.numFolhas || 0);
+    line = patchNum(line, 25, 4, values.controle || "1111");
+    line = patchTxt(line, 29, 30, values.orgOrigem || "");
+    line = patchTxt(line, 59, 6, values.siglaOrigem || "");
+    line = patchOptionalNum(line, 65, 14, values.cgcCpf || "");
+    line = patchTxt(line, 79, 40, values.orgDestino || "");
+    line = patchTxt(line, 119, 1, values.indDestino || "M");
+    line = patchTxt(line, 120, 6, values.versao || "D05.00");
+    return line;
+  }
+
+  function encodeLatin1(value) {
+    const text = String(value == null ? "" : value);
+    const bytes = new Uint8Array(text.length);
+    for (let i = 0; i < text.length; i++) {
+      const code = text.charCodeAt(i);
+      bytes[i] = code <= 255 ? code : 63;
+    }
+    return bytes;
+  }
+
   function montarLinhaBpaI(data) {
     // Layout BPA-I: 351 posições; situação de rua fica na posição 350 (N = não).
     let line = " ".repeat(349) + "N" + " ";
@@ -83,7 +111,10 @@
     return line;
   }
 
-  const api = { patchNum, patchTxt, patchOptionalNum, formatDate, montarLinhaBpaI };
+  const api = {
+    patchNum, patchTxt, patchOptionalNum, formatDate,
+    montarCabecalhoBpa, montarLinhaBpaI, encodeLatin1
+  };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.OftalmoWriter = api;
 })(typeof window !== "undefined" ? window : globalThis);

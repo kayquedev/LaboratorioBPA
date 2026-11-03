@@ -855,12 +855,11 @@
 
     const numLinhasTotal = linhas.length;
     const numFolhas = folha - folhaIni + 1;
-    let headerLine = " ".repeat(349) + "N" + "  ";
-    headerLine = patchTxt(headerLine, 0, 2, "01");
-    headerLine = patchTxt(headerLine, 2, 5, "#BPA#");
-    headerLine = patchNum(headerLine, 7, 6, compYyyy + compMm);
-    headerLine = patchNum(headerLine, 13, 6, numLinhasTotal);
-    headerLine = patchNum(headerLine, 19, 6, numFolhas);
+    const headerLine = window.OftalmoWriter.montarCabecalhoBpa({
+      competencia: compYyyy + compMm,
+      numLinhas: numLinhasTotal,
+      numFolhas: numFolhas
+    });
     
     fileContent = headerLine + "\r\n" + linhas.join("\r\n") + "\r\n";
     fileName = "PA" + compYyyy + compMm + ".txt";
@@ -879,7 +878,8 @@
     document.getElementById("viewResultado").classList.remove("hidden");
 
     document.getElementById("btnDownload").onclick = () => {
-      const blob = new Blob([fileContent], { type: "text/plain;charset=iso-8859-1" });
+      const bytes = window.OftalmoWriter.encodeLatin1(fileContent);
+      const blob = new Blob([bytes], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url; a.download = fileName;

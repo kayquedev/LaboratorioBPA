@@ -116,10 +116,6 @@
     } else {
       line = patchNum(line, 162, 3, classificacaoVal);
     }
-    // Correção de layout BPA-I: alinhamento exato das posições de endereço
-    // CEP: 191-198 (8 bytes), Cod. Logradouro: 199-201 (3 bytes)
-    // Logradouro: 202-231 (30 bytes), Complemento: 232-241 (10 bytes)
-    // Número: 242-246 (5 bytes), Bairro: 247-276 (30 bytes)
     line = patchNum(line, 191, 8, data.cep || "");
     // Cod. Logradouro deve ser exatamente 3 dígitos (ex: 081). patchNum já trata zeros à esquerda.
     line = patchNum(line, 199, 3, data.codLogradouro || "");

@@ -35,15 +35,6 @@
     });
   }
 
-  // Função stub mantida para compatibilidade (não faz nada com data única)
-  function destacarDataRapidaSelecionada() {
-    // Removido: não há mais botões de data rápida
-  }
-
-  // Funções removidas (substituídas por data única):
-  // renderizarBarraDatasRapidas, aplicarDataRapidaAoPaciente
-  function renderizarBarraDatasRapidas() { /* noop */ }
-  function aplicarDataRapidaAoPaciente() { /* noop */ }
 
   // Procedimentos padrão (editáveis pelo usuário na config)
   const SIGTAP_CONSULTA_PADRAO = "0301010072";
@@ -441,6 +432,14 @@
 
   fBusca.addEventListener("input", renderTriagem);
   btnVoltarConfig.addEventListener("click", () => {
+    // Restaurar data única no input date (formato yyyy-mm-dd) para preservar na sessão
+    const elData = document.getElementById("dataAtendimentoUnica");
+    if (elData && dataAtendimentoUnica) {
+      const parts = dataAtendimentoUnica.split("/");
+      if (parts.length === 3) {
+        elData.value = parts[2] + "-" + parts[1] + "-" + parts[0];
+      }
+    }
     document.getElementById("viewTriagem").classList.add("hidden");
     document.getElementById("viewConfig").classList.remove("hidden");
   });
@@ -1148,11 +1147,6 @@
     carregarDataAtendimentoUnica();
     if (dataAtendimentoUnica) {
       dados.dataAtendimento = dataAtendimentoUnica;
-    }
-    // Fallback: usar IBGE global se o cidadão do PEC não tiver IBGE válido
-    const ibgeGlobal = onlyDigits(document.getElementById("ibgeMunicipio")?.value || "");
-    if (ibgeGlobal && (!dados.ibge || dados.ibge === '000000' || dados.ibge.length !== 7)) {
-      dados.ibge = ibgeGlobal;
     }
     if (idx >= 0 && pacientes[idx]) {
       window.OftalmoPatient.applyPatientData(pacientes[idx], dados);

@@ -2,7 +2,7 @@
   "use strict";
 
   // ---------- state ----------
-  let miguellinRows = [];   // { nome, nasc, comunidade }
+  let miguellinRows = [];   // { nome, nasc, comunidade, endereco, bairro, numero, complemento, cep }
   let esusMap = new Map();  // chave normalizada -> { nome, nasc, cns, cpf, ibge, cep, cbo, microarea, equipe }
   let esusList = [];        // array plano para busca no modal (derivado do esusMap)
   let pacientes = [];       // resultado do cruzamento
@@ -117,22 +117,44 @@
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
 
         let headerIdx = -1;
+        let migCols = {};
         for (let i = 0; i < Math.min(rows.length, 10); i++) {
           const r = rows[i];
-          if (r && String(r[1] || "").toUpperCase().includes("PACIENTE")) { headerIdx = i; break; }
+          const norm = (r || []).map(c => stripAccents(String(c || "").toUpperCase().trim()));
+          const idxNome = norm.findIndex(n => n.includes("PACIENTE") || n === "NOME");
+          if (idxNome >= 0) {
+            headerIdx = i;
+            migCols.nome = idxNome;
+            migCols.nasc = norm.findIndex(n => n.includes("DATA DE NASCIMENTO") || n.includes("DATA NASC") || n === "NASCIMENTO");
+            migCols.comunidade = norm.findIndex(n => n.includes("COMUNIDADE") || n.includes("EQUIPE") || n.includes("MICROAREA"));
+            migCols.endereco = norm.findIndex(n => n === "ENDERECO" || n === "ENDEREÇO" || n === "LOGRADOURO" || n === "RUA" || n.includes("ENDERECO") || n.includes("LOGRADOURO"));
+            migCols.bairro = norm.findIndex(n => n === "BAIRRO" || n.includes("BAIRRO") || n === "DISTRITO");
+            migCols.numero = norm.findIndex(n => n === "NUMERO" || n === "NÚMERO");
+            migCols.complemento = norm.findIndex(n => n === "COMPLEMENTO");
+            migCols.cep = norm.findIndex(n => n === "CEP");
+            break;
+          }
         }
         if (headerIdx < 0) throw new Error("Cabeçalho com coluna PACIENTE não encontrado nas primeiras 10 linhas.");
 
         miguellinRows = [];
         for (let i = headerIdx + 1; i < rows.length; i++) {
           const r = rows[i];
-          const nome = String(r[1] || "").trim();
-          const nasc = r[2];
+          const nome = String(r[migCols.nome] || "").trim();
+          const nasc = migCols.nasc >= 0 ? r[migCols.nasc] : r[2];
           if (!nome) continue;
+          const endRaw = migCols.endereco >= 0 ? String(r[migCols.endereco] || "").trim() : "";
+          const parsedEnd = parseEndereco(endRaw);
           miguellinRows.push({
             nome: nome,
             nasc: normalizeDataNasc(nasc),
-            comunidade: String(r[3] || "").trim()
+            comunidade: migCols.comunidade >= 0 ? String(r[migCols.comunidade] || "").trim() : String(r[3] || "").trim(),
+            endereco: parsedEnd.logradouro || endRaw,
+            codLogradouro: parsedEnd.codTipo || '',
+            bairro: (migCols.bairro >= 0 ? String(r[migCols.bairro] || "").trim() : "") || parsedEnd.bairro,
+            numero: (migCols.numero >= 0 ? String(r[migCols.numero] || "").trim() : "") || parsedEnd.numero,
+            complemento: (migCols.complemento >= 0 ? String(r[migCols.complemento] || "").trim() : "") || parsedEnd.complemento,
+            cep: migCols.cep >= 0 ? onlyDigits(String(r[migCols.cep] || "").trim()) : parsedEnd.cep
           });
         }
 
@@ -185,53 +207,12 @@
     }
   });
 
-  // Tabela oficial de códigos de tipo de logradouro (DATASUS/SIA)
-  const COD_TIPO_LOGRADOURO = {
-    'ACESSO': '001', 'ALAMEDA': '004', 'AVENIDA': '008', 'AV': '008',
-    'BECO': '011', 'CAMINHO': '017', 'CONJUNTO': '020', 'CONJ': '020',
-    'ESTRADA': '031', 'EST': '031', 'FAZENDA': '037', 'JARDIM': '052',
-    'LADEIRA': '053', 'LARGO': '054', 'LOTEAMENTO': '056', 'PRACA': '065',
-    'PC': '065', 'PARQUE': '072', 'QUADRA': '077', 'RUA': '081',
-    'RODOVIA': '090', 'BR': '090', 'SITIO': '092', 'SERVIDAO': '094',
-    'SETOR': '095', 'TRAVESSA': '100', 'TV': '100', 'VIA': '101',
-    'VIADUTO': '103', 'VILA': '104', 'VIELA': '105', 'CHACARA': '481',
-    'CONDOMINIO': '485'
-  };
-
-  // Parser de endereço: separa tipo de logradouro (código numérico), nome da via, número, complemento e bairro
-  // Ex: "Rua DR EZEQUIEL DE MACEDO, 221. CASA - CENTRO" -> { codTipo: "081", logradouro: "DR EZEQUIEL DE MACEDO", numero: "221", complemento: "CASA", bairro: "CENTRO" }
   function parseEndereco(enderecoCompleto) {
-    if (!enderecoCompleto) return { codTipo: '', logradouro: '', numero: '', complemento: '', bairro: '' };
-    let end = String(enderecoCompleto).trim();
-    // Remover CEP e UF/Cidade do final se presentes (formato e-SUS: "... | 35544-000" ou ", Cidade - UF")
-    const pipeIdx = end.lastIndexOf('|');
-    if (pipeIdx > 0) end = end.substring(0, pipeIdx).trim();
-    // Tentar extrair bairro após último hífen ou vírgula seguida de espaço
-    let bairro = '';
-    const hifenIdx = end.lastIndexOf(' - ');
-    if (hifenIdx > 0) {
-      bairro = end.substring(hifenIdx + 3).trim();
-      end = end.substring(0, hifenIdx).trim();
-    }
-    // Extrair tipo de logradouro e mapear para código numérico oficial
-    const partes = end.split(/\s+/);
-    const primeira = stripAccents(partes[0] || '').toUpperCase();
-    let codTipo = '';
-    let logradouro = end;
-    if (COD_TIPO_LOGRADOURO[primeira]) {
-      codTipo = COD_TIPO_LOGRADOURO[primeira];
-      logradouro = partes.slice(1).join(' ');
-    }
-    // Extrair número e complemento do logradouro
-    let numero = '';
-    let complemento = '';
-    const numMatch = logradouro.match(/,?\s*(\d+)\s*\.?\s*(.*)/);
-    if (numMatch) {
-      numero = numMatch[1];
-      complemento = numMatch[2] || '';
-      logradouro = logradouro.substring(0, numMatch.index).trim();
-    }
-    return { codTipo, logradouro, numero, complemento, bairro };
+    return window.OftalmoAddress.parseEndereco(enderecoCompleto);
+  }
+
+  function fieldAt(parts, index) {
+    return index >= 0 && index < parts.length ? String(parts[index] || "").trim() : "";
   }
   function handleEsus(file) {
     clearMsg(msgEsus);
@@ -272,41 +253,41 @@
         let count = 0;
         for (let i = headerIdx + 1; i < lines.length; i++) {
           const parts = lines[i].split(";");
-          const nome = String(parts[cols.nome] || "").trim();
-          const nascRaw = String(parts[cols.nasc] || "").trim();
+          const nome = fieldAt(parts, cols.nome);
+          const nascRaw = fieldAt(parts, cols.nasc);
           if (!nome || !nascRaw) continue;
           const nasc = normalizeDataNasc(nascRaw);
           const chave = chaveCruzamento(nome, nasc);
-          const cnsRaw = String(parts[cols.cns] || "").trim();
+          const cnsRaw = fieldAt(parts, cols.cns);
           let cns = cnsRaw;
           if (cnsRaw.includes("E+") || cnsRaw.includes("e+")) {
             try { cns = String(Math.round(Number(cnsRaw))); } catch (_) { /* keep raw */ }
           }
           cns = onlyDigits(cns);
 
-          const endRaw = String(parts[cols.endereco] || "").trim();
+          const endRaw = fieldAt(parts, cols.endereco);
           const parsedEnd = parseEndereco(endRaw);
-          const cepVinc = onlyDigits(String(parts[cols.cep] || "").trim());
-          const bairroVinc = String(parts[cols.bairro] || "").trim() || parsedEnd.bairro;
-          const numVinc = String(parts[cols.numero] || "").trim() || parsedEnd.numero;
-          const compVinc = String(parts[cols.complemento] || "").trim() || parsedEnd.complemento;
+          const cepVinc = onlyDigits(fieldAt(parts, cols.cep));
+          const bairroVinc = fieldAt(parts, cols.bairro) || parsedEnd.bairro;
+          const numVinc = fieldAt(parts, cols.numero) || parsedEnd.numero;
+          const compVinc = fieldAt(parts, cols.complemento) || parsedEnd.complemento;
 
           esusMap.set(chave, {
             nome: nome,
             nasc: nasc,
             cns: cns,
-            microarea: String(parts[cols.microarea] || "").trim(),
-            equipe: String(parts[cols.equipe] || "").trim(),
+            microarea: fieldAt(parts, cols.microarea),
+            equipe: fieldAt(parts, cols.equipe),
             endereco: parsedEnd.logradouro,
             codLogradouro: parsedEnd.codTipo,
-            ibge: onlyDigits(String(parts[cols.ibge] || "").trim()),
-            cep: cepVinc || parsedEnd.cep,
-            sexo: String(parts[cols.sexo] || "").trim().toUpperCase().charAt(0),
-            cpf: onlyDigits(String(parts[cols.cpf] || "").trim()),
+            ibge: onlyDigits(fieldAt(parts, cols.ibge)),
+            cep: cepVinc || parsedEnd.cep || "",
+            sexo: fieldAt(parts, cols.sexo).toUpperCase().charAt(0),
+            cpf: onlyDigits(fieldAt(parts, cols.cpf)),
             bairro: bairroVinc,
             numero: numVinc,
             complemento: compVinc,
-            telefone: onlyDigits(String(parts[cols.telefone] || "").trim())
+            telefone: onlyDigits(fieldAt(parts, cols.telefone))
           });
           count++;
         }
@@ -361,14 +342,15 @@
         cns: match ? match.cns : "",
         microarea: match ? match.microarea : "",
         equipe: match ? match.equipe : "",
-        endereco: match ? match.endereco : "",
-        ibge: (match && match.ibge) ? match.ibge : ibgeGlobal,
-        cep: match ? match.cep : "",
-        sexo: match ? match.sexo : "",
-        cpf: match ? match.cpf : "",
-        bairro: match ? match.bairro : "",
-        numero: match ? match.numero : "",
-        complemento: match ? match.complemento : "",
+        endereco: (match && match.endereco && match.endereco.trim()) ? match.endereco : (row.endereco || ""),
+        codLogradouro: (match && match.codLogradouro && match.codLogradouro.trim()) ? match.codLogradouro : (row.codLogradouro || ""),
+        ibge: (match && match.ibge && match.ibge.trim()) ? match.ibge : ibgeGlobal,
+        cep: (match && match.cep && match.cep.trim()) ? match.cep : (row.cep || ""),
+        sexo: (match && match.sexo && match.sexo.trim()) ? match.sexo : "",
+        cpf: (match && match.cpf && match.cpf.trim()) ? match.cpf : "",
+        bairro: (match && match.bairro && match.bairro.trim()) ? match.bairro : (row.bairro || ""),
+        numero: (match && match.numero && match.numero.trim()) ? match.numero : (row.numero || ""),
+        complemento: (match && match.complemento && match.complemento.trim()) ? match.complemento : (row.complemento || ""),
         telefone: match ? match.telefone : "",
         naoCompareceu: false,
         dataAtendimento: "", // dd/mm/yyyy - preenchido na consulta
@@ -584,39 +566,175 @@
       return;
     }
 
-    // Validação pré-exportação: listar erros por registro
-    const erros = [];
-    ativos.forEach((p, idx) => {
-      // Validar data de nascimento
-      if (!isValidDate(p.nasc)) erros.push({paciente: p.nome, erro: 'Data de nascimento inválida (' + (p.nasc||'vazia') + '). Verifique o cadastro.'});
-      // Validar CNS paciente
-      if (p.cns && p.cns.length === 15 && !isValidCns(p.cns)) erros.push({paciente: p.nome, erro: 'CNS paciente com dígito verificador inválido (' + p.cns + ')'});
-      // Validar endereço
-      const parsedEndCheck = parseEndereco(p.endereco);
-      if (!parsedEndCheck.logradouro && !p.bairro) erros.push({paciente: p.nome, erro: 'Endereço do paciente inválido/vazio. Preencha logradouro e bairro.'});
-      
+    // Validação pré-exportação via catálogo de regras (rules.js)
+    const registrosParaValidacao = [];
+    const refsValidacao = [];
+    ativos.forEach(p => {
       p.procedimentos.forEach(proc => {
-        // Validar SIGTAP (tamanho e dígito verificador)
-        if (!proc.sigtap || proc.sigtap.length !== 10) {
-          erros.push({paciente: p.nome, erro: 'SIGTAP inválido (' + (proc.sigtap||'') + '). Deve ter 10 dígitos.'});
-        } else if (!isValidSigtap(proc.sigtap)) {
-          erros.push({paciente: p.nome, erro: 'Dígito verificador do procedimento ' + proc.sigtap + ' incorreto.'});
-        }
-        // Validar data de atendimento
         const dtAtend = p.dataAtendimento || dataAtendPadrao;
-        if (!dtAtend) {
-          erros.push({paciente: p.nome, erro: 'Data de atendimento não informada.'});
-        } else if (!isValidDate(dtAtend)) {
-          erros.push({paciente: p.nome, erro: 'Data de atendimento inválida (' + dtAtend + ').'});
-        } else {
-          // Verificar competência
-          const partsDt = dtAtend.split('/');
-          const mmYyAtend = partsDt[2] + partsDt[1];
-          if (mmYyAtend !== compYyyy + compMm) erros.push({paciente: p.nome, erro: 'Data ' + dtAtend + ' fora da competência ' + compMm + '/' + compYyyy + '.'});
-        }
-        if (!p.ibge || (p.ibge.length !== 6 && p.ibge.length !== 7)) erros.push({paciente: p.nome, erro: 'IBGE município inválido (' + (p.ibge||'') + ').'});
+        const preDef = {
+          '0701040050': { servico: '164', classificacao: '007', cid: 'H542' },
+          '0211060127': { servico: '131', classificacao: '001', cid: '' },
+          '0211060224': { servico: '131', classificacao: '001', cid: '' },
+          '0211060232': { servico: '131', classificacao: '001', cid: '' },
+          '0211060259': { servico: '131', classificacao: '001', cid: '' }
+        };
+        const pre = preDef[proc.sigtap] || {};
+        registrosParaValidacao.push({
+          nome: p.nome,
+          sigtap: proc.sigtap,
+          quantidade: proc.qtd || 1,
+          dataAtendimento: dtAtend,
+          nasc: p.nasc,
+          cnsPaciente: (p.cns && p.cns.length === 15) ? p.cns : '',
+          cpfPaciente: p.cpf || '',
+          ibge: p.ibge || '',
+          endereco: p.endereco || '',
+          bairro: p.bairro || '',
+          cep: p.cep || cepPadrao || '',
+          racaCor: p.racaCor || '03',
+          nacionalidade: p.nacionalidade || '010',
+          caraterAtendimento: '01',
+          servico: proc.servico || pre.servico || '',
+          classificacao: proc.classificacao || pre.classificacao || ''
+        });
+        refsValidacao.push({ paciente: p, proc: proc });
       });
     });
+
+    const resultadoAnalise = window.OftalmoRules ? window.OftalmoRules.analisarLote(registrosParaValidacao, {
+      competencia: compYyyy + compMm,
+      cbo: cbo,
+      cnes: cnes,
+      cnsProfissional: cnsProf
+    }) : { ocorrencias: [], totalErros: 0, totalAvisos: 0 };
+
+    const cardOcorrencias = document.getElementById('cardOcorrencias');
+    const listaOcorrencias = document.getElementById('ocorrenciasLista');
+    const resumoOcorrencias = document.getElementById('ocorrenciasResumo');
+    const msgOcorrencias = document.getElementById('ocorrenciasMsg');
+
+    if (resultadoAnalise.ocorrencias.length > 0) {
+      cardOcorrencias.classList.remove('hidden');
+      resumoOcorrencias.textContent = resultadoAnalise.totalErros + ' erro(s), ' + resultadoAnalise.totalAvisos + ' aviso(s)';
+      listaOcorrencias.innerHTML = resultadoAnalise.ocorrencias.map((o, idx) => {
+        const cls = o.severidade === 'erro' ? 'sev-erro' : 'sev-aviso';
+        const sugestoes = window.OftalmoCorrections ? window.OftalmoCorrections.gerarSugestoes(o, o._registro || {}) : [];
+        let botoesHtml = '';
+        sugestoes.forEach((s, si) => {
+          if (s.automatica) {
+            botoesHtml += '<button class="btn btn-sm btn-primary" data-acao="auto" data-idx="' + idx + '" data-si="' + si + '" style="margin:4px 4px 0 0;font-size:.75rem;padding:2px 8px;">Aplicar: ' + escapeHtml(s.valorSugerido) + '</button>';
+          } else {
+            botoesHtml += '<div style="margin:4px 0;display:flex;gap:4px;align-items:center;flex-wrap:wrap;">' +
+              '<label style="font-size:.75rem;">' + escapeHtml(s.label) + ':</label>' +
+              '<input type="text" class="input-correcao" data-idx="' + idx + '" data-campo="' + escapeHtml(s.campo) + '" value="' + escapeHtml(s.valorAtual) + '" style="flex:1;min-width:120px;padding:2px 6px;font-size:.8rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:4px;color:#fff;">' +
+              '<button class="btn btn-sm btn-ghost-dark" data-acao="manual" data-idx="' + idx + '" data-campo="' + escapeHtml(s.campo) + '" style="font-size:.75rem;padding:2px 8px;">Salvar</button></div>';
+          }
+        });
+        return '<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08);" data-ocorrencia-idx="' + idx + '">' +
+          '<span class="badge ' + cls + '" style="margin-right:6px;">' + o.severidade.toUpperCase() + '</span>' +
+          '<b>' + escapeHtml(o.paciente) + '</b> · ' + escapeHtml(o.sigtap) + '<br>' +
+          '<small>' + escapeHtml(o.texto) + ': ' + escapeHtml(o.explicacao) + '</small><br>' +
+          '<small style="color:var(--cyan);">→ ' + escapeHtml(o.resolver) + '</small>' +
+          (botoesHtml ? '<div style="margin-top:4px;">' + botoesHtml + '</div>' : '') +
+          '</div>';
+      }).join('');
+
+      // Bind eventos de correção
+      listaOcorrencias.querySelectorAll('[data-acao="auto"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.dataset.idx, 10);
+          const si = parseInt(btn.dataset.si, 10);
+          const ocor = resultadoAnalise.ocorrencias[idx];
+          const sugs = window.OftalmoCorrections.gerarSugestoes(ocor, ocor._registro || {});
+          const sug = sugs[si];
+          if (!sug) return;
+          const ref = refsValidacao[ocor.indice];
+          if (!ref) return;
+          // Aplica correção no objeto original
+          if (sug.campo === 'racaCor') ref.paciente.racaCor = sug.valorSugerido;
+          else if (sug.campo === 'nacionalidade') ref.paciente.nacionalidade = sug.valorSugerido;
+          else if (sug.campo === 'caraterAtendimento') ref.proc.caraterAtendimento = sug.valorSugerido;
+          // Remove ocorrência da lista e re-renderiza
+          resultadoAnalise.ocorrencias.splice(idx, 1);
+          if (sug.automatica && ocor.severidade === 'erro') resultadoAnalise.totalErros--;
+          else if (sug.automatica) resultadoAnalise.totalAvisos--;
+          // Re-renderiza card
+          btn.closest('[data-ocorrencia-idx]').remove();
+          resumoOcorrencias.textContent = resultadoAnalise.totalErros + ' erro(s), ' + resultadoAnalise.totalAvisos + ' aviso(s)';
+          if (resultadoAnalise.ocorrencias.length === 0) {
+            cardOcorrencias.classList.add('hidden');
+            clearMsg(msgOcorrencias);
+          } else if (resultadoAnalise.totalErros === 0) {
+            setMsg(msgOcorrencias, 'warn', 'Todos os erros corrigidos. ' + resultadoAnalise.totalAvisos + ' aviso(s) restante(s).');
+          }
+        });
+      });
+
+      listaOcorrencias.querySelectorAll('[data-acao="manual"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.dataset.idx, 10);
+          const campo = btn.dataset.campo;
+          const input = listaOcorrencias.querySelector('.input-correcao[data-idx="' + idx + '"][data-campo="' + campo + '"]');
+          if (!input) return;
+          const novoValor = input.value.trim();
+          const ocor = resultadoAnalise.ocorrencias[idx];
+          const ref = refsValidacao[ocor.indice];
+          if (!ref) return;
+          // Aplica correção manual no objeto original
+          if (campo === 'endereco') {
+            const parsed = parseEndereco(novoValor);
+            ref.paciente.endereco = parsed.logradouro || novoValor;
+            if (parsed.codTipo) ref.paciente.codLogradouro = parsed.codTipo;
+            if (parsed.numero) ref.paciente.numero = parsed.numero;
+            if (parsed.complemento) ref.paciente.complemento = parsed.complemento;
+            if (parsed.bairro) ref.paciente.bairro = parsed.bairro;
+            if (parsed.cep) ref.paciente.cep = parsed.cep;
+          }
+          else if (campo === 'bairro') ref.paciente.bairro = novoValor;
+          else if (campo === 'ibge') ref.paciente.ibge = novoValor;
+          else if (campo === 'cep') ref.paciente.cep = novoValor;
+          else if (campo === 'sigtap') ref.proc.sigtap = novoValor;
+          else if (campo === 'servico_classificacao') {
+            const partes = novoValor.split('/');
+            if (partes.length === 2) {
+              ref.proc.servico = partes[0].trim();
+              ref.proc.classificacao = partes[1].trim();
+            }
+          }
+          if (ocor._registro) {
+            if (campo === 'endereco') ocor._registro.endereco = ref.paciente.endereco;
+            else if (campo === 'bairro') ocor._registro.bairro = ref.paciente.bairro;
+            else ocor._registro[campo] = novoValor;
+          }
+          // Marca como revisado mas não remove automaticamente (usuário deve revalidar)
+          btn.textContent = '✓ Salvo';
+          btn.disabled = true;
+          input.disabled = true;
+        });
+      });
+
+      clearMsg(msgOcorrencias);
+    } else {
+      cardOcorrencias.classList.add('hidden');
+      listaOcorrencias.innerHTML = '';
+      resumoOcorrencias.textContent = '';
+    }
+
+    if (resultadoAnalise.totalErros > 0) {
+      setMsg(msgOcorrencias, 'err', 'Corrija os ' + resultadoAnalise.totalErros + ' erro(s) acima antes de gerar o arquivo BPA-I.');
+      return;
+    }
+
+    // Se só há avisos, permite continuar mas mantém o card visível
+    if (resultadoAnalise.totalAvisos > 0) {
+      setMsg(msgOcorrencias, 'warn', 'Arquivo gerado com ' + resultadoAnalise.totalAvisos + ' aviso(s). Revise antes de enviar ao DATASUS.');
+    } else {
+      clearMsg(msgOcorrencias);
+    }
+
+    // Bloqueio original mantido para compatibilidade (não deve mais ser atingido)
+    const erros = [];
     if (erros.length > 0) {
       const msgErros = erros.slice(0, 10).map(e => e.paciente + ': ' + e.erro).join('\n');
       setMsg(triagemMsg, 'err', erros.length + ' erro(s) encontrado(s). Corrija antes de exportar:\n' + msgErros + (erros.length > 10 ? '\n...e mais ' + (erros.length - 10) : ''));
@@ -638,62 +756,14 @@
     let chaveAtual = cnes + '|' + cbo + '|' + cnsProf; // chave única por grupo
 
     function patchNum(line, start, len, valor) {
-      let v = String(valor == null ? "" : valor).replace(/\D/g, "");
-      if (!v) v = "0";
-      if (v.length > len) v = v.slice(-len);
-      v = v.padStart(len, "0");
-      return line.slice(0, start) + v + line.slice(start + len);
+      return window.OftalmoWriter.patchNum(line, start, len, valor);
     }
     function patchTxt(line, start, len, valor) {
-      let v = String(valor == null ? "" : valor).toUpperCase();
-      v = (v + " ".repeat(len)).slice(0, len);
-      return line.slice(0, start) + v + line.slice(start + len);
+      return window.OftalmoWriter.patchTxt(line, start, len, valor);
     }
 
     function montarLinhaBpaI(d) {
-      let L = " ".repeat(351) + "N";
-      L = patchTxt(L, 0, 2, d.tipo || "03");
-      L = patchNum(L, 2, 7, d.cnes || "");
-      L = patchNum(L, 9, 6, d.competencia || "");
-      L = patchNum(L, 15, 15, d.cnsProfissional || "");
-      L = patchNum(L, 30, 6, d.cbo || "");
-      // Data no formato ddmmaaaa; se vier yyyy-mm-dd ou dd/mm/yyyy, converter
-      let dt = String(d.dataAtendimento || "").replace(/\D/g, "");
-      if (dt.length === 8 && parseInt(dt.slice(0,4),10) > 1900) {
-        // yyyyMMdd -> ddMMyyyy
-        dt = dt.slice(6,8) + dt.slice(4,6) + dt.slice(0,4);
-      } else if (dt.length === 8 && parseInt(dt.slice(4,8),10) > 1900) {
-        // ddMMyyyy já está correto
-      } else {
-        dt = "";
-      }
-      L = patchNum(L, 36, 8, dt);
-      L = patchNum(L, 44, 3, d.folha || 1);
-      L = patchNum(L, 47, 2, d.sequencia || 1);
-      L = patchNum(L, 49, 10, d.sigtap || "");
-      L = patchNum(L, 57, 2, d.quantidade || 1);
-      L = patchNum(L, 59, 15, d.cnsPaciente || "");
-      L = patchTxt(L, 74, 1, d.sexo || "");
-      L = patchNum(L, 75, 6, d.ibge || "");
-      L = patchTxt(L, 81, 4, d.cid || "");
-      L = patchNum(L, 85, 9, d.numAutorizacao || "");
-      L = patchNum(L, 94, 2, d.caraterAtendimento || "01");
-      L = patchTxt(L, 112, 30, d.nome || "");
-      L = patchNum(L, 142, 8, d.nasc || "");
-      L = patchNum(L, 150, 2, d.racaCor || "99");
-      L = patchTxt(L, 152, 4, d.etnia || "");
-      L = patchNum(L, 156, 3, d.nacionalidade || "010");
-      L = patchNum(L, 159, 3, d.servico || "");
-      L = patchNum(L, 162, 3, d.classificacao || "");
-      L = patchNum(L, 191, 8, d.cep || "");
-      L = patchNum(L, 199, 3, d.codLogradouro || "");
-      L = patchTxt(L, 202, 30, d.endereco || "");
-      L = patchTxt(L, 232, 10, d.complemento || "");
-      L = patchTxt(L, 242, 5, d.numero || "");
-      L = patchTxt(L, 247, 30, d.bairro || "");
-      L = patchNum(L, 277, 11, d.telefone || "");
-      L = patchNum(L, 338, 11, d.cpfPaciente || "");
-      return L;
+      return window.OftalmoWriter.montarLinhaBpaI(d);
     }
 
     ativos.forEach(p => {
@@ -729,8 +799,9 @@
         const servicoProc = proc.servico || preDef.servico || '';
         const classifProc = proc.classificacao || preDef.classificacao || '';
 
-        // Parsing do endereço para separar tipo de logradouro
-        const parsedEnd = parseEndereco(p.endereco);
+        // Dados de endereço já parseados nos vinculados (MIGUELLIN/e-SUS)
+        const codLogradouroFinal = p.codLogradouro || parseEndereco(p.endereco).codTipo;
+        const enderecoFinal = p.endereco || '';
 
         // Data de nascimento no formato ddmmyyyy
         let nascFmt = '';
@@ -752,8 +823,8 @@
           caraterAtendimento: '01', nome: p.nome, nasc: nascFmt,
           racaCor: '03', nacionalidade: p.nacionalidade || '010',
           cep: p.cep || cepPadrao || '',
-          codLogradouro: parsedEnd.codTipo,
-          endereco: parsedEnd.logradouro,
+          codLogradouro: codLogradouroFinal,
+          endereco: enderecoFinal,
           complemento: p.complemento || '',
           numero: p.numero || '', bairro: p.bairro || '',
           telefone: p.telefone || '', cpfPaciente: cpfPaciente,
@@ -839,13 +910,23 @@
       const p = pacientes[modalTargetIdx];
       document.getElementById('manNome').value = p.nome || '';
       document.getElementById('manNasc').value = p.nasc || '';
+      document.getElementById('manCns').value = p.cns || '';
+      document.getElementById('manMicroarea').value = p.microarea || '';
+      document.getElementById('manEquipe').value = p.equipe || '';
+      document.getElementById('manEndereco').value = p.endereco || '';
+      document.getElementById('manCodLogradouro').value = p.codLogradouro || '';
+      document.getElementById('manNumero').value = p.numero || '';
+      document.getElementById('manComplemento').value = p.complemento || '';
+      document.getElementById('manBairro').value = p.bairro || '';
+      document.getElementById('manCep').value = p.cep || '';
     }
     clearMsg(document.getElementById('manualMsg'));
     document.getElementById('modalManual').classList.remove('hidden');
   });
 
   function limparFormManual() {
-    ['manNome','manNasc','manCns','manMicroarea','manEquipe','manEndereco'].forEach(id => {
+    ['manNome','manNasc','manCns','manMicroarea','manEquipe','manEndereco',
+      'manCodLogradouro','manNumero','manComplemento','manBairro','manCep'].forEach(id => {
       document.getElementById(id).value = '';
     });
   }
@@ -854,13 +935,24 @@
     const nome = document.getElementById('manNome').value.trim();
     const nasc = normalizeDataNasc(document.getElementById('manNasc').value.trim());
     const cns = onlyDigits(document.getElementById('manCns').value);
+    const enderecoRaw = document.getElementById('manEndereco').value.trim();
+    const parsedEnd = parseEndereco(enderecoRaw);
+    const endereco = parsedEnd.logradouro || enderecoRaw;
+    const bairro = document.getElementById('manBairro').value.trim() || parsedEnd.bairro;
     if (!nome) { setMsg(document.getElementById('manualMsg'), 'err', 'Nome é obrigatório.'); return; }
     if (!nasc || nasc.length < 8) { setMsg(document.getElementById('manualMsg'), 'err', 'Data de nascimento inválida.'); return; }
+    if (!endereco) { setMsg(document.getElementById('manualMsg'), 'err', 'Logradouro é obrigatório.'); return; }
+    if (!bairro) { setMsg(document.getElementById('manualMsg'), 'err', 'Bairro é obrigatório.'); return; }
     aplicarDadosPaciente(modalTargetIdx, {
       nome, nasc, cns: cns || '',
       microarea: document.getElementById('manMicroarea').value.trim(),
       equipe: document.getElementById('manEquipe').value.trim(),
-      endereco: document.getElementById('manEndereco').value.trim(),
+      endereco: endereco,
+      codLogradouro: onlyDigits(document.getElementById('manCodLogradouro').value) || parsedEnd.codTipo,
+      numero: document.getElementById('manNumero').value.trim() || parsedEnd.numero,
+      complemento: document.getElementById('manComplemento').value.trim() || parsedEnd.complemento,
+      bairro: bairro,
+      cep: onlyDigits(document.getElementById('manCep').value) || parsedEnd.cep,
       origem: 'manual'
     });
     fecharTodosModais();
@@ -898,6 +990,9 @@
           nome: c.nome, nasc: c.nasc, cns: c.cns || '', cpf: c.cpf || '',
           ibge: c.ibge || '', cep: c.cep || '', cbo: c.cbo || '',
           microarea: c.microarea || '', equipe: c.equipe || '',
+          endereco: c.endereco || '', codLogradouro: c.codLogradouro || '',
+          numero: c.numero || '', complemento: c.complemento || '',
+          bairro: c.bairro || '', telefone: c.telefone || '', sexo: c.sexo || '',
           origem: 'esus'
         });
         fecharTodosModais();
@@ -926,31 +1021,9 @@
   // ---------- Aplicar dados ao paciente ----------
   function aplicarDadosPaciente(idx, dados) {
     if (idx >= 0 && pacientes[idx]) {
-      const p = pacientes[idx];
-      p.nome = dados.nome || p.nome;
-      p.nasc = dados.nasc || p.nasc;
-      p.cns = dados.cns || p.cns || '';
-      p.cpf = dados.cpf || p.cpf || '';
-      p.ibge = dados.ibge || p.ibge || '';
-      p.cep = dados.cep || p.cep || '';
-      p.cbo = dados.cbo || p.cbo || '';
-      p.microarea = dados.microarea || p.microarea || '';
-      p.equipe = dados.equipe || p.equipe || '';
-      p.match = true;
-      p.vinculado = true;
-      p.origemVinculo = dados.origem || 'manual';
+      window.OftalmoPatient.applyPatientData(pacientes[idx], dados);
     } else {
-      pacientes.push({
-        id: pacientes.length,
-        nome: dados.nome, nasc: dados.nasc,
-        cns: dados.cns || '', cpf: dados.cpf || '',
-        ibge: dados.ibge || '', cep: dados.cep || '',
-        cbo: dados.cbo || '', microarea: dados.microarea || '',
-        equipe: dados.equipe || '', comunidade: '',
-        match: true, vinculado: true,
-        origemVinculo: dados.origem || 'manual',
-        naoCompareceu: false, procedimentos: []
-      });
+      pacientes.push(window.OftalmoPatient.createPatient(pacientes.length, dados));
     }
   }
 

@@ -136,6 +136,14 @@
 
       <div class="triagem-footer">
         <div class="msg" id="triagemMsg"></div>
+        <div class="card hidden" id="cardOcorrencias" style="margin-bottom:16px;border-left:4px solid var(--amber);">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>⚠ Ocorrências encontradas</span>
+            <span class="badge sev-aviso" id="ocorrenciasResumo"></span>
+          </div>
+          <div id="ocorrenciasLista" style="max-height:360px;overflow-y:auto;font-size:.85rem;"></div>
+          <div class="msg" id="ocorrenciasMsg"></div>
+        </div>
         <div class="action-row">
           <button class="btn btn-ghost-dark" id="btnAddCidadao">+ Adicionar Cidadão</button>
           <button class="btn btn-primary" id="btnGerarBpa">Gerar arquivo BPA-I</button>
@@ -210,8 +218,23 @@
         <label>Equipe
           <input type="text" id="manEquipe" maxlength="50">
         </label>
-        <label>Endereço
+        <label>Logradouro
           <input type="text" id="manEndereco" maxlength="100">
+        </label>
+        <label>Código do tipo de logradouro
+          <input type="text" id="manCodLogradouro" maxlength="3" placeholder="Ex: 081 para Rua">
+        </label>
+        <label>Número
+          <input type="text" id="manNumero" maxlength="5" placeholder="Ex: 123 ou SN">
+        </label>
+        <label>Complemento
+          <input type="text" id="manComplemento" maxlength="10">
+        </label>
+        <label>Bairro
+          <input type="text" id="manBairro" maxlength="30">
+        </label>
+        <label>CEP
+          <input type="text" id="manCep" maxlength="8" placeholder="8 dígitos">
         </label>
       </div>
       <div class="msg" id="manualMsg"></div>
@@ -281,6 +304,11 @@
 
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="js/session.js"></script>
+<script src="js/address.js"></script>
+<script src="js/patient.js"></script>
+<script src="js/writer.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/corrections.js"></script>
 <script src="js/app.js"></script>
 
 </body>

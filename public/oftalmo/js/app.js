@@ -10,60 +10,40 @@
   let fileContent = "";
   let fileName = "";
   let modalTargetIdx = -1;  // índice do paciente sendo editado no modal (-1 = novo cidadão)
-  let datasRapidas = [];    // até 3 datas configuradas na importação (formato dd/mm/yyyy)
+  let dataAtendimentoUnica = ""; // data única configurada na importação (formato dd/mm/yyyy)
 
-  // ---------- datas rápidas ----------
-  function carregarDatasRapidas() {
-    datasRapidas = [];
-    for (let i = 1; i <= 3; i++) {
-      const el = document.getElementById("dataAtend0" + i);
-      if (!el || !el.value) continue;
-      // input date vem como yyyy-mm-dd; converter para dd/mm/yyyy
-      const parts = el.value.split("-");
-      if (parts.length === 3) {
-        datasRapidas.push(parts[2] + "/" + parts[1] + "/" + parts[0]);
-      }
+  // ---------- data única de atendimento ----------
+  function carregarDataAtendimentoUnica() {
+    const el = document.getElementById("dataAtendimentoUnica");
+    if (!el || !el.value) {
+      dataAtendimentoUnica = "";
+      return;
     }
-    renderizarBarraDatasRapidas();
-  }
-
-  function renderizarBarraDatasRapidas() {
-    const bar = document.getElementById("datasRapidasBar");
-    if (!bar) return;
-    const btns = bar.querySelectorAll(".data-rapida-btn");
-    let temData = false;
-    btns.forEach((btn, idx) => {
-      const dt = datasRapidas[idx] || "";
-      btn.textContent = dt;
-      btn.style.display = dt ? "" : "none";
-      btn.classList.remove("active");
-      if (dt) temData = true;
-    });
-    if (temData) {
-      bar.classList.remove("hidden");
+    // input date vem como yyyy-mm-dd; converter para dd/mm/yyyy
+    const parts = el.value.split("-");
+    if (parts.length === 3) {
+      dataAtendimentoUnica = parts[2] + "/" + parts[1] + "/" + parts[0];
     } else {
-      bar.classList.add("hidden");
+      dataAtendimentoUnica = "";
     }
   }
 
-  function destacarDataRapidaSelecionada(dataValor) {
-    const bar = document.getElementById("datasRapidasBar");
-    if (!bar) return;
-    bar.querySelectorAll(".data-rapida-btn").forEach((btn) => {
-      if (btn.textContent === dataValor) {
-        btn.classList.add("active");
-      } else {
-        btn.classList.remove("active");
-      }
+  function aplicarDataUnicaATodosPacientes() {
+    if (!dataAtendimentoUnica) return;
+    pacientes.forEach((p) => {
+      p.dataAtendimento = dataAtendimentoUnica;
     });
   }
 
-  function aplicarDataRapidaAoPaciente(idxPaciente, dataValor) {
-    if (idxPaciente < 0 || idxPaciente >= pacientes.length) return;
-    pacientes[idxPaciente].dataAtendimento = dataValor;
-    destacarDataRapidaSelecionada(dataValor);
-    renderTriagem();
+  // Função stub mantida para compatibilidade (não faz nada com data única)
+  function destacarDataRapidaSelecionada() {
+    // Removido: não há mais botões de data rápida
   }
+
+  // Funções removidas (substituídas por data única):
+  // renderizarBarraDatasRapidas, aplicarDataRapidaAoPaciente
+  function renderizarBarraDatasRapidas() { /* noop */ }
+  function aplicarDataRapidaAoPaciente() { /* noop */ }
 
   // Procedimentos padrão (editáveis pelo usuário na config)
   const SIGTAP_CONSULTA_PADRAO = "0301010072";
@@ -393,6 +373,15 @@
     if (miguellinRows.length === 0) { setMsg(camposMsg, "err", "Importe a planilha MIGUELLIN primeiro."); return; }
     if (esusMap.size === 0) { setMsg(camposMsg, "err", "Importe o CSV do e-SUS primeiro."); return; }
 
+    // Validar data única obrigatória antes de processar
+    carregarDataAtendimentoUnica();
+    if (!dataAtendimentoUnica) {
+      setMsg(camposMsg, "err", "Informe a Data do Atendimento antes de processar.");
+      const elData = document.getElementById("dataAtendimentoUnica");
+      if (elData) elData.focus();
+      return;
+    }
+
     pacientes = miguellinRows.map((row, idx) => {
       const chave = chaveCruzamento(row.nome, row.nasc);
       const match = esusMap.get(chave);
@@ -419,7 +408,7 @@
         complemento: vinculado ? vinculado.complemento : (row.complemento || ""),
         telefone: vinculado ? vinculado.telefone : "",
         naoCompareceu: false,
-        dataAtendimento: "", // dd/mm/yyyy - preenchido na consulta
+        dataAtendimento: dataAtendimentoUnica, // dd/mm/yyyy - data única da importação
         procedimentos: [] // Array de { sigtap, descricao }
       };
     });
@@ -457,7 +446,7 @@
   });
 
   function renderTriagem() {
-    carregarDatasRapidas();
+    carregarDataAtendimentoUnica();
     const termo = normalizeNome(fBusca.value);
     const filtered = termo
       ? pacientes.filter(p => normalizeNome(p.nome).includes(termo))
@@ -510,13 +499,10 @@
         procHtml = '<span style="color:var(--text-muted);font-size:.8rem;">Não compareceu</span>';
       }
 
-      // Destacar data rápida selecionada para este paciente
-      destacarDataRapidaSelecionada(p.dataAtendimento || "");
-
-      const dataAtendVal = p.dataAtendimento || "";
-      const dataAtendInput = '<input type="date" class="input-data-atend" data-id="' + p.id + '" value="' + (dataAtendVal ? dataAtendVal.split('/').reverse().join('-') : '') + '"' + (p.naoCompareceu ? ' disabled' : '') + '>';
+      // Exibir data única (somente leitura)
+      const dataAtendDisplay = '<span class="data-display">' + escapeHtml(dataAtendimentoUnica || '') + '</span>';
       html += '<tr class="' + disabledClass + '" data-id="' + p.id + '">' +
-        '<td class="col-data">' + dataAtendInput + '</td>' +
+        '<td class="col-data">' + dataAtendDisplay + '</td>' +
         '<td>' + escapeHtml(p.nome) + '</td>' +
         '<td>' + escapeHtml(p.nasc) + '</td>' +
         '<td><div class="info-extra">' + infoExtra + '</div>' + btnPreencherHtml + '</td>' +
@@ -531,38 +517,7 @@
       btn.addEventListener('click', () => abrirModalOrigem(parseInt(btn.dataset.idx, 10)));
     });
 
-    // Botões de data rápida: aplicar ao paciente atualmente em foco (último clicado ou primeiro da lista)
-    document.querySelectorAll('.data-rapida-btn').forEach(btn => {
-      btn.onclick = () => {
-        const dt = btn.textContent;
-        if (!dt) return;
-        // Aplicar ao paciente que está com o input de data em foco, ou ao primeiro visível
-        const inpFocado = document.activeElement && document.activeElement.classList.contains('input-data-atend')
-          ? document.activeElement : null;
-        let pidx = -1;
-        if (inpFocado) {
-          pidx = pacientes.findIndex(p => p.id === parseInt(inpFocado.dataset.id, 10));
-        }
-        if (pidx < 0) {
-          // Fallback: aplicar ao primeiro paciente não desabilitado da lista filtrada
-          const termo = normalizeNome(fBusca.value);
-          const filtered = termo
-            ? pacientes.filter(p => normalizeNome(p.nome).includes(termo))
-            : pacientes;
-          const alvo = filtered.find(p => !p.naoCompareceu);
-          if (alvo) pidx = pacientes.indexOf(alvo);
-        }
-        if (pidx >= 0) {
-          aplicarDataRapidaAoPaciente(pidx, dt);
-          // Atualizar também o input de data correspondente na tabela
-          const inp = triagemBody.querySelector('.input-data-atend[data-id="' + pacientes[pidx].id + '"]');
-          if (inp) {
-            const parts = dt.split('/');
-            inp.value = parts[2] + '-' + parts[1] + '-' + parts[0];
-          }
-        }
-      };
-    });
+    // Data única: não há botões de data rápida nem inputs individuais
 
     triagemBody.querySelectorAll('.btn-add-proc').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -582,20 +537,7 @@
       });
     });
 
-    triagemBody.querySelectorAll('.input-data-atend').forEach(inp => {
-      inp.addEventListener('change', (e) => {
-        const id = parseInt(e.target.dataset.id, 10);
-        const p = pacientes.find(x => x.id === id);
-        if (!p) return;
-        const val = e.target.value; // yyyy-mm-dd
-        if (val) {
-          const parts = val.split('-');
-          p.dataAtendimento = parts[2] + '/' + parts[1] + '/' + parts[0];
-        } else {
-          p.dataAtendimento = '';
-        }
-      });
-    });
+    // Data única: não há listeners de change para inputs de data individuais
 
     triagemBody.querySelectorAll('input[type="checkbox"]').forEach(cb => {
       cb.addEventListener("change", (e) => {

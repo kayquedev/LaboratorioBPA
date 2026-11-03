@@ -41,20 +41,15 @@
         <div class="msg" id="configMsg"></div>
       </div>
 
-      <div class="card" id="card-datas-atendimento">
-        <div class="card-title">Datas de Atendimento</div>
-        <p style="margin-bottom:12px;color:var(--text-muted);font-size:0.9rem;">Configure até 3 datas padrão. Elas aparecerão como botões de seleção rápida na tela de resultados.</p>
+      <div class="card" id="card-data-atendimento">
+        <div class="card-title">Data do Atendimento</div>
+        <p style="margin-bottom:12px;color:var(--text-muted);font-size:0.9rem;">Informe a data única que será aplicada automaticamente a todos os atendimentos importados.</p>
         <div class="field-row">
-          <label>Data 01
-            <input type="date" id="dataAtend01">
-          </label>
-          <label>Data 02
-            <input type="date" id="dataAtend02">
-          </label>
-          <label>Data 03
-            <input type="date" id="dataAtend03">
+          <label>Data do Atendimento
+            <input type="date" id="dataAtendimentoUnica" required>
           </label>
         </div>
+        <div class="msg" id="dataAtendimentoMsg"></div>
       </div>
 
       <div class="card" id="card-upload-miguellin">
@@ -129,12 +124,6 @@
   <!-- ===================== STEP 2: CONSULTA ===================== -->
   <section id="viewTriagem" class="view-dark hidden">
     <div class="wrap-wide">
-      <div class="datas-rapidas-bar hidden" id="datasRapidasBar">
-        <span class="lbl">Data do atendimento:</span>
-        <button class="btn btn-outline btn-xs data-rapida-btn" data-slot="0"></button>
-        <button class="btn btn-outline btn-xs data-rapida-btn" data-slot="1"></button>
-        <button class="btn btn-outline btn-xs data-rapida-btn" data-slot="2"></button>
-      </div>
 
       <div class="triagem-header">
         <div>

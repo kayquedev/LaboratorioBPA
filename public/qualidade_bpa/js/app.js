@@ -195,18 +195,29 @@
   // mais codigos SIGTAP "indicadores" desse setor (basta achar um pra contar
   // como importado). E so um alerta de atencao pro profissional do BPA, nao
   // afeta as demais checagens de qualidade/faturamento.
+  // Setores com Produção Esperada: cada entrada é { sigtap: [...], cbo?: [...] }.
+  // Quando cbo está presente, o registro só conta se bater SIGTAP E CBO (ex.: Fono/Psicóloga
+  // compartilham o mesmo procedimento e são diferenciados pelo CBO). Sem cbo, basta o SIGTAP.
   const SETOR_INDICADORES = {
-    "Laboratório": ["0202020380"],
-    "Pronto Atendimento": ["0301060096"],
-    "Especialidades": ["0301010072", "0301010048"],
-    "Fisioterapia": ["0302050027"],
-    "TFD (transporte)": ["0803010125", "0803010109"],
+    "Laboratório":          { sigtap: ["0202020380"] },
+    "Pronto Atendimento":   { sigtap: ["0301060096"] },
+    "Especialidades":       { sigtap: ["0301010072", "0301010048"] },
+    "Fisioterapia":         { sigtap: ["0302050027"] },
+    "TFD (transporte)":     { sigtap: ["0803010125", "0803010109"] },
+    "Vigilância":           { sigtap: ["0102010170"] },
+    "Farmácia":             { sigtap: ["0101010010"] },
+    "Fono":                 { sigtap: ["0301010048"], cbo: ["223810"] },
+    "Psicóloga":            { sigtap: ["0301010048"], cbo: ["251510"] },
   };
 
   function renderSetores() {
-    const codigosPresentes = new Set(parsed.registros.map((r) => r.sigtap));
-    const html = Object.entries(SETOR_INDICADORES).map(([nome, codigos]) => {
-      const importado = codigos.some((c) => codigosPresentes.has(c));
+    const regs = parsed.registros;
+    const html = Object.entries(SETOR_INDICADORES).map(([nome, regra]) => {
+      const temSigtap = (s) => regs.some((r) => r.sigtap === s);
+      const temSigtapECbo = (s, cbos) => regs.some((r) => r.sigtap === s && cbos.includes(r.cbo));
+      const importado = regra.cbo
+        ? regra.sigtap.some((s) => temSigtapECbo(s, regra.cbo))
+        : regra.sigtap.some(temSigtap);
       return '<span class="badge ' + (importado ? "b-ok" : "sev-erro") + '" style="margin-right:8px;">' +
         (importado ? "✓" : "✗") + " " + escapeHtml(nome) + "</span>";
     }).join(" ");

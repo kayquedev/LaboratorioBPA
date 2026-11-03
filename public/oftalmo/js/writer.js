@@ -93,8 +93,8 @@
     line = patchTxt(line, 81, 4, data.cid || "");
     line = patchOptionalNum(line, 85, 9, data.numAutorizacao || "");
     line = patchNum(line, 94, 2, data.caraterAtendimento || "01");
-    // Campo fixo "MIGUELIN     BPA" nas posições 96-111 conforme layout oficial PAOFT-CO.txt
-    line = patchTxt(line, 96, 16, data.origemSistema || "MIGUELIN     BPA");
+    // Campo origemSistema (posições 96-111): usa valor passado ou espaços em branco
+    line = patchTxt(line, 96, 16, data.origemSistema || "");
     line = patchTxt(line, 112, 30, data.nome || "");
     line = patchNum(line, 142, 8, formatDate(data.nasc));
     line = patchNum(line, 150, 2, data.racaCor || "99");

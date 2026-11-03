@@ -281,7 +281,7 @@
             cns: documentos.cns,
             microarea: fieldAt(parts, cols.microarea),
             equipe: fieldAt(parts, cols.equipe),
-            endereco: fieldAt(parts, cols.endereco) || parsedEnd.logradouro,
+endereco: fieldAt(parts, cols.endereco) || parsedEnd.logradouro || endRaw,
             codLogradouro: codLogVinc,
             ibge: onlyDigits(fieldAt(parts, cols.ibge)),
             cep: cepVinc || parsedEnd.cep || "",
@@ -763,11 +763,45 @@
       clearMsg(msgOcorrencias);
     }
 
-    // Bloqueio original mantido para compatibilidade (não deve mais ser atingido)
-    const erros = [];
-    if (erros.length > 0) {
-      const msgErros = erros.slice(0, 10).map(e => e.paciente + ': ' + e.erro).join('\n');
-      setMsg(triagemMsg, 'err', erros.length + ' erro(s) encontrado(s). Corrija antes de exportar:\n' + msgErros + (erros.length > 10 ? '\n...e mais ' + (erros.length - 10) : ''));
+// Validação obrigatória antes da exportação
+    const errosValidacao = [];
+    ativos.forEach(p => {
+      const enderecoLimpo = (p.endereco || '').trim();
+      const bairroLimpo = (p.bairro || '').trim();
+      const codLogLimpo = (p.codLogradouro || '').trim();
+      
+      // Normalizar sexo: Masculino/M -> M, Feminino/F -> F
+      const sexoRaw = String(p.sexo || '').toUpperCase().trim();
+      let sexoNorm = '';
+      if (sexoRaw === 'M' || sexoRaw === 'MASCULINO') sexoNorm = 'M';
+      else if (sexoRaw === 'F' || sexoRaw === 'FEMININO') sexoNorm = 'F';
+      p.sexo = sexoNorm; // atualiza no objeto para uso na exportação
+      
+      // Validação de Endereço
+      if (!enderecoLimpo) {
+        errosValidacao.push(p.nome + ': Endereço vazio. Preencha o logradouro.');
+      } else if (/^\d+$/.test(enderecoLimpo.replace(/\s/g, ''))) {
+        // Verifica se o endereço contém apenas números (ex: "81" ou "081")
+        errosValidacao.push(p.nome + ': Endereço inválido ("' + enderecoLimpo + '"). Deve conter o nome da rua.');
+      }
+      
+      if (!bairroLimpo) {
+        errosValidacao.push(p.nome + ': Bairro vazio.');
+      }
+      
+      // Validação de Código de Logradouro (deve ser 3 dígitos numéricos)
+      if (codLogLimpo && !/^\d{3}$/.test(codLogLimpo)) {
+        errosValidacao.push(p.nome + ': Código de logradouro inválido ("' + codLogLimpo + '"). Deve ter exatamente 3 dígitos (ex: 081).');
+      }
+      
+      // Validação de Sexo
+      if (!sexoNorm) {
+        errosValidacao.push(p.nome + ': Sexo inválido ou ausente. Use M (Masculino) ou F (Feminino).');
+      }
+    });
+
+    if (errosValidacao.length > 0) {
+      setMsg(triagemMsg, 'err', errosValidacao.length + ' erro(s) encontrado(s). Corrija antes de exportar:\n' + errosValidacao.join('\n'));
       return;
     }
 
@@ -849,7 +883,7 @@
           telefone: p.telefone || '', cpfPaciente: cpfPaciente,
           numAutorizacao: numAutorizacao,
           cid: cidProc, servico: servicoProc, classificacao: classifProc,
-          origemSistema: 'MIGUELIN BPA'
+          origemSistema: ''
         });
         linhas.push(linha);
         seq++; contadorLinhaFolha++;

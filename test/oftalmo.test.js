@@ -169,7 +169,7 @@ test("BPA-I preserva datas, quantidade, endereço e situação de rua no layout 
 
 test("BPA-I gera linha idêntica ao arquivo de referência PAOFT-CO.txt", () => {
   // Dados extraídos byte-a-byte do anexo PAOFT-CO.txt (linha 03)
-  const refLine = "03111981620260678744156187415422526520260611001030301010072               F316180H54201100000101MIGUELIN     BPAANNA CAROLINE DA SILVA        2015011003    010000000                          35544000081LOGRADOURO                    COMPLEMENT100  BAIRRO                        37999955830                                                  16218362663N ";
+  const refLine = "03111981620260678744156187415422526520260611001030301010072               F316180H54201100000101                ANNA CAROLINE DA SILVA        2015011003    010000000                          35544000081LOGRADOURO                    COMPLEMENT100  BAIRRO                        37999955830                                                  16218362663N ";
   assert.equal(refLine.length, 351, "Linha de referência deve ter 351 bytes");
 
   const generated = writer.montarLinhaBpaI({

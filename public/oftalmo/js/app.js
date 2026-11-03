@@ -270,7 +270,8 @@
 
 	          const endRaw = fieldAt(parts, cols.enderecoCompleto);
           const parsedEnd = parseEndereco(endRaw);
-          const codLogVinc = onlyDigits(fieldAt(parts, cols.codLogradouro)) || parsedEnd.codTipo;
+          const codLogRaw = onlyDigits(fieldAt(parts, cols.codLogradouro));
+          const codLogVinc = codLogRaw ? codLogRaw.padStart(3, '0') : parsedEnd.codTipo;
           const cepVinc = onlyDigits(fieldAt(parts, cols.cep));
           const bairroVinc = fieldAt(parts, cols.bairro) || parsedEnd.bairro;
           const numVinc = fieldAt(parts, cols.numero) || parsedEnd.numero;
@@ -1007,7 +1008,7 @@
       microarea: document.getElementById('manMicroarea').value.trim(),
       equipe: document.getElementById('manEquipe').value.trim(),
       endereco: endereco,
-      codLogradouro: onlyDigits(document.getElementById('manCodLogradouro').value) || parsedEnd.codTipo,
+      codLogradouro: (() => { const v = onlyDigits(document.getElementById('manCodLogradouro').value); return v ? v.padStart(3, '0') : parsedEnd.codTipo; })(),
       numero: document.getElementById('manNumero').value.trim() || parsedEnd.numero,
       complemento: document.getElementById('manComplemento').value.trim() || parsedEnd.complemento,
       bairro: bairro,

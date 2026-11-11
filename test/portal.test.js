@@ -18,7 +18,8 @@ test("portal evita submissão nativa para uma URL com consulta vazia", () => {
 
 test("portal usa a marca oficial KODE com URL versionada", () => {
   const references = indexHtml.match(/\/img\/kode-logo-white\.png\?v=20261111c/g) || [];
-  assert.equal(references.length, 3);
+  assert.equal(references.length, 2);
+  assert.doesNotMatch(indexHtml, /class="hero-logo"/);
   assert.ok(fs.statSync(logoPath).size > 100_000);
   assert.match(indexHtml, /mix-blend-mode:screen/);
 });

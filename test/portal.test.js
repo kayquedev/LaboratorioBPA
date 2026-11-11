@@ -17,8 +17,9 @@ test("portal evita submissão nativa para uma URL com consulta vazia", () => {
 });
 
 test("logos do portal usam SVG com contraste fixo e URL versionada", () => {
-  const references = indexHtml.match(/\/img\/kode-logo\.svg\?v=20261111/g) || [];
+  const references = indexHtml.match(/\/img\/kode-logo\.svg\?v=20261111b/g) || [];
   assert.equal(references.length, 3);
   assert.doesNotMatch(logoSvg, /currentColor/);
   assert.match(logoSvg, /fill="#eef2fa"/);
+  assert.match(logoSvg, /viewBox="180 180 356 356"/);
 });

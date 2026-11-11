@@ -1,6 +1,12 @@
 (function () {
   "use strict";
 
+  // Remove o marcador de consulta vazio criado por submissões nativas antigas
+  // do formulário de login, sem descartar parâmetros reais.
+  if (window.location.pathname === "/" && !window.location.search && window.location.href.endsWith("?")) {
+    window.history.replaceState(null, "", "/");
+  }
+
   const ICONS = { laboratorio: "🧪", oftalmo: "👁", esus_pec: "🏥", qualidade_bpa: "📊", correcao_bpa: "🛠", bolsa_familia: "👪", siaps_indicadores: "📈", datasus_sia: "💰", acompanhamento_pec: "🏘", mapa_territorio: "🗺️", "kode-maps": "📍", declaracao_endereco: "📄", admin_siaps: "⚙️", kode_gestao_saude: "🩺", site_kode: "🌐", acompanha_site_kode: "📉", gestao_empresa_kode: "🏢", admin_kode_aps: "🏥", licitacoes: "📋", vacinas_pec_off: "💉", kode_endemias: "🦟" };
   // texto da tag de status pros módulos disponíveis - substitui o "Disponível"
   // genérico por uma etiqueta específica do que aquele módulo faz.

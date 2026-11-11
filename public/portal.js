@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const ICONS = { laboratorio: "🧪", oftalmo: "👁", esus_pec: "🏥", qualidade_bpa: "📊", correcao_bpa: "🛠", bolsa_familia: "👪", siaps_indicadores: "📈", datasus_sia: "💰", acompanhamento_pec: "🏘", mapa_territorio: "🗺️", "kode-maps": "📍", declaracao_endereco: "📄" };
+  const ICONS = { laboratorio: "🧪", oftalmo: "👁", esus_pec: "🏥", qualidade_bpa: "📊", correcao_bpa: "🛠", bolsa_familia: "👪", siaps_indicadores: "📈", datasus_sia: "💰", acompanhamento_pec: "🏘", mapa_territorio: "🗺️", "kode-maps": "📍", declaracao_endereco: "📄", admin_siaps: "⚙️", kode_gestao_saude: "🩺", site_kode: "🌐", acompanha_site_kode: "📉", gestao_empresa_kode: "🏢", admin_kode_aps: "🏥", licitacoes: "📋", vacinas_pec_off: "💉", kode_endemias: "🦟" };
   // texto da tag de status pros módulos disponíveis - substitui o "Disponível"
   // genérico por uma etiqueta específica do que aquele módulo faz.
   const STATUS_TAGS = {
@@ -16,12 +16,30 @@
     mapa_territorio: "TERRITÓRIO",
     "kode-maps": "GEORREFERENCIAMENTO",
     declaracao_endereco: "DECLARAÇÃO",
+    admin_siaps: "ADMIN",
+    kode_gestao_saude: "GESTÃO",
+    site_kode: "INSTITUCIONAL",
+    acompanha_site_kode: "MÉTRICAS",
+    gestao_empresa_kode: "CORPORATIVO",
+    admin_kode_aps: "APS",
+    licitacoes: "LICITAÇÕES",
+    vacinas_pec_off: "VACINAÇÃO",
+    kode_endemias: "ENDEMIAS",
   };
   // módulos que não são páginas internas nossas, e sim links pra fora - mesmo
   // cartão/mesma regra de acesso (status live + grant), só o destino muda.
   const EXTERNAL_URLS = {
     siaps_indicadores: "https://siaps.kodesaude.com.br/",
     declaracao_endereco: "https://github.com/kayquedev/ext-declaracao-esuspec",
+    admin_siaps: "https://admin.siaps.kodesaude.com.br/",
+    kode_gestao_saude: "https://gestao.kodesaude.com.br/entrar",
+    site_kode: "https://www.kodesaude.com.br/",
+    acompanha_site_kode: "https://kodesaude.com.br/admin/login",
+    gestao_empresa_kode: "https://admin.kodesaude.com.br/login",
+    admin_kode_aps: "https://aps.kodesaude.com.br/",
+    licitacoes: "https://licitacoes.kayque.site/",
+    vacinas_pec_off: "https://vacinas.kodesaude.com.br/",
+    kode_endemias: "https://endemias.kodesaude.com.br/",
   };
 
   const loginView = document.getElementById("loginView");

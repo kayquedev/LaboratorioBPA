@@ -18,6 +18,15 @@ const MODULES = [
   { slug: "oftalmo", name: "Oftalmo · BPA-I", description: "Cruza a planilha MIGUELLIN com cidadãos vinculados do e-SUS PEC para gerar o arquivo BPA-I dos atendimentos oftalmológicos.", status: "live", sort_order: 10 },
   { slug: "esus_pec", name: "ESUS PEC", description: "Gerador de BPA a partir da produção registrada no ESUS PEC.", status: "soon", sort_order: 11 },
   { slug: "declaracao_endereco", name: "Gerador Declaração de Endereço (CadÚnico)", description: "Extensão de navegador que gera a Declaração de Endereço a partir dos dados do imóvel/família no e-SUS PEC — em PDF ou já formatada para colar direto na aba Orientações do prontuário.", status: "live", sort_order: 12 },
+  { slug: "admin_siaps", name: "Admin SIAPS", description: "Painel administrativo central do SIAPS para gestão de tenants, licenças e configurações da plataforma de indicadores.", status: "live", sort_order: 13 },
+  { slug: "kode_gestao_saude", name: "KODE Gestão em Saúde", description: "Plataforma de gestão em saúde da KODE para acompanhamento de unidades, profissionais e produção.", status: "live", sort_order: 14 },
+  { slug: "site_kode", name: "Site KODE", description: "Site institucional da KODE Saúde com informações sobre produtos, serviços e contato.", status: "live", sort_order: 15 },
+  { slug: "acompanha_site_kode", name: "Acompanha Site KODE Saúde", description: "Painel de acompanhamento e métricas do site institucional da KODE Saúde.", status: "live", sort_order: 16 },
+  { slug: "gestao_empresa_kode", name: "Gestão Empresa KODE", description: "Painel administrativo corporativo da KODE para gestão interna, financeiro e operações.", status: "live", sort_order: 17 },
+  { slug: "admin_kode_aps", name: "Admin KODE APS", description: "Painel administrativo do SaaS KODE APS para gestão de municípios, usuários e configurações da atenção primária.", status: "live", sort_order: 18 },
+  { slug: "licitacoes", name: "Licitações", description: "Sistema de acompanhamento e gestão de licitações e contratos públicos da KODE.", status: "live", sort_order: 19 },
+  { slug: "vacinas_pec_off", name: "Vacinas PEC Off", description: "Ferramenta offline para registro e acompanhamento de vacinação integrada ao e-SUS PEC.", status: "live", sort_order: 20 },
+  { slug: "kode_endemias", name: "KODE Endemias", description: "Sistema de monitoramento e controle de endemias e vetores para equipes de saúde ambiental.", status: "live", sort_order: 21 },
 ];
 
 async function main() {

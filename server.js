@@ -33,6 +33,11 @@ app.use("/oftalmo", requireModulePage("oftalmo"), express.static(path.join(PUBLI
 
 app.use("/kode-maps", requireModulePage("kode-maps"), express.static(path.join(PUBLIC_DIR, "kode-maps")));
 
+app.use(["/portal.js", "/favicon.png", "/img/kode-logo-white.jpg"], (_req, res, next) => {
+  res.set("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+  next();
+});
+
 app.use(express.static(PUBLIC_DIR));
 
 const PORT = process.env.PORT || 4000;
